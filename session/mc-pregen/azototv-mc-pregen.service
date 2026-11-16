@@ -1,0 +1,17 @@
+[Unit]
+Description=AzotoTV: pre-generate Minecraft worlds (each profile's last played)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/azototv/mc-pregen/pregen.py
+WorkingDirectory=%h/azototv/mc-pregen
+# quiet: about 1.5 of the 12 CPU threads, only when nothing else wants them
+# (measured: fans unchanged, CPU ~57 °C, ~6 W)
+CPUQuota=150%
+Nice=19
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle
+# the night ends at 07:00; SIGTERM only to pregen.py, which saves and stops the server
+RuntimeMaxSec=6h
+KillMode=mixed
+TimeoutStopSec=200

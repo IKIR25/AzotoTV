@@ -1,0 +1,17 @@
+# /etc/systemd/system/azototv-no-turbo.service, with the user AzotoTV runs as in place of @USER@.
+# Turbo off by default; AzotoTV turns it on while a game runs,
+# so the file is made writable for its group.
+[Unit]
+Description=AzotoTV: keep CPU turbo off (laptop overheats and gets loud)
+After=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo"
+ExecStart=/bin/chgrp @USER@ /sys/devices/system/cpu/intel_pstate/no_turbo
+ExecStart=/bin/chmod 664 /sys/devices/system/cpu/intel_pstate/no_turbo
+ExecStop=/bin/sh -c "echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+# AzotoTV lights each controller's player number (crates/azotopad/src/lights.rs),
+# so the seat user may write controllers' player lights and lightbars.
+# Install in /etc/udev/rules.d/.
+
+# Joy-Cons / Pro Controller (hid-nintendo), DualSense (hid-playstation), Xbox 360 (xpad)
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*:player-*|*:rgb:indicator|xpad*", RUN+="/bin/sh -c 'chmod 0666 /sys%p/brightness; if [ -e /sys%p/multi_intensity ]; then chmod 0666 /sys%p/multi_intensity; fi'"
+# DualShock 4 lightbar (hid-sony)
+ACTION=="add", SUBSYSTEM=="leds", SUBSYSTEMS=="hid", KERNEL=="*:red|*:green|*:blue", RUN+="/bin/chmod 0666 /sys%p/brightness"

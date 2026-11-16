@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=AzotoTV
+Description=AzotoTV logo on the app's background, like its startup splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/azototv
+ScriptFile=/usr/share/plymouth/themes/azototv/azototv.script

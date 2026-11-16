@@ -1,0 +1,25 @@
+# AzotoTV boot splash: the logo and three pulsing dots, as in the app's own
+# splash (src/lib/Splash.svelte), so boot -> app looks like one screen.
+Window.SetBackgroundTopColor(0.027, 0.031, 0.059);
+Window.SetBackgroundBottomColor(0.027, 0.031, 0.059);
+
+logo = Image("logo.png");
+dot = Image("dot.png");
+cx = Window.GetX() + Window.GetWidth() / 2;
+cy = Window.GetY() + Window.GetHeight() / 2;
+
+top = cy - (logo.GetHeight() + 41 + dot.GetHeight()) / 2;
+s = Sprite(logo);
+s.SetPosition(cx - logo.GetWidth() / 2, top, 1);
+for (i = 0; i < 3; i++) {
+  d[i] = Sprite(dot);
+  d[i].SetPosition(cx - dot.GetWidth() / 2 + (i - 1) * 27, top + logo.GetHeight() + 41, 1);
+}
+
+t = 0;
+fun refresh() {
+  t++;
+  for (i = 0; i < 3; i++)
+    d[i].SetOpacity(0.6 + 0.4 * Math.Sin(t / 50 * 2 * 3.14159 / 1.2 - i * 1.05));
+}
+Plymouth.SetRefreshFunction(refresh);

@@ -1,0 +1,161 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { input, key } from './input.svelte';
+  import { backspace, closeKeyboard, cycleShift, osk, toggleMode, type } from './osk.svelte';
+
+  type Act = 'shift' | 'bksp' | 'mode' | 'space' | 'done';
+  type Key = { ch: string; w?: number } | { act: Act; w: number };
+
+  // Both layouts have the same shape, so switching keeps focus on the same spot.
+  const chars = (s: string): Key[] => [...s].map((ch) => ({ ch }));
+  const bottom = (mode: Key): Key[] => [mode, { ch: '-' }, { act: 'space', w: 4 }, { ch: '.' }, { act: 'done', w: 2.5 }];
+  const LAYOUTS: Record<'abc' | 'sym', Key[][]> = {
+    abc: [
+      chars('1234567890'),
+      chars('qwertyuiop'),
+      chars("asdfghjkl'"),
+      [{ act: 'shift', w: 1.5 }, ...chars('zxcvbnm'), { act: 'bksp', w: 1.5 }],
+      bottom({ act: 'mode', w: 1.5 }),
+    ],
+    sym: [
+      chars('1234567890'),
+      chars('àèéìòù!?@#'),
+      chars('&*():;/_+='),
+      [{ act: 'shift', w: 1.5 }, ...chars('"%€$,<>'), { act: 'bksp', w: 1.5 }],
+      bottom({ act: 'mode', w: 1.5 }),
+    ],
+  };
+  const rows = $derived(LAYOUTS[osk.mode]);
+
+  const upper = $derived(osk.shift !== 'off');
+  function label(k: Key) {
+    if ('ch' in k) return upper ? k.ch.toUpperCase() : k.ch;
+    return {
+      shift: osk.shift === 'lock' ? '⇪' : '⇧',
+      bksp: '⌫',
+      mode: osk.mode === 'abc' ? '&123' : 'ABC',
+      space: 'spazio',
+      done: 'Fatto',
+    }[k.act];
+  }
+  function press(k: Key) {
+    if ('ch' in k) return type(k.ch);
+    if (k.act === 'shift') cycleShift();
+    else if (k.act === 'bksp') backspace();
+    else if (k.act === 'mode') toggleMode();
+    else if (k.act === 'space') type(' ');
+    else closeKeyboard(true);
+  }
+
+  const t = osk.target!;
+  const name =
+    t.closest('label')?.firstChild?.textContent?.trim() || t.placeholder || t.getAttribute('aria-label') || '';
+  const secret = t.type === 'password';
+  // `data-osk="side"` on the input docks the keyboard on the left, so the page
+  // can show live results on the right (search).
+  const side = t.dataset.osk === 'side';
+  const shown = $derived(secret ? '•'.repeat(osk.value.length) : osk.value);
+
+  let box: HTMLElement;
+  // the caret blinks from a timer, not a CSS animation: WebKit runs those at
+  // full frame rate, ~10% of a CPU core just for a blinking line
+  let caretOn = $state(true);
+  onMount(() => {
+    const blink = setInterval(() => (caretOn = !caretOn), 500);
+    // start on the first letter
+    box.querySelectorAll<HTMLElement>('.key')[10]?.focus({ preventScroll: true });
+
+    // A physical keyboard still types straight into the field.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeKeyboard();
+      else if (e.key === 'Backspace') backspace();
+      else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) type(e.key);
+      else return; // arrows / Enter keep their usual meaning
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      clearInterval(blink);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  });
+</script>
+
+<div class="osk glass" class:side data-nav-trap bind:this={box}>
+  <div class="field">
+    {#if name}<span class="name">{name}</span>{/if}
+    <div class="val">{shown.slice(0, osk.caret)}<i class="caret" class:off={!caretOn}></i>{shown.slice(osk.caret)}</div>
+  </div>
+
+  {#each rows as row}
+    <div class="krow">
+      {#each row as k}
+        <button
+          class="key"
+          class:act={'act' in k}
+          class:on={'act' in k && k.act === 'shift' && osk.shift !== 'off'}
+          data-focusable
+          style="--kw:{k.w ?? 1}"
+          onclick={() => press(k)}>{label(k)}</button
+        >
+      {/each}
+    </div>
+  {/each}
+
+  <div class="legend">
+    {#if side}<span><kbd>▶</kbd> ai risultati</span>{/if}
+    {#if input.remote}
+      <span><kbd>OK</kbd> scrivi</span>
+      <span><kbd>Indietro</kbd> cancella</span>
+      <span>spazio, maiuscole e Fatto sono tasti qui sopra</span>
+    {:else}
+      <span><kbd>{key('A')}</kbd> scrivi</span>
+      <span><kbd>{key('B')}</kbd> cancella</span>
+      <span><kbd>{key('Y')}</kbd> spazio</span>
+      <span><kbd>{key('X')}</kbd> maiuscole</span>
+      <span><kbd>{key('LB')}</kbd><kbd>{key('RB')}</kbd> cursore</span>
+      <span><kbd>{key('START')}</kbd> fatto</span>
+    {/if}
+  </div>
+</div>
+
+<style>
+  .osk {
+    --u: 5.4rem; --g: 0.6rem;
+    position: absolute; z-index: 25; left: 50%; bottom: 3rem; transform: translateX(-50%);
+    padding: 2rem 2.2rem 1.4rem; border-radius: 2.4rem; display: grid; gap: var(--g);
+    background: rgba(16, 18, 32, 0.95);
+  }
+  .osk.side { --u: 4.6rem; left: 4rem; top: 10rem; bottom: auto; transform: none; }
+  .side .key { height: 4.4rem; }
+  .side .legend { max-width: 50rem; justify-self: center; }
+  .field {
+    margin-bottom: 0.8rem; padding: 0.9rem 1.4rem; border-radius: 1.2rem;
+    background: rgba(255, 255, 255, 0.08); border: 0.2rem solid rgba(255, 255, 255, 0.5);
+  }
+  .name { display: block; font-size: 1.1rem; color: var(--muted); margin-bottom: 0.2rem; }
+  .val { font-size: 1.9rem; min-height: 2.6rem; white-space: pre; overflow: hidden; }
+  .caret {
+    display: inline-block; width: 0.18rem; height: 2.2rem; margin: 0 0.05rem; vertical-align: -0.35rem;
+    background: var(--accent);
+  }
+  .caret.off { visibility: hidden; }
+  .krow { display: flex; gap: var(--g); }
+  .key {
+    width: calc(var(--u) * var(--kw) + var(--g) * (var(--kw) - 1)); height: 4.8rem;
+    border-radius: 1rem; font-size: 1.8rem; background: rgba(255, 255, 255, 0.1);
+  }
+  .key.act { font-size: 1.4rem; font-weight: 600; background: rgba(255, 255, 255, 0.18); }
+  .key.on { background: var(--accent); }
+  /* no transitions here: plain state changes only (see tween.ts) */
+  .key:focus { background: #fff; color: #10121c; }
+  .legend {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 1.6rem;
+    margin-top: 0.8rem; font-size: 1.1rem; color: var(--muted);
+  }
+  kbd {
+    font: inherit; font-size: 0.95rem; font-weight: 700; padding: 0.05rem 0.45rem; margin-right: 0.3rem;
+    border: 1px solid var(--glass-edge); border-radius: 0.4rem; color: var(--text);
+  }
+</style>

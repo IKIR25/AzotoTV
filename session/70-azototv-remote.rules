@@ -1,0 +1,8 @@
+# AzotoTV: TV remotes belong to the seat user, so AzotoTV can read and grab
+# them (src-tauri/src/remote.rs). Install in /etc/udev/rules.d/ (before
+# 73-seat-late.rules, which turns the uaccess tag into an ACL).
+
+# rc-core input devices: HDMI-CEC adapters (Pulse-Eight, Rainshadow), IR receivers
+SUBSYSTEM=="input", KERNEL=="event*", SUBSYSTEMS=="rc", TAG+="uaccess"
+# FLIRC USB IR receiver (shows up as a keyboard)
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{idVendor}=="20a0", ATTRS{idProduct}=="0006", TAG+="uaccess"

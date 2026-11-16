@@ -1,0 +1,8 @@
+[Unit]
+Description=Minecraft world pre-generation every night at 01:00
+
+[Timer]
+OnCalendar=*-*-* 01:00:00
+
+[Install]
+WantedBy=timers.target

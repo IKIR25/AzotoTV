@@ -1,0 +1,18 @@
+.DS_Store
+node_modules
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# built by android/build.sh
+/src-tauri/phone/AzotoTV.apk
+
+# the Mii renderer, put in place by tools/fetch-mii-renderer.sh
+/src/lib/vendor/ffl/*
+!/src/lib/vendor/ffl/README.md
+/static/mii/

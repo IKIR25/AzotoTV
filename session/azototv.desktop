@@ -1,0 +1,9 @@
+# Installed with the user's home in place of @HOME@:
+#   sed "s|@HOME@|$HOME|g" azototv.desktop | sudo tee /usr/share/wayland-sessions/azototv.desktop
+[Desktop Entry]
+Type=Application
+Name=AzotoTV
+Comment=AzotoTV a schermo intero, senza desktop
+Exec=/usr/lib/plasma-dbus-run-session-if-needed @HOME@/azototv/session.sh
+TryExec=@HOME@/azototv/session.sh
+DesktopNames=KDE

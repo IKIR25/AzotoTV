@@ -1,0 +1,153 @@
+<script lang="ts">
+  import { key } from './input.svelte';
+  import { onMount } from 'svelte';
+  import { invoke } from '@tauri-apps/api/core';
+  import { listen } from '@tauri-apps/api/event';
+  import { control, modal, showToast } from './stage.svelte';
+  import { auth } from './session.svelte';
+
+  // "Collega un telefono" (START menu): a QR code and a 4-digit code that pair
+  // a phone with this profile (src-tauri/src/phone.rs; the same phone can be
+  // paired with more profiles), and the phones paired with it (A on one,
+  // twice: unpaired from this profile). A new code shows after each pairing.
+  const close = () => (control.phones = false);
+
+  interface Pairing {
+    code: string;
+    url: string;
+    address: string;
+    qr: string;
+  }
+  interface Paired {
+    id: string;
+    /** what the phone is ("iPhone", "Galaxy S23 di Luca") */
+    label: string;
+    /** its other profiles */
+    others: string[];
+    paired: number;
+  }
+
+  let pairing = $state<Pairing | null>(null);
+  let phones = $state<Paired[]>([]);
+  let armed = $state('');
+  let armTimer: ReturnType<typeof setTimeout>;
+  let done: HTMLElement;
+
+  const user = auth.id;
+  const refresh = async () => (phones = await invoke<Paired[]>('phone_list', { user }).catch(() => []));
+  const newCode = async () => (pairing = await invoke<Pairing>('phone_pairing', { user, name: auth.name }).catch(() => null));
+
+  function forget(p: Paired) {
+    if (armed !== p.id) {
+      armed = p.id;
+      clearTimeout(armTimer);
+      armTimer = setTimeout(() => (armed = ''), 3500);
+      return;
+    }
+    armed = '';
+    void invoke('phone_forget', { id: p.id, user }).then(refresh);
+    showToast(`${p.label} scollegato da ${auth.name}`);
+    done.focus({ preventScroll: true });
+  }
+
+  const when = (s: number) => new Date(s * 1000).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+
+  onMount(() => {
+    const before = document.activeElement;
+    modal.close = close;
+    void refresh();
+    void newCode();
+    done.focus({ preventScroll: true });
+    // a phone typed the code: the list updates, and a new code for the next one
+    const un = listen('phone-paired', () => {
+      void refresh();
+      showToast('Telefono collegato ✓');
+      void newCode();
+    });
+    return () => {
+      clearTimeout(armTimer);
+      void un.then((f) => f());
+      void invoke('phone_pairing_stop').catch(() => {});
+      if (modal.close === close) modal.close = null;
+      if (before instanceof HTMLElement && before.isConnected) before.focus({ preventScroll: true });
+    };
+  });
+</script>
+
+<div class="dim">
+  <section class="panel glass" data-nav-trap>
+    <div class="qr" aria-label="Codice QR">
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      {#if pairing}{@html pairing.qr}{/if}
+    </div>
+    <div class="side">
+      <h1>Collega un telefono a {auth.name}</h1>
+      <p class="lead">Il telefono comanderà la TV quando c'è il profilo di {auth.name}.</p>
+      <ol>
+        <li>Inquadra il codice QR con la fotocamera del telefono, sulla Wi-Fi di casa.</li>
+        <li>Oppure apri <b>{pairing?.address ?? '…'}</b> e scrivi il codice:</li>
+      </ol>
+      <div class="code">
+        {#each (pairing?.code ?? '····').split('') as d, i (i)}<span>{d}</span>{/each}
+      </div>
+      <p class="small">Telefono già collegato a un altro profilo? Nell'app tocca il tuo nome › Aggiungi un profilo.</p>
+      <p class="small">Su iPhone: Condividi › Aggiungi alla schermata Home, e diventa un'app.</p>
+
+      {#if phones.length}
+        <h2>Telefoni collegati a {auth.name}</h2>
+        <div class="list">
+          {#each phones as p (p.id)}
+            <button class="phone" class:armed={armed === p.id} data-focusable onblur={() => armed === p.id && (armed = '')} onclick={() => forget(p)}>
+              <span>{armed === p.id ? `Premi di nuovo per scollegarlo da ${auth.name}` : p.label}</span>
+              <small>{armed === p.id ? '' : p.others.length ? `anche ${p.others.join(', ')}` : `dal ${when(p.paired)}`}</small>
+              {#if armed !== p.id}<em class="x">Scollega</em>{/if}
+            </button>
+          {/each}
+        </div>
+      {/if}
+      <button class="btn primary" data-focusable bind:this={done} onclick={close}>Fatto</button>
+      <div class="hint">{#if phones.length}<kbd>{key('A')}</kbd> su un telefono: lo scolleghi da {auth.name} · {/if}<kbd>{key('B')}</kbd> chiudi</div>
+    </div>
+  </section>
+</div>
+
+<style>
+  .dim { position: absolute; z-index: 22; inset: 0; display: grid; place-items: center; background: rgba(5, 6, 14, 0.6); }
+  .panel {
+    display: flex; gap: 4rem; width: 110rem; max-width: calc(100% - 8rem); padding: 4rem;
+    border-radius: 2.8rem; background: rgba(16, 18, 32, 0.95);
+  }
+  .qr { flex: none; width: 36rem; height: 36rem; border-radius: 2rem; background: #fff; padding: 1.2rem; }
+  .qr :global(svg) { width: 100%; height: 100%; display: block; }
+  .side { flex: 1; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+  h1 { font-size: 3rem; margin: 0 0 0.6rem; }
+  .lead { font-size: 1.5rem; color: var(--muted); margin: 0 0 1.4rem; }
+  h2 { font-size: 1.6rem; margin: 2.4rem 0 0.8rem; color: var(--muted); font-weight: 600; }
+  ol { margin: 0; padding-left: 2.4rem; font-size: 1.6rem; line-height: 1.5; color: var(--muted); }
+  ol b { color: var(--text); font-weight: 700; }
+  .code { display: flex; gap: 1.2rem; margin: 1.8rem 0 1.4rem; }
+  .code span {
+    width: 6.4rem; height: 8rem; display: grid; place-items: center; border-radius: 1.4rem;
+    background: rgba(255, 255, 255, 0.08); font-size: 4.4rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .small { font-size: 1.3rem; color: var(--muted); margin: 0; }
+  .list { display: flex; flex-direction: column; gap: 0.4rem; width: 100%; max-height: 16rem; overflow: hidden; }
+  .phone {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; width: 100%;
+    padding: 0.9rem 1.4rem; border-radius: 1.2rem; text-align: left; font-size: 1.5rem; font-weight: 600;
+  }
+  .phone small { font-size: 1.2rem; color: var(--muted); font-weight: 400; margin-left: auto; }
+  .phone .x { display: none; font-style: normal; font-size: 1.2rem; font-weight: 700; color: #ff5d6c; }
+  .phone:focus .x { display: inline; }
+  /* plain state change, no transition (see tween.ts) */
+  .phone:focus { background: #fff; color: #10121c; }
+  .phone:focus small { color: rgba(16, 18, 28, 0.65); }
+  .phone.armed:focus { background: #ff5d6c; color: #fff; }
+  .btn { margin-top: auto; }
+  .side > .btn { margin-top: 2.4rem; }
+  .hint { margin-top: 1.4rem; font-size: 1.15rem; color: var(--muted); }
+  kbd {
+    font: inherit; font-size: 0.95rem; font-weight: 700; padding: 0.05rem 0.45rem;
+    border: 1px solid var(--glass-edge); border-radius: 0.4rem; color: var(--text);
+  }
+</style>
