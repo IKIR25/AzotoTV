@@ -80,6 +80,8 @@
 </script>
 
 <aside class="sheet glass" data-nav-trap>
+  <!-- many entries: the list scrolls (nav.ts reveal() moves the .scroller), the hint stays put -->
+  <div class="list"><div class="scroller">
   {#if tg}
     <button
       class="opt"
@@ -284,6 +286,7 @@
       <span class="txt">{armed === a.key ? a.armed : a.label}{#if a.sub}<small>{a.sub}</small>{/if}</span>
     </button>
   {/each}
+  </div></div>
 
   <div class="hint"><kbd>{key('A')}</kbd> {t('select ·')} <kbd>{key('B')}</kbd> {t('close')}</div>
 </aside>
@@ -292,8 +295,9 @@
   .sheet {
     position: absolute; z-index: 22; top: 0; right: 0; bottom: 0; width: 40rem;
     border-radius: 2.4rem 0 0 2.4rem; background: rgb(var(--panel-rgb) / 0.94);
-    padding: 3rem 2rem;
   }
+  .list { position: absolute; top: 0; bottom: 4.6rem; left: 0; right: 0; }
+  .list .scroller { padding: 3rem 2rem 1rem; }
   .opt {
     display: flex; align-items: center; gap: 1.4rem; width: 100%; text-align: left;
     padding: 0.95rem 1.4rem; border-radius: 1.4rem; margin-bottom: 0.4rem;
