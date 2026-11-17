@@ -12,6 +12,8 @@ server to begin with.
 The name: *azoto* is Italian for nitrogen. The project started on an Acer
 Nitro laptop.
 
+![The home screen: the profile's apps, with a film to continue watching above them](docs/screenshots/home.jpg)
+
 ## What it does
 
 - **Films and series** from [Jellyfin](https://jellyfin.org), played with mpv
@@ -39,6 +41,22 @@ Nitro laptop.
   iPhone app (a separate project for now) is listed in
   [docs/SETUP.md](docs/SETUP.md#phones).
 - **The TV itself**: power and input on Hisense / VIDAA televisions.
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Who is watching? Five profiles](docs/screenshots/profiles.jpg) | ![The TV app: continue watching and recently added films](docs/screenshots/films.jpg) |
+| **Profiles** are Jellyfin's users, each with its own home | **TV**: films and series, with continue watching |
+| ![A film's page with Play, Not watched, Favourites and More like this](docs/screenshots/film.jpg) | ![Music: songs with their album covers](docs/screenshots/music.jpg) |
+| A film's page | **Music** from Jellyfin |
+| ![The START menu: notifications, phone, controllers, language, theme, services](docs/screenshots/start-menu.jpg) | ![Theme picker: Azoto, Serious night, day and automatic](docs/screenshots/themes.jpg) |
+| **START**: phones, controllers, language, services | A **theme** per profile |
+
+The profiles and the music are made up. The films are the Blender Studio open
+movies ([studio.blender.org/films](https://studio.blender.org/films/),
+CC BY, © Blender Foundation), with pictures and descriptions as Jellyfin
+found them.
 
 ## Quick start
 
