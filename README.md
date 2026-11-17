@@ -29,9 +29,15 @@ Nitro laptop.
   Added from the TV (pick the game's file, pictures and description are found
   online) or by dropping Switch / Wii / 3DS files in a ROM folder. One virtual
   controller per player (`crates/azotopad`), per-profile saves, optional mods.
-- **Phones**: a web page AzotoTV serves on the home network (remote, keyboard,
-  "send to the TV", photos, the phone as a controller), and a small Android
-  app that wraps it (`android/`).
+- **Phones**: a web page AzotoTV serves on the home network: sign in with a
+  profile's PIN or a code from the TV, then films, series, live TV and music
+  playing on the phone (resume points shared with the TV, "watch on the TV" /
+  "continue here"), the photo gallery, requests, a remote with typing, "send
+  to the TV" and the phone as a controller. A small Android app wraps it
+  (`android/`) and adds the share menu, the volume keys and music with the
+  screen off. What differs between the browser, the Android app and the
+  iPhone app (a separate project for now) is listed in
+  [docs/SETUP.md](docs/SETUP.md#phones).
 - **The TV itself**: power and input on Hisense / VIDAA televisions.
 
 ## Quick start

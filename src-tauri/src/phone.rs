@@ -23,13 +23,16 @@
 //! Paired phones live in ~/.local/share/azototv/phones.json (mode 600).
 //! Nothing runs while no phone is connected.
 //!
-//! The iPhone app (a separate project) uses the same API, but
-//! signs in without the TV: it lists the profiles that have a PIN
-//! (`/api/app/profiles`) and logs into one with it (`/api/app/login`), which
-//! pairs the phone with that profile like a code would. Profiles without a PIN
-//! can't be opened from the network. `/api/app/home` tells it the profile's
-//! apps (the TV's UI reports them with `phone_apps`, they live in its storage)
-//! and `/api/app/games` the Mobile games.
+//! The page (src-tauri/phone, ES modules, no build step) mirrors the iPhone
+//! app (a separate project) screen for screen, on the same API: sign in with a
+//! profile's PIN (`/api/app/profiles` lists the profiles that have one,
+//! `/api/app/login`) or with the TV's code (`/api/pair`; both give the same
+//! kind of token); `/api/app/home` tells the profile's apps (the TV's UI
+//! reports them with `phone_apps`, they live in its storage) and
+//! `/api/app/games` the Mobile games; TV, Live TV and Music play on the phone
+//! through `/api/app/jf` (phonejf.rs). Game streaming needs a native client:
+//! the iPhone app has one, the page asks the Android app (`AzotoApp.playGame`
+//! / `openScreen`) when it offers them.
 
 use std::{
     collections::HashMap,
@@ -692,6 +695,16 @@ fn asset(name: &str) -> Option<(Vec<u8>, &'static str)> {
     let data: &[u8] = match name {
         "index.html" => include_bytes!("../phone/index.html"),
         "app.js" => include_bytes!("../phone/app.js"),
+        "ui.js" => include_bytes!("../phone/ui.js"),
+        "api.js" => include_bytes!("../phone/api.js"),
+        "model.js" => include_bytes!("../phone/model.js"),
+        "remote.js" => include_bytes!("../phone/remote.js"),
+        "photos.js" => include_bytes!("../phone/photos.js"),
+        "watch.js" => include_bytes!("../phone/watch.js"),
+        "music.js" => include_bytes!("../phone/music.js"),
+        "extra.js" => include_bytes!("../phone/extra.js"),
+        // hls.js 1.5.20 (Apache-2.0): HLS for browsers without it (Android)
+        "hls.min.js" => include_bytes!("../phone/hls.min.js"),
         "app.css" => include_bytes!("../phone/app.css"),
         "icon.svg" => include_bytes!("../phone/icon.svg"),
         "icon-192.png" => include_bytes!("../phone/icon-192.png"),
@@ -772,7 +785,7 @@ async fn pair(State(ctx): State<Ctx>, headers: HeaderMap, Json(r): Json<PairReq>
         Ok(d) => {
             eprintln!("[phone] paired {} with {}", d.id, d.names());
             let _ = ctx.app.emit("phone-paired", d.who());
-            Json(json!({ "token": d.token, "label": d.label, "users": d.users })).into_response()
+            Json(json!({ "token": d.token, "label": d.label, "users": d.users, "server": ctx.phone.server_id })).into_response()
         }
         Err(msg) => fail(StatusCode::FORBIDDEN, &msg),
     }

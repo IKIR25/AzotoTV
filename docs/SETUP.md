@@ -111,6 +111,36 @@ serves on port 8686 of the home network (open it in your firewall for the
 LAN only). `./install.sh --android` builds the Android app, which the TV then
 offers for download from that page.
 
+A phone signs in with a profile's PIN (START › Profile PIN on the TV) or with
+the 4-digit code START › Connect a phone shows. Then it has the same screens
+everywhere: Home (the profile's apps), Remote, Send.
+
+There are three ways to have AzotoTV on a phone: the page in any browser, the
+Android app (the same page in a small wrapper, `android/`) and an iPhone app
+(a separate project on the same API, `src-tauri/src/phone.rs`, not published
+yet). For now they differ in these ways:
+
+| | Browser | Android app | iPhone app |
+|---|---|---|---|
+| Sign in (PIN or TV code), Home, Remote, controller, Send a link | yes | yes | yes |
+| Films, series, Live TV, Music playing on the phone, "Watch on the TV", "Continue here" | yes | yes | yes |
+| Gallery (albums, viewer, adding photos), Requests | yes | yes | yes |
+| Mobile games: web versions | open in a new tab | open in the browser | open inside the app |
+| Mobile games streamed from the server (touch "phone mode") | no | not yet | yes |
+| Switch touch screen, 3DS bottom screen (streamed) | no | not yet | yes |
+| Live TV source | Jellyfin's stream | Jellyfin's stream | the channel's own stream, Jellyfin's as a fallback |
+| Music with the screen off, lock-screen controls | as far as the browser allows | yes | yes |
+| Share from other apps | no | Share › AzotoTV | a Shortcut that opens `nitrotv://share` |
+| Phone's volume keys set the TV's volume | no | yes | no |
+| YouTube on the phone | not yet | not yet | not yet |
+| Language | the TV's (English, Italian) | the TV's | Italian only |
+| Finding the TV | the address you open | asks for it once | addresses set in its source |
+
+Browsers without HLS of their own play video through
+[hls.js](https://github.com/video-dev/hls.js) (Apache-2.0,
+`src-tauri/phone/hls.min.js`). `DEBUG=1 android/build.sh` makes a debuggable
+build whose web view can be inspected over USB (`chrome://inspect`).
+
 ## Game streaming
 
 With [Sunshine](https://github.com/LizardByte/Sunshine) installed, AzotoTV

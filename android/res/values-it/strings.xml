@@ -8,4 +8,9 @@
     <string name="same_wifi">Il telefono dev\'essere sulla Wi-Fi di casa, e AzotoTV acceso.</string>
     <string name="address">Indirizzo della TV (START › Collega un telefono):</string>
     <string name="retry">Riprova</string>
+    <string name="music">Musica</string>
+    <string name="play">Riproduci</string>
+    <string name="pause">Pausa</string>
+    <string name="next">Successivo</string>
+    <string name="previous">Precedente</string>
 </resources>

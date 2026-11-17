@@ -1,10 +1,13 @@
 package io.github.ikir25.azototv.phone;
 
 import android.app.Activity;
+import android.Manifest;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.graphics.Insets;
@@ -34,6 +37,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+
+import org.json.JSONObject;
 
 /**
  * AzotoTV on an Android phone: finds AzotoTV on the home network and shows the
@@ -67,11 +72,15 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
 
+        // a test build (DEBUG=1 build.sh) can be inspected over USB
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
         web = new WebView(this);
         web.setBackgroundColor(BG);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        // a song or a film may start after a tap that waited on the network
+        s.setMediaPlaybackRequiresUserGesture(false);
         web.addJavascriptInterface(new Bridge(), "AzotoApp");
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -110,6 +119,34 @@ public class MainActivity extends Activity {
         setContentView(web);
         pending = request(getIntent());
         find();
+        // Android 13+ (and every app targeting 16) report Back here, not to onBackPressed
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::back);
+        }
+        // the music notification's buttons, handed to the page
+        IntentFilter f = new IntentFilter(MusicService.ACTION);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(musicButtons, f, RECEIVER_NOT_EXPORTED);
+        else registerReceiver(musicButtons, f);
+    }
+
+    private final BroadcastReceiver musicButtons = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            String what = i.getStringExtra("what");
+            if (what == null || !what.matches("[a-z]+")) return;
+            if (server == null) {
+                if ("stop".equals(what)) MusicService.update(MainActivity.this, null, null, false);
+                return;
+            }
+            web.evaluateJavascript("window.azotoMusic&&window.azotoMusic('" + what + "')", null);
+        }
+    };
+
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(musicButtons);
+        MusicService.update(this, null, null, false);
+        super.onDestroy();
     }
 
     @Override
@@ -118,8 +155,14 @@ public class MainActivity extends Activity {
         setIntent(intent);
         String what = request(intent);
         if (what.isEmpty()) return;
-        if (server != null) web.loadUrl(server + "/" + what);
-        else pending = what;
+        if (server == null) {
+            pending = what;
+            return;
+        }
+        // the page is open: it takes it without reloading (the music goes on)
+        final String js = JSONObject.quote(what);
+        final String reload = JSONObject.quote(server + "/" + what);
+        web.evaluateJavascript("window.azotoShared?(window.azotoShared(" + js + "),'ok'):(location.href=" + reload + ")", null);
     }
 
     /** What a share asks for (and the shared files, kept for the picker). */
@@ -283,10 +326,23 @@ public class MainActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
-    /** Back leaves the app without closing it (the page keeps its place). */
+    /**
+     * Back goes back inside the page (a player, a page, a sheet); on its first
+     * screen it leaves the app without closing it (the page keeps its place).
+     */
     @Override
     public void onBackPressed() {
-        moveTaskToBack(true);
+        back();
+    }
+
+    private void back() {
+        if (server == null) {
+            moveTaskToBack(true);
+            return;
+        }
+        web.evaluateJavascript("window.azotoBack?window.azotoBack():false", v -> {
+            if (!"true".equals(v)) moveTaskToBack(true);
+        });
     }
 
     // ---- what the page can call (window.AzotoApp) ----
@@ -328,9 +384,48 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setLandscape(boolean on) {
             ui.post(() -> {
-                setRequestedOrientation(on ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                setRequestedOrientation(on ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                 if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                // sideways is full screen (players, the controller): no status or navigation bar
+                if (Build.VERSION.SDK_INT >= 30) {
+                    android.view.WindowInsetsController c = getWindow().getInsetsController();
+                    if (c != null) {
+                        c.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                        if (on) c.hide(WindowInsets.Type.systemBars());
+                        else c.show(WindowInsets.Type.systemBars());
+                    }
+                } else {
+                    getWindow().getDecorView().setSystemUiVisibility(on
+                            ? android.view.View.SYSTEM_UI_FLAG_FULLSCREEN | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            : 0);
+                }
+            });
+        }
+
+        /**
+         * What the page's music plays ({title, artist, playing}; "" = stopped):
+         * a notification and the lock screen's controls, and the app keeps
+         * running with the screen off.
+         */
+        @JavascriptInterface
+        public void musicState(String json) {
+            ui.post(() -> {
+                try {
+                    if (json == null || json.isEmpty()) {
+                        MusicService.update(MainActivity.this, null, null, false);
+                        return;
+                    }
+                    JSONObject j = new JSONObject(json);
+                    if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                            && !prefs.getBoolean("asked_notifications", false)) {
+                        prefs.edit().putBoolean("asked_notifications", true).apply();
+                        requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, 2);
+                    }
+                    MusicService.update(MainActivity.this, j.optString("title"), j.optString("artist"), j.optBoolean("playing"));
+                } catch (Exception e) {
+                    // a page from another version: ignore
+                }
             });
         }
 
