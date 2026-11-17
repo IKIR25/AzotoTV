@@ -55,6 +55,9 @@ export interface Item {
   SeriesId?: string;
   SeriesName?: string;
   SeriesPrimaryImageTag?: string;
+  /** songs: their album, whose cover stands in when the song has none */
+  AlbumId?: string;
+  AlbumPrimaryImageTag?: string;
   /** an episode's series logo (when Logo is in EnableImageTypes) */
   ParentLogoItemId?: string;
   ParentLogoImageTag?: string;
@@ -342,6 +345,7 @@ export function cardImage(it: Item, wide: boolean, rem: number): string | null {
   if (t.Primary) return img(it.Id, 'Primary', rem, t.Primary);
   if (it.Type === 'Episode' && it.SeriesId && it.SeriesPrimaryImageTag)
     return img(it.SeriesId, 'Primary', rem, it.SeriesPrimaryImageTag);
+  if (it.AlbumId && it.AlbumPrimaryImageTag) return img(it.AlbumId, 'Primary', rem, it.AlbumPrimaryImageTag);
   return null;
 }
 

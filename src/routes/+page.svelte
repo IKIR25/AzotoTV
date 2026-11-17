@@ -62,7 +62,7 @@
   let retry: ReturnType<typeof setTimeout> | undefined;
 
   // after SvelteKit's own end-of-navigation focus reset, which would undo it
-  afterNavigate(() => restoreFocus('/', `[data-key="app:${shelfApp}"]`));
+  afterNavigate(() => restoreFocus('/', `[data-key="app:${order.includes(shelfApp) ? shelfApp : order[0]}"]`));
 
   async function load(user: string, quiet: boolean) {
     clearTimeout(retry);
@@ -86,6 +86,8 @@
       loadedFor = id;
       // an app added from the Store's shelf joins the row at once
       order = appOrder(id).map((a) => a.key);
+      // a fresh start, or a profile without the app the shelf was on: its first tile
+      if (order.length && !order.includes(shelfApp)) shelfApp = shelfTarget = saved.app = order[0];
       load(id, quiet);
     });
   });
