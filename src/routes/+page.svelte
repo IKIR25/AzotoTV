@@ -1,6 +1,7 @@
 <script module lang="ts">
   // The shelf survives a trip into an app and back (same app, same slide).
-  const saved = { app: 'live', index: {} as Record<string, number> };
+  // ('' at the start: the profile's first tile)
+  const saved = { app: '', index: {} as Record<string, number> };
 </script>
 
 <script lang="ts">

@@ -42,8 +42,11 @@ Nitro laptop.
 
 ## Quick start
 
-On Linux, with Rust, Node with pnpm, [what Tauri 2 needs](https://v2.tauri.app/start/prerequisites/)
-(WebKitGTK 4.1) and `mpv` installed:
+On Linux, with Rust 1.90 or newer (Debian and Ubuntu ship an older one: use
+[rustup](https://rustup.rs)), Node 20.19 or newer with pnpm,
+[what Tauri 2 needs](https://v2.tauri.app/start/prerequisites/) (WebKitGTK 4.1)
+and `mpv` installed (`./install.sh` prints the packages for Arch, Fedora and
+Debian / Ubuntu):
 
 ```sh
 git clone https://github.com/IKIR25/AzotoTV && cd AzotoTV

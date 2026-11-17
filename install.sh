@@ -33,19 +33,35 @@ say() { printf '\n== %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 # ---- what is needed ---------------------------------------------------------
-missing=
+missing= old=
 need() { have "$1" || missing="$missing $1"; }
+# at least version $2 of a "x.y" version number $1
+atleast() { [ "$(printf '%s\n%s\n' "$2" "$1" | sort -t. -k1,1n -k2,2n | head -n1)" = "$2" ]; }
 if [ -n "$BUILD" ]; then
   need cargo
+  need node
   need pnpm
-  have pkg-config && pkg-config --exists webkit2gtk-4.1 2>/dev/null || missing="$missing webkit2gtk-4.1(dev)"
+  have pkg-config || missing="$missing pkg-config"
+  have pkg-config && { pkg-config --exists webkit2gtk-4.1 2>/dev/null || missing="$missing webkit2gtk-4.1(dev)"; }
+  # Tauri needs Rust 1.90 (src-tauri/Cargo.toml), Vite Node 20.19 or 22.12
+  if have rustc; then
+    v=$(rustc --version | sed -n 's/^rustc \([0-9]*\.[0-9]*\).*/\1/p')
+    atleast "$v" 1.90 || old="$old rust($v, needs 1.90)"
+  fi
+  if have node; then
+    v=$(node --version | sed -n 's/^v\([0-9]*\.[0-9]*\).*/\1/p')
+    { atleast "$v" 22.12 || { [ "${v%%.*}" = 20 ] && atleast "$v" 20.19; }; } || old="$old node($v, needs 20.19 or 22.12)"
+  fi
 fi
 need mpv
-if [ -n "$missing" ]; then
-  echo "Missing:$missing"
-  echo "  Arch:    sudo pacman -S --needed rust pnpm webkit2gtk-4.1 base-devel mpv yt-dlp ffmpeg"
-  echo "  Debian:  sudo apt install cargo libwebkit2gtk-4.1-dev build-essential libssl-dev libasound2-dev libudev-dev mpv yt-dlp ffmpeg  (pnpm: https://pnpm.io/installation)"
-  echo "  Fedora:  sudo dnf install cargo webkit2gtk4.1-devel openssl-devel alsa-lib-devel systemd-devel mpv yt-dlp ffmpeg  (pnpm: https://pnpm.io/installation)"
+if [ -n "$missing$old" ]; then
+  [ -n "$missing" ] && echo "Missing:$missing"
+  [ -n "$old" ] && echo "Too old:$old"
+  echo "  Arch:    sudo pacman -S --needed rust nodejs pnpm webkit2gtk-4.1 base-devel mpv yt-dlp ffmpeg"
+  echo "  Fedora:  sudo dnf install cargo nodejs pnpm webkit2gtk4.1-devel openssl-devel alsa-lib-devel systemd-devel mpv yt-dlp ffmpeg"
+  echo "  Debian / Ubuntu:  sudo apt install nodejs libwebkit2gtk-4.1-dev build-essential pkg-config curl libssl-dev libasound2-dev libudev-dev mpv yt-dlp ffmpeg"
+  echo "           and Rust from https://rustup.rs: the distribution's cargo is too old"
+  echo "  pnpm, where the distribution has none: curl -fsSL https://get.pnpm.io/install.sh | sh -   (then open a new terminal)"
   echo "  The full list for building: https://v2.tauri.app/start/prerequisites/"
   exit 1
 fi

@@ -87,6 +87,23 @@ pub(crate) fn cache_dir() -> PathBuf {
     xdg("XDG_CACHE_HOME", ".cache").join("azototv")
 }
 
+/// The server address as typed, made into a URL: "jellyfin.lan:8096" -> "http://jellyfin.lan:8096".
+fn server_url(typed: &str) -> String {
+    let base = typed.trim().trim_end_matches('/');
+    if base.contains("://") { base.to_string() } else { format!("http://{base}") }
+}
+
+/// A failed request to the server, said for people instead of with reqwest's words.
+fn unreachable(e: reqwest::Error) -> String {
+    if e.is_builder() {
+        t!("that isn't a server address (it looks like http://localhost:8096)")
+    } else if e.is_timeout() {
+        t!("the server didn't answer in time")
+    } else {
+        t!("can't reach the server: check the address and that Jellyfin is running")
+    }
+}
+
 pub(crate) fn fnv1a(s: &str) -> u64 {
     let mut h: u64 = 0xcbf29ce484222325;
     for b in s.bytes() {
@@ -209,13 +226,13 @@ impl Jf {
 
     /// Check that `base` is a Jellyfin server and remember it. Returns its name.
     pub async fn set_server(&self, base: &str) -> Result<String, String> {
-        let base = base.trim().trim_end_matches('/').to_string();
+        let base = server_url(base);
         let v: Value = self
             .client
             .get(format!("{base}/System/Info/Public"))
             .send()
             .await
-            .map_err(|e| t!("can't reach the server: {e}", e = e))?
+            .map_err(unreachable)?
             .error_for_status()
             .map_err(|e| e.to_string())?
             .json()
@@ -237,7 +254,7 @@ impl Jf {
             .timeout(Duration::from_secs(5))
             .send()
             .await
-            .map_err(|e| t!("can't reach the server: {e}", e = e))?
+            .map_err(unreachable)?
             .error_for_status()
             .map_err(|e| e.to_string())?
             .json()
@@ -345,7 +362,7 @@ impl Jf {
     }
 
     pub async fn login(&self, base: &str, user: &str, pass: &str) -> Result<Session, String> {
-        let base = base.trim().trim_end_matches('/').to_string();
+        let base = server_url(base);
         let device_id = format!("azototv-{}-{:08x}", self.host, fnv1a(&user.to_lowercase()) as u32);
         let resp = self
             .client
@@ -354,7 +371,7 @@ impl Jf {
             .json(&serde_json::json!({ "Username": user, "Pw": pass }))
             .send()
             .await
-            .map_err(|e| t!("can't reach the server: {e}", e = e))?;
+            .map_err(unreachable)?;
         if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
             return Err(t!("Wrong password"));
         }
@@ -439,5 +456,17 @@ impl Jf {
         let url = format!("{base}{path_and_query}");
         let req = self.client.get(&url).header("Authorization", auth);
         cached_image(req, &url).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::server_url;
+
+    #[test]
+    fn typed_addresses() {
+        assert_eq!(server_url(" jellyfin.lan:8096/ "), "http://jellyfin.lan:8096");
+        assert_eq!(server_url("https://media.example.org/"), "https://media.example.org");
+        assert_eq!(server_url("http://localhost:8096"), "http://localhost:8096");
     }
 }
