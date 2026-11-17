@@ -8,7 +8,7 @@ import { t } from '$lib/i18n';
 export const galleriaApp: App = {
   key: 'galleria',
   name: t('Gallery'),
-  description: t('The family\'s photos and videos: the albums shared with the TV, “On this day” and slideshows.'),
+  description: t('Your photos and videos: the albums shared with the TV, “On this day” and slideshows.'),
   route: '/galleria',
   color: 'linear-gradient(135deg, #ffd25e 0%, #ff8a5c 50%, #e8457c 100%)',
   // a picture frame: sun and hills

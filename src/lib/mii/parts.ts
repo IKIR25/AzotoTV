@@ -77,7 +77,7 @@ export const PALETTES = {
 const size = (path: string, max: number): SliderField => ({ kind: 'slider', path, label: t('Size'), min: 0, max, low: t('Small'), high: t('Large') });
 const squash = (path: string): SliderField => ({ kind: 'slider', path, label: t('Proportions'), min: 0, max: 6, low: t('Squashed'), high: t('Stretched') });
 const rotation = (path: string, max: number): SliderField => ({ kind: 'slider', path, label: t('Rotation'), min: 0, max });
-const apart = (path: string): SliderField => ({ kind: 'slider', path, label: t('Spacing'), min: 0, max: 12, low: t('Close'), high: t('Far apart') });
+const apart = (path: string): SliderField => ({ kind: 'slider', path, label: t('Spacing'), min: 0, max: 12, low: t('Close|near'), high: t('Far apart') });
 const yPos = (path: string, min: number, max: number): SliderField => ({ kind: 'slider', path, label: t('Position'), min, max, low: t('Up'), high: t('Down') });
 
 export const TABS: Tab[] = [

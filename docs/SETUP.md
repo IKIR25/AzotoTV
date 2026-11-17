@@ -133,7 +133,7 @@ yet). For now they differ in these ways:
 | Share from other apps | no | Share › AzotoTV | a Shortcut that opens `nitrotv://share` |
 | Phone's volume keys set the TV's volume | no | yes | no |
 | YouTube on the phone | not yet | not yet | not yet |
-| Language | the TV's (English, Italian) | the TV's | Italian only |
+| Language | the TV's (English, Italian) | the TV's | the TV's |
 | Finding the TV | the address you open | asks for it once | addresses set in its source |
 
 Browsers without HLS of their own play video through
