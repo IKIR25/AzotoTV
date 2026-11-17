@@ -2,12 +2,13 @@
 // per profile. Silent while other music or a video plays, and with the
 // screens off.
 import { invoke } from '@tauri-apps/api/core';
+import { t } from '$lib/i18n';
 
 export const TRACKS = [
   { key: 'wiiu', name: 'Wii U' },
   { key: '3ds', name: '3DS' },
   { key: 'wii', name: 'Wii' },
-  { key: 'off', name: 'Spenta' },
+  { key: 'off', name: t('Off') },
 ] as const;
 export type Track = (typeof TRACKS)[number]['key'];
 

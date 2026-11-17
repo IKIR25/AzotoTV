@@ -23,14 +23,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "Manda alla TV": links from YouTube, Instagram, TikTok... -->
-            <intent-filter android:label="Manda alla TV">
+            <!-- "Send to the TV": links from YouTube, Instagram, TikTok... -->
+            <intent-filter android:label="@string/send_to_tv">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-            <!-- photos and videos into a Galleria album -->
-            <intent-filter android:label="Aggiungi alla Galleria">
+            <!-- photos and videos into a Gallery album -->
+            <intent-filter android:label="@string/add_to_gallery">
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />

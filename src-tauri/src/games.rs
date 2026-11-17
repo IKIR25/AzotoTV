@@ -187,7 +187,7 @@ impl Manifest {
         if self.chapters.is_empty() {
             return Ok(self.clone());
         }
-        let c = self.chapters.get(chapter.unwrap_or(0)).ok_or("capitolo non trovato")?;
+        let c = self.chapters.get(chapter.unwrap_or(0)).ok_or_else(|| t!("chapter not found"))?;
         let mut m = self.clone();
         m.exe = c.exe.clone();
         if let Some(a) = &c.args {
@@ -351,7 +351,7 @@ fn valid_id(id: &str) -> bool {
 
 fn read_manifest(id: &str) -> Result<Manifest, String> {
     if !valid_id(id) {
-        return Err(format!("gioco non valido: {id}"));
+        return Err(t!("not a valid game: {id}", id = id));
     }
     let path = library().join(id).join("game.json");
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -505,7 +505,7 @@ pub fn set_mod(user: &str, id: &str, mod_id: &str, on: bool) -> Result<Vec<crate
 
 pub fn trailer_url(id: &str, index: usize) -> Result<(String, String), String> {
     read_manifest(id)?; // checks the id
-    let t = read_info(id).trailers.into_iter().nth(index).ok_or("trailer non trovato")?;
+    let t = read_info(id).trailers.into_iter().nth(index).ok_or_else(|| t!("trailer not found"))?;
     Ok((t.url, t.name))
 }
 
@@ -537,32 +537,32 @@ pub fn save_settings(user: &str, mut s: Settings) -> Result<Settings, String> {
 }
 
 
-/// Games and videos run on the GTX 1060. KWin composites on the Intel iGPU (so
-/// the menus don't wake the NVIDIA up, see session.sh), which makes Intel every
-/// app's default GPU: these are NVIDIA's PRIME render offload variables (what
-/// `prime-run` sets). Vulkan then lists only the NVIDIA, so it is also Eden's
-/// "device 0". Harmless when KWin itself is on the NVIDIA.
-pub const ON_NVIDIA: [(&str, &str); 3] = [
-    ("__NV_PRIME_RENDER_OFFLOAD", "1"),
-    ("__VK_LAYER_NV_optimus", "NVIDIA_only"),
-    ("__GLX_VENDOR_LIBRARY_NAME", "nvidia"),
-];
+/// Games and videos run on the stronger GPU. On a laptop whose desktop is
+/// drawn by the integrated one (so the menus don't wake the other up, see
+/// session.sh) that takes an environment: NVIDIA's PRIME render offload
+/// variables, which also make the NVIDIA Vulkan's only device (Eden's
+/// "device 0"). `system.rs` knows which, if any.
+pub fn gpu_env() -> impl Iterator<Item = (&'static String, &'static String)> {
+    crate::system::system().gpu_env.iter().map(|(k, v)| (k, v))
+}
 
-/// The CPU's turbo stays off for the menus (the laptop gets hot and loud, see
-/// azototv-no-turbo.service, which also makes this file writable for us) and
-/// comes on only while a game runs: 2.2 -> up to 4.1 GHz.
-const NO_TURBO: &str = "/sys/devices/system/cpu/intel_pstate/no_turbo";
-
+/// Where the machine allows it (system.rs, azototv-no-turbo.service), the
+/// CPU's turbo stays off for the menus, so a laptop under the TV stays cool
+/// and quiet, and comes on only while a game runs.
 pub fn set_turbo(on: bool) {
-    if let Err(e) = std::fs::write(NO_TURBO, if on { "0" } else { "1" }) {
+    let Some((file, yes, no)) = &crate::system::system().turbo else { return };
+    if let Err(e) = std::fs::write(file, if on { yes } else { no }) {
         eprintln!("[games] turbo {}: {e}", if on { "on" } else { "off" });
     }
 }
 
-/// The laptop panel: the TV mirrors it (kwinoutputconfig.json), which costs a
-/// second copy of every frame and makes games pace themselves to the panel
-/// (60.05 Hz) instead of the TV (60 Hz). It is switched off while a game runs.
-const PANEL: &str = "eDP-1";
+/// A laptop's own screen (system.rs), when there is one: the TV mirrors it
+/// (kwinoutputconfig.json), which costs a second copy of every frame and makes
+/// games pace themselves to the panel instead of the TV. It is switched off
+/// while a game runs.
+fn panel() -> Option<&'static str> {
+    crate::system::system().panel.as_deref()
+}
 
 /// The panel on/off (kiosk only: a dev run leaves the PC's screens alone).
 /// Disabling it puts the TV at 1080p 60 Hz if it was above (a 4K TV picked
@@ -573,11 +573,12 @@ pub fn set_panel(on: bool) {
     if std::env::var_os("AZOTOTV_FULLSCREEN").is_none() || (!on && crate::stream::active()) {
         return;
     }
+    let Some(panel) = panel() else { return };
     if on {
         // a two-screen game's split first, then the usual
         unsplit_screens();
     }
-    let mut args = vec![format!("output.{PANEL}.{}", if on { "enable" } else { "disable" })];
+    let mut args = vec![format!("output.{panel}.{}", if on { "enable" } else { "disable" })];
     if !on {
         args.extend(tv_1080p());
     }
@@ -613,7 +614,7 @@ fn split_file() -> PathBuf {
 /// the kiosk (a dev run leaves the PC's screens alone), the TV on, and no PC
 /// playing through Moonlight (which sends the panel).
 fn split_tv() -> Option<String> {
-    if std::env::var_os("AZOTOTV_FULLSCREEN").is_none() || crate::stream::active() {
+    if std::env::var_os("AZOTOTV_FULLSCREEN").is_none() || crate::stream::active() || panel().is_none() {
         return None;
     }
     crate::stream::tv_output()
@@ -624,6 +625,7 @@ fn split_tv() -> Option<String> {
 /// The game's second window goes there (kwin.rs), and the phone shows it
 /// (phonescreen.rs streams the panel). Whether it worked.
 fn split_screens(tv: &str) -> bool {
+    let Some(panel) = panel() else { return false };
     let Some(j) = kscreen_json() else { return false };
     let outputs: Vec<serde_json::Value> = j["outputs"].as_array().cloned().unwrap_or_default();
     let name_of = |id: &serde_json::Value| outputs.iter().find(|o| &o["id"] == id).and_then(|o| o["name"].as_str()).unwrap_or("").to_string();
@@ -649,25 +651,25 @@ fn split_screens(tv: &str) -> bool {
         let modes = o["modes"].as_array()?;
         modes.iter().filter(|m| size(m) == (1920, 1080)).min_by(|a, b| hz(a).total_cmp(&hz(b)))?["id"].as_str().map(str::to_string)
     };
-    let (Some(tv_mode), Some(panel_mode)) = (mode_1080(tv), mode_1080(PANEL)) else {
-        eprintln!("[games] split: no 1080p mode on {tv} or {PANEL}");
+    let (Some(tv_mode), Some(panel_mode)) = (mode_1080(tv), mode_1080(panel)) else {
+        eprintln!("[games] split: no 1080p mode on {tv} or {panel}");
         let _ = std::fs::remove_file(split_file());
         return false;
     };
     let args: Vec<String> = [
         format!("output.{tv}.mirror.none"),
-        format!("output.{PANEL}.enable"),
+        format!("output.{panel}.enable"),
         format!("output.{tv}.mode.{tv_mode}"),
         format!("output.{tv}.scale.1"),
         format!("output.{tv}.position.0,0"),
-        format!("output.{PANEL}.mode.{panel_mode}"),
-        format!("output.{PANEL}.scale.1"),
-        format!("output.{PANEL}.position.1920,0"),
+        format!("output.{panel}.mode.{panel_mode}"),
+        format!("output.{panel}.scale.1"),
+        format!("output.{panel}.position.1920,0"),
         format!("output.{tv}.priority.1"),
-        format!("output.{PANEL}.priority.2"),
+        format!("output.{panel}.priority.2"),
     ]
     .into();
-    eprintln!("[games] split screens: {tv} + {PANEL}");
+    eprintln!("[games] split screens: {tv} + {panel}");
     if kscreen(&args) {
         true
     } else {
@@ -720,7 +722,7 @@ fn tv_1080p() -> Vec<String> {
     let mut args = Vec::new();
     for out in j["outputs"].as_array().into_iter().flatten() {
         let name = out["name"].as_str().unwrap_or("");
-        if name == PANEL || out["enabled"] != true {
+        if Some(name) == panel() || out["enabled"] != true {
             continue;
         }
         let modes = out["modes"].as_array().cloned().unwrap_or_default();
@@ -800,7 +802,7 @@ fn ensure_prefix(prefix: &Path, proton: &Path, no_pads: bool) -> Result<(), Stri
             .status()
             .map_err(|e| e.to_string())?;
         if !st.success() {
-            return Err("copia del prefisso Wine non riuscita".into());
+            return Err(t!("couldn't copy the Wine prefix"));
         }
     }
     let flag = prefix.join(".azototv-nopads");
@@ -834,7 +836,7 @@ fn seed_prefix(seed: &Path, prefix: &Path) -> Result<(), String> {
         .arg(prefix)
         .status()
         .map_err(|e| e.to_string())?;
-    if st.success() { Ok(()) } else { Err(format!("copia di {} non riuscita", seed.display())) }
+    if st.success() { Ok(()) } else { Err(t!("couldn't copy {a}", a = seed.display())) }
 }
 
 // ---- fullscreen key (X11 games, i.e. everything under Wine) ---------------------
@@ -846,14 +848,14 @@ fn link_player_dirs(dir: &Path, player: &Path, id: &str, paths: &[String]) -> Re
     for rel in paths {
         let r = Path::new(rel);
         if r.is_absolute() || r.components().any(|c| !matches!(c, std::path::Component::Normal(_))) {
-            return Err(format!("player_dirs: percorso non valido {rel}"));
+            return Err(t!("player_dirs: not a valid path: {rel}", rel = rel));
         }
         let path = dir.join(r);
         let orig = PathBuf::from(format!("{}.orig", path.display()));
         let is_link = path.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink());
         if path.exists() && !is_link {
             if orig.exists() {
-                return Err(format!("{} e {} esistono entrambe", path.display(), orig.display()));
+                return Err(format!("{} and {} both exist", path.display(), orig.display()));
             }
             std::fs::rename(&path, &orig).map_err(|e| format!("{}: {e}", path.display()))?;
         }
@@ -868,7 +870,7 @@ fn link_player_dirs(dir: &Path, player: &Path, id: &str, paths: &[String]) -> Re
                 .status()
                 .map_err(|e| e.to_string())?;
             if !st.success() {
-                return Err(format!("copia di {rel} non riuscita"));
+                return Err(t!("couldn't copy {rel}", rel = rel));
             }
         }
         if is_link {
@@ -1164,7 +1166,7 @@ impl Games {
     ) -> Result<(), String> {
         let m = read_manifest(id)?;
         if phone && m.phone.as_ref().is_none_or(|p| p.args.is_empty() && p.env.is_empty()) {
-            return Err("questo gioco non ha una versione per il telefono".into());
+            return Err(t!("this game has no phone version"));
         }
         let chapter = if m.chapters.is_empty() { None } else { Some(chapter.unwrap_or(0)) };
         let m = m.for_chapter(chapter)?;
@@ -1172,7 +1174,7 @@ impl Games {
         {
             let mut r = self.running.lock().unwrap();
             if let Some(cur) = r.as_ref() {
-                return Err(format!("{} è già in esecuzione", cur.id));
+                return Err(t!("{a} is already running", a = cur.id));
             }
             *r = Some(Running { id: id.to_string(), pgid: pgid.clone(), phone, quit: Default::default() });
         }
@@ -1203,11 +1205,11 @@ impl Games {
         };
         let applet = match (&m.applet, m.kind) {
             (Some(a), Kind::Switch) => Some(crate::eden::Applet::parse(a)?),
-            (Some(_), _) => return Err("applet: solo per i giochi Switch".into()),
+            (Some(_), _) => return Err(t!("applet: only for Switch games")),
             _ => None,
         };
         if applet.is_none() && !exe.exists() {
-            return Err(format!("eseguibile non trovato: {}", exe.display()));
+            return Err(t!("executable not found: {a}", a = exe.display()));
         }
         let cwd = exe.parent().unwrap_or(&dir).to_path_buf();
         let profile: azotopad::Profile = match &m.pad {
@@ -1215,7 +1217,7 @@ impl Games {
             None => azotopad::Profile::Xbox,
         };
         let fullscreen_key = match &m.fullscreen_key {
-            Some(k) => Some(azotopad::key(k).ok_or_else(|| format!("fullscreen_key: tasto sconosciuto {k}"))?),
+            Some(k) => Some(azotopad::key(k).ok_or_else(|| format!("fullscreen_key: unknown key {k}"))?),
             None => None,
         };
         crate::bgm::stop(); // the Mii app's music, if a game starts from there
@@ -1248,7 +1250,7 @@ impl Games {
                 seed_prefix(&dir.join("home-seed"), &h)?;
             }
             Kind::Proton => {
-                let proton = proton_path().ok_or("Proton non trovato")?;
+                let proton = proton_path().ok_or_else(|| t!("Proton not found"))?;
                 let prefix = player.join("wine").join(id);
                 let no_pads = matches!(profile, azotopad::Profile::Keys { .. });
                 ensure_prefix(&prefix, &proton, no_pads)?;
@@ -1287,7 +1289,7 @@ impl Games {
             // tells Steamworks the game was started by Steam, so it doesn't try to restart through it
             cmd.env("SteamAppId", a.to_string()).env("SteamGameId", a.to_string());
         }
-        cmd.envs(ON_NVIDIA);
+        cmd.envs(gpu_env());
         cmd.envs(GAME_ENV);
         cmd.envs(&m.env);
         if phone {
@@ -1390,7 +1392,7 @@ impl Games {
                     // Azahar's UI is in Italian (azahar.rs `Paths\language=it`)
                     second: &["| Finestra secondaria", "| Secondary Window"],
                 };
-                if let Err(e) = crate::kwin::place_screens(&w, tv, PANEL) {
+                if let Err(e) = crate::kwin::place_screens(&w, tv, panel().unwrap_or_default()) {
                     eprintln!("[games] placing the screens: {e}");
                 }
                 crate::phonescreen::set_second_screen(true);

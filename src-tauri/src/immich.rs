@@ -117,7 +117,7 @@ impl Immich {
     }
 
     fn cfg(&self) -> Result<&Config, String> {
-        self.config.as_ref().ok_or_else(|| "Galleria non configurata".to_string())
+        self.config.as_ref().ok_or_else(|| t!("Gallery isn't set up"))
     }
 
     pub fn enabled(&self) -> bool {
@@ -129,7 +129,7 @@ impl Immich {
         req.header("x-api-key", &c.api_key)
             .send()
             .await
-            .map_err(|_| "Il server delle foto non risponde".to_string())?
+            .map_err(|_| t!("The photo server isn't answering"))?
             .error_for_status()
             .map_err(|e| e.to_string())?
             .json()
@@ -371,7 +371,7 @@ impl Immich {
 
     fn upload_key(&self) -> Result<(&Config, &str), String> {
         let c = self.cfg()?;
-        let k = c.upload_key.as_deref().ok_or("Aggiunta di foto non configurata")?;
+        let k = c.upload_key.as_deref().ok_or_else(|| t!("Adding photos isn't set up"))?;
         Ok((c, k))
     }
 
@@ -381,7 +381,7 @@ impl Immich {
             .header("x-api-key", key)
             .send()
             .await
-            .map_err(|_| "Il server delle foto non risponde".to_string())?;
+            .map_err(|_| t!("The photo server isn't answering"))?;
         if !r.status().is_success() {
             let code = r.status();
             let msg = r.json::<Value>().await.ok().and_then(|v| v["message"].as_str().map(str::to_string));

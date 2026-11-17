@@ -4,6 +4,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick, untrack } from 'svelte';
   import { afterNavigate, goto } from '$app/navigation';
   import { APPS, appOrder, saveAppOrder, type App } from '$lib/apps';
@@ -253,7 +254,7 @@
           <div class="kicker">
             {#if cur.kicker.icon}<span class="chlogo"><img src={cur.kicker.icon} alt="" /></span>{/if}
             <span>{cur.kicker.text}</span>
-            {#if cur.live}<span class="onair">● In diretta</span>{/if}
+            {#if cur.live}<span class="onair">{t('● Live')}</span>{/if}
           </div>
         {/if}
         {#if cur.art && artOk}
@@ -304,7 +305,7 @@
           >
             <svg viewBox="0 0 48 48" aria-hidden="true">{@html a.icon}</svg>
           </button>
-          <span class="label" class:on={focusedApp === a.key}>{picked ? '◀ ▶ sposta · A fatto' : a.name}</span>
+          <span class="label" class:on={focusedApp === a.key}>{picked ? t('◀ ▶ move · A done') : a.name}</span>
         </div>
       </div>
     {/each}

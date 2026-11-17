@@ -7,22 +7,25 @@
 # then the AzotoTV session comes back; a plain logout ends the login as before.
 cd "$(dirname "$(readlink -f "$0")")"
 
-# KWin composites on the Intel iGPU (the first device in KWIN_DRM_DEVICES is the
-# primary one), so AzotoTV's menus are drawn there too and the GTX 1060 only
-# sends the picture to HDMI-A-1 (the TV): with KWin on the NVIDIA, every focus
-# move or slide woke it to full clocks (~23 W instead of ~6 W) for 10-35 s.
-# Films and games still run on the NVIDIA (PRIME offload variables, see
-# ON_NVIDIA in games.rs); measured: same cost for both either way.
-# kwinoutputconfig.json (shared with Plasma) mirrors the TV and the laptop panel
-# (eDP-1). DRM card numbers are not stable, so the cards are resolved from their PCI paths.
+# ~/.config/azototv/session.env (optional, a shell file) sets what this
+# machine needs before KWin starts. The case it was made for: a laptop with two
+# GPUs, where KWin should composite on the integrated one (the first device in
+# KWIN_DRM_DEVICES is the primary one), so the menus are drawn there and the
+# other GPU only sends the picture to the TV. With KWin on an NVIDIA GTX 1060,
+# every focus move or slide woke it to full clocks (~23 W instead of ~6 W) for
+# 10-35 s; films and games still run on it (see gpu_env in games.rs). DRM card
+# numbers are not stable, so resolve the cards from their PCI paths:
+#   export KWIN_DRM_DEVICES=$(readlink -f /dev/dri/by-path/pci-0000:00:02.0-card):$(readlink -f /dev/dri/by-path/pci-0000:01:00.0-card)
+# See examples/session.env. Without the file KWin picks for itself.
+ENV="${XDG_CONFIG_HOME:-$HOME/.config}/azototv/session.env"
+[ -f "$ENV" ] && . "$ENV"
 RUN="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 RETURN="$RUN/azototv-return"
 # tv-mode.sh only logs out of Plasma if this loop is there to bring AzotoTV back
 echo $$ >"$RUN/azototv-session.pid"
 while :; do
   rm -f "$RETURN"
-  KWIN_DRM_DEVICES=$(readlink -f /dev/dri/by-path/pci-0000:00:02.0-card):$(readlink -f /dev/dri/by-path/pci-0000:01:00.0-card) \
-    kwin_wayland_wrapper --xwayland --no-lockscreen --no-global-shortcuts --no-kactivities \
+  kwin_wayland_wrapper --xwayland --no-lockscreen --no-global-shortcuts --no-kactivities \
     --exit-with-session "$PWD/kiosk.sh"
 
   # not exec: when Plasma ends, decide whether AzotoTV comes back

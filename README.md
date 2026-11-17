@@ -4,9 +4,10 @@ A TV interface for a home server. It turns a Linux machine plugged into the
 television into something that works like a console: you pick a profile and
 move around with a controller, a TV remote or a phone.
 
-It is a personal project, written for one family and one machine, and it is
-published as it is. The interface is in Italian. Expect to adapt things: see
-[What is specific to my setup](#what-is-specific-to-my-setup).
+It started as one family's project and it still is, so some corners are
+rougher than others, but it is meant to run on your machine too: it looks at
+the hardware it finds, speaks English or Italian, and needs only a Jellyfin
+server to begin with.
 
 The name: *azoto* is Italian for nitrogen. The project started on an Acer
 Nitro laptop.
@@ -32,6 +33,37 @@ Nitro laptop.
   app that wraps it (`android/`).
 - **The TV itself**: power and input on Hisense / VIDAA televisions.
 
+## Quick start
+
+On Linux, with Rust, Node with pnpm, [what Tauri 2 needs](https://v2.tauri.app/start/prerequisites/)
+(WebKitGTK 4.1) and `mpv` installed:
+
+```sh
+git clone https://github.com/IKIR25/AzotoTV && cd AzotoTV
+./install.sh
+~/azototv/run-tv.sh
+```
+
+`install.sh` says what is missing, builds, and installs into `~/azototv`. The
+first start asks for your Jellyfin server and a user, and films, series, live
+TV and music work from there. `yt-dlp` adds YouTube, `ffmpeg` the Mii app's
+music.
+
+Everything else is optional and described in **[docs/SETUP.md](docs/SETUP.md)**:
+requests, photos, notifications, the language, booting straight into AzotoTV
+(`./install.sh --session`), games, phones and game streaming.
+
+## What it expects
+
+- **Linux**, on Wayland or X11. AzotoTV itself is one window and runs under
+  any desktop.
+- **KDE Plasma 6** for what goes beyond that window: the boot-into-AzotoTV
+  session, turning screens off, two-screen games and the notification overlay
+  use KWin and `kscreen-doctor`.
+- The hardware is detected (`~/azototv/azototv --system` prints it): one GPU
+  or two, a TV alone or a laptop with its own screen under the TV. The laptop
+  case is the one it was built and tested on, so it is the best trodden.
+
 ## What is not here
 
 No games, ROMs, console keys or firmware, artwork, music or channel lists.
@@ -41,70 +73,21 @@ Some features need files this repo deliberately does not carry:
 
 | Feature | What you add |
 | --- | --- |
-| Drawing Miis | `tools/fetch-mii-renderer.sh` (fetches FFL.js, AGPL) and the Wii U's `FFLResHigh.dat` in `~/.local/share/azototv/mii/` |
+| Drawing Miis | `./install.sh --mii` (fetches FFL.js, AGPL) and the Wii U's `FFLResHigh.dat` in `~/.local/share/azototv/mii/` |
 | Google sign-in for YouTube | `~/.config/azototv/youtube.json` with an OAuth client (see `src-tauri/src/ytaccount.rs`) |
 | Hisense TV control | the certificate and pairing described in `src-tauri/src/tv.rs` |
-| The Android app | `android/build.sh` (needs the Android SDK) before building AzotoTV |
+| The Android app | `./install.sh --android` (needs the Android SDK) |
 
 Without them AzotoTV builds and runs; that feature is simply missing.
 
-## Building
-
-Linux only. You need Rust, Node with pnpm, and what
-[Tauri 2 needs on Linux](https://v2.tauri.app/start/prerequisites/)
-(WebKitGTK 4.1). At run time: `mpv`, `yt-dlp` and `ffmpeg`.
+## Developing
 
 ```sh
 pnpm install
-tools/fetch-mii-renderer.sh     # optional, see above
-android/build.sh                # optional, see above
-pnpm tauri build --no-bundle    # -> src-tauri/target/release/azototv
+pnpm tauri dev                  # AzotoTV in a window, reloading as you edit
+pnpm check                      # type check
+cargo test                      # in src-tauri and in crates/azotopad
 ```
-
-`pnpm tauri dev` runs it in a window. Tests: `cargo test` in `src-tauri` and
-in `crates/azotopad`, and `pnpm check`.
-
-## Setting it up
-
-On first start AzotoTV asks for the Jellyfin address and a user. Everything
-else is optional and switched on by a file in `~/.config/azototv/` (keep them
-mode 600: they hold API keys). Each is described at the top of the source file
-that reads it:
-
-| File | For | Described in |
-| --- | --- | --- |
-| `arr.json` | new-arrival notifications, download progress | `src-tauri/src/arr.rs`, `downloads.rs` |
-| `seerr.json` | requests | `src-tauri/src/seerr.rs` |
-| `immich.json` | photos | `src-tauri/src/immich.rs` |
-| `music.json` | downloading songs into the library | `src-tauri/src/songs.rs` |
-| `youtube.json` | Google sign-in | `src-tauri/src/ytaccount.rs` |
-| `tv/` | Hisense TV control | `src-tauri/src/tv.rs` |
-
-Games live in `~/Games` (or `$AZOTOTV_GAMES`), one folder per game; the format
-of `game.json` is at the top of `src-tauri/src/games.rs`.
-
-`session/` holds what makes a machine boot straight into AzotoTV: a login
-session that runs KWin with AzotoTV as its only window, a boot splash, udev
-rules for remotes and controller lights, and helper scripts.
-
-## What is specific to my setup
-
-These are written for the laptop this runs on, and you will have to change
-them for another machine:
-
-- **Two GPUs and two screens.** The code assumes an Intel iGPU that drives the
-  laptop panel (`eDP-1`) and an NVIDIA card that drives the TV over HDMI, at
-  fixed PCI paths: `session/session.sh`, `session/sunshine.conf`,
-  `session/wireplumber-hdmi-suspend.conf`, and constants in
-  `src-tauri/src/games.rs`, `stream.rs` and `phonescreen.rs`.
-- **CPU turbo** is switched through `intel_pstate`
-  (`session/azototv-no-turbo.service`).
-- **KDE Plasma 6** on Wayland: the session, window placement (`kwin.rs`) and
-  the notification overlay rely on it.
-- **Italy**: the interface language, YouTube's region, and automatic reminders
-  for the Rai news programmes (`src-tauri/src/notify.rs`).
-
-## Layout
 
 | Path | What |
 | --- | --- |
@@ -113,8 +96,14 @@ them for another machine:
 | `src-tauri/phone/` | the page phones open |
 | `crates/azotopad/` | the controller layer for games |
 | `android/` | the Android app |
+| `i18n/` | translations: one file per language, from the English text to it |
 | `session/` | boot session, udev rules, helper scripts |
+| `examples/` | example configuration files |
 | `tools/` | one-off scripts |
+
+Text is written in English in the code (`t('Who is watching?')` in the
+interface, `t!("…")` in Rust) and translated by `i18n/<language>.json`. Adding
+a language is described in [docs/SETUP.md](docs/SETUP.md#language-and-region).
 
 ## Licence
 

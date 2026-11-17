@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { type Item } from '$lib/jf';
@@ -69,7 +70,7 @@
           class:on={music.shuffle}
           data-focusable
           data-key="shuffle"
-          aria-label="Casuale"
+          aria-label={t('Shuffle')}
           onclick={toggleShuffle}
         >
           <svg viewBox="0 0 24 24"
@@ -78,14 +79,14 @@
             /></svg
           >
         </button>
-        <button class="btn icon ctl" data-focusable data-key="prev" aria-label="Precedente" onclick={prev}>
+        <button class="btn icon ctl" data-focusable data-key="prev" aria-label={t('Previous')} onclick={prev}>
           <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6L18 6v12z" /></svg>
         </button>
         <button
           class="btn icon ctl big"
           data-focusable
           data-key="pp"
-          aria-label={music.active && !music.paused ? 'Pausa' : 'Riproduci'}
+          aria-label={music.active && !music.paused ? t('Pause') : t('Play')}
           bind:this={pp}
           onclick={togglePause}
         >
@@ -95,7 +96,7 @@
             <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
           {/if}
         </button>
-        <button class="btn icon ctl" data-focusable data-key="next" aria-label="Successivo" onclick={next}>
+        <button class="btn icon ctl" data-focusable data-key="next" aria-label={t('Next')} onclick={next}>
           <svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 18V6l8.5 6z" /></svg>
         </button>
         <button
@@ -103,7 +104,7 @@
           class:on={music.repeat !== 'off'}
           data-focusable
           data-key="repeat"
-          aria-label="Ripeti"
+          aria-label={t('Repeat')}
           onclick={cycleRepeat}
         >
           <svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2z" /></svg>
@@ -113,7 +114,7 @@
           class="btn icon ctl"
           data-focusable
           data-key="stop"
-          aria-label="Ferma"
+          aria-label={t('Stop')}
           onclick={async () => {
             await stopMusic();
             history.back();
@@ -121,22 +122,22 @@
         >
           <svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z" /></svg>
         </button>
-        <button class="btn icon ctl" data-focusable data-key="addpl" aria-label="Aggiungi a una playlist" onclick={() => (picking = cur)}>
+        <button class="btn icon ctl" data-focusable data-key="addpl" aria-label={t('Add to a playlist')} onclick={() => (picking = cur)}>
           <svg viewBox="0 0 24 24"><path d="M3 6h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14 0v-4h2v4h4v2h-4v4h-2v-4h-4v-2z" /></svg>
         </button>
       </div>
       <p class="hint">
         {#if input.remote}
-          OK pausa · ■ ferma · ≡+ in una playlist · ⏮ ⏭ brano precedente / successivo · ⏪ ⏩ −15 / +15 s
+          {t('OK pause · ■ stop · ≡+ to a playlist · ⏮ ⏭ previous / next song · ⏪ ⏩ −15 / +15 s')}
         {:else}
-          A pausa · ■ ferma · ≡+ in una playlist · LB / RB brano precedente / successivo · LT / RT −15 / +15 s
+          {t('A pause · ■ stop · ≡+ to a playlist · LB / RB previous / next song · LT / RT −15 / +15 s')}
         {/if}
       </p>
     </section>
 
     <section class="queue glass">
       <h2>
-        In coda <small>{music.queue.length - music.index - 1 > 0 ? `${music.queue.length - music.index - 1} brani` : ''}</small>
+        {t('Queued')} <small>{music.queue.length - music.index - 1 > 0 ? t('{a} songs', { a: music.queue.length - music.index - 1 }) : ''}</small>
       </h2>
       <div class="list">
         <div class="scroller">
@@ -150,7 +151,7 @@
             </button>
           {:else}
             <p class="empty">
-              {music.repeat === 'all' ? 'Poi si ricomincia dal primo brano' : 'Nient’altro in coda'}
+              {music.repeat === 'all' ? t('Then it starts again from the first song') : t('Nothing else queued')}
             </p>
           {/each}
         </div>
@@ -169,8 +170,8 @@
   {/if}
 {:else}
   <div class="none">
-    <p>Niente in riproduzione</p>
-    <button class="btn primary" data-focusable data-key="browse" onclick={browse}>Sfoglia la musica</button>
+    <p>{t('Nothing playing')}</p>
+    <button class="btn primary" data-focusable data-key="browse" onclick={browse}>{t('Browse the music')}</button>
   </div>
 {/if}
 

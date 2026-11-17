@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { MONTHS, t } from '$lib/i18n';
   import { onDestroy, tick, untrack } from 'svelte';
   import { listen } from '@tauri-apps/api/event';
   import { key } from '$lib/input.svelte';
@@ -21,9 +22,8 @@
   // One person: their Mii drawn whole, names, birthday, family, and their
   // versions (other Miis of them, on other consoles or games). Everything
   // saves as you go; the Mii name and the birthday also go into the consoles.
-  const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
   const DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const ORIGIN = { switch: 'dalla Switch', wii: 'dalla Wii', azoto: 'fatto in AzotoTV', miitopia: 'da Miitopia', tomodachi: 'da Tomodachi Life' };
+  const ORIGIN = { switch: t('from the Switch'), wii: t('from the Wii'), azoto: t('made in AzotoTV'), miitopia: t('from Miitopia'), tomodachi: t('from Tomodachi Life') };
 
   const me = $derived(byId(page.params.id ?? ''));
 
@@ -82,9 +82,9 @@
 
   // ---- names: typed with the on-screen keyboard (or the phone), saved after a pause
   const FIELDS = [
-    { key: 'first', label: 'Nome' },
-    { key: 'short', label: 'Nome abbreviato' },
-    { key: 'surname', label: 'Cognome' },
+    { key: 'first', label: t('Name') },
+    { key: 'short', label: t('Short name') },
+    { key: 'surname', label: t('Surname') },
     { key: 'nickname', label: 'Nickname' },
   ] as const;
   type Field = (typeof FIELDS)[number]['key'];
@@ -100,7 +100,7 @@
     clearTimeout(timer);
     const job = pending;
     pending = null;
-    job?.().catch((e) => showToast(`Non salvato: ${e}`));
+    job?.().catch((e) => showToast(t('Not saved: {e}', { e })));
   }
   onDestroy(flush);
 
@@ -143,20 +143,20 @@
   function pickBirthday(p: PersonEntry) {
     const was = p.birthday;
     openSheet({
-      title: 'Compleanno: il mese',
-      options: [{ key: 0, main: 'Nessun compleanno' }, ...MONTHS.map((n, i) => ({ key: i + 1, main: n[0].toUpperCase() + n.slice(1) }))],
+      title: t('Birthday: the month'),
+      options: [{ key: 0, main: t('No birthday') }, ...MONTHS.map((n, i) => ({ key: i + 1, main: n[0].toUpperCase() + n.slice(1) }))],
       value: was?.month ?? 0,
       onpick: (month) => {
         if (!month) return void setBirthday(p, null).then(() => closeSheet());
         openSheet({
-          title: `Compleanno: il giorno di ${MONTHS[month - 1]}`,
+          title: t('Birthday: the day of {a}', { a: MONTHS[month - 1] }),
           options: Array.from({ length: DAYS[month - 1] }, (_, i) => ({ key: i + 1, main: `${i + 1} ${MONTHS[month - 1]}` })),
           value: was?.month === month ? was.day : null,
           onpick: (day) =>
             openSheet({
-              title: `L'anno di nascita`,
+              title: t('Year of birth'),
               options: [
-                { key: 0, main: 'Non lo so', sub: 'Solo il compleanno' },
+                { key: 0, main: t('I don\'t know'), sub: t('Only the birthday') },
                 ...Array.from({ length: YEAR - 1899 }, (_, i) => ({ key: YEAR - i, main: String(YEAR - i) })),
               ],
               value: was?.year ?? 0,
@@ -173,10 +173,10 @@
   function pickTie(p: PersonEntry, other: PersonEntry) {
     const now = tieOf(p, other);
     openSheet({
-      title: `${displayName(other)} è…`,
+      title: t('{name} is…', { name: displayName(other) }),
       options: [
-        ...TIES.map((t, i) => ({ key: i, main: tieLabel(other, t), sub: `di ${displayName(p)}` })),
-        { key: -1, main: 'Nessuna relazione' },
+        ...TIES.map((tie, i) => ({ key: i, main: tieLabel(other, tie), sub: t('of {displayName}', { displayName: displayName(p) }) })),
+        { key: -1, main: t('No relationship') },
       ],
       value: now ? TIES.indexOf(now) : -1,
       onpick: async (k) => {
@@ -188,9 +188,9 @@
 
   function addKin(p: PersonEntry) {
     const others = lib.people.filter((o) => o.id !== p.id && !tieOf(p, o));
-    if (!others.length) return showToast('Hai già collegato tutti i Mii');
+    if (!others.length) return showToast(t('You have already linked every Mii'));
     openSheet({
-      title: 'Chi aggiungi?',
+      title: t('Who are you adding?'),
       options: others.map((o, i) => ({ key: i, main: displayName(o), sub: o.names.nickname })),
       value: null,
       onpick: (i) => pickTie(p, others[i]),
@@ -205,11 +205,11 @@
     const tomo = freeTomodachi();
     const base = shown;
     openSheet({
-      title: `Un altro Mii di ${displayName(p)}`,
+      title: t('Another Mii of {displayName}', { displayName: displayName(p) }),
       options: [
-        { key: -1, main: 'Crea una nuova versione', sub: 'Parte da una copia di questa, da cambiare nell’editor' },
-        ...tomo.map((t, i) => ({ key: TOMO + i, main: t.name || t.miiName, sub: 'Tomodachi Life' })),
-        ...others.map((o, i) => ({ key: i, main: displayName(o), sub: 'Un altro Mii di questa libreria: diventa una sua versione' })),
+        { key: -1, main: t('Create a new version'), sub: t('Starts from a copy of this one, to change in the editor') },
+        ...tomo.map((m, i) => ({ key: TOMO + i, main: m.name || m.miiName, sub: 'Tomodachi Life' })),
+        ...others.map((o, i) => ({ key: i, main: displayName(o), sub: t('Another Mii of this library: it becomes a version of this one') })),
       ],
       value: null,
       onpick: async (k) => {
@@ -219,19 +219,19 @@
         }
         try {
           if (k >= TOMO) {
-            const t = tomo[k - TOMO];
-            const filled = await linkTomodachi(p, t);
-            showToast(filled ? `Collegato: nome e compleanno presi da Tomodachi Life` : `Collegato a ${t.name || t.miiName} di Tomodachi Life`);
-            closeSheet(`link-${t.id}`, 'add-version');
+            const m = tomo[k - TOMO];
+            const filled = await linkTomodachi(p, m);
+            showToast(filled ? t('Linked: name and birthday taken from Tomodachi Life') : t('Linked to {name} of Tomodachi Life', { name: m.name || m.miiName }));
+            closeSheet(`link-${m.id}`, 'add-version');
           } else {
             const o = others[k];
             const moved = versionsOf(o);
             await mergePeople(p, o);
-            showToast(`${displayName(o)} ora è una versione di ${displayName(p)}`);
+            showToast(t('{displayName} is now a version of {displayName2}', { displayName: displayName(o), displayName2: displayName(p) }));
             closeSheet(moved[0] && `ver-${moved[0].id}`, 'add-version');
           }
         } catch (e) {
-          showToast(`Non riuscito: ${e}`);
+          showToast(t('Didn\'t work: {e}', { e }));
           closeSheet();
         }
       },
@@ -242,11 +242,11 @@
     const all = versionsOf(p);
     const isMain = all[0]?.id === m.id;
     const opts = [
-      !isMain && { key: 1, main: 'Usa come principale', sub: 'Quella che si vede per prima' },
-      all.length > 1 && { key: 2, main: 'Separa', sub: 'Diventa un Mii a sé, senza nomi né famiglia' },
-      all.length > 1 && { key: 3, main: 'Elimina questa versione', sub: 'Sparisce anche dalle console' },
+      !isMain && { key: 1, main: t('Use as the main one'), sub: t('The one you see first') },
+      all.length > 1 && { key: 2, main: t('Separate'), sub: t('Becomes a Mii of its own, with no names or family') },
+      all.length > 1 && { key: 3, main: t('Delete this version'), sub: t('It goes from the consoles too') },
     ].filter(Boolean) as Sheet['options'];
-    if (!opts.length) return showToast('È l’unica versione: per toglierla elimina il Mii');
+    if (!opts.length) return showToast(t('It\'s the only version: to remove it, delete the Mii'));
     openSheet({
       title: `${m.look.meta.name} · ${ORIGIN[m.from]}`,
       options: opts,
@@ -255,7 +255,7 @@
         if (k === 1) await setMain(p, m);
         if (k === 2) {
           const q = await splitMii(m);
-          showToast(`${m.look.meta.name} ora è un Mii a sé`);
+          showToast(t('{name} is now a Mii of its own', { name: m.look.meta.name }));
           shownId = null;
           closeSheet(undefined, 'add-version');
           return void q;
@@ -272,8 +272,8 @@
 
   function linkMenu(p: PersonEntry, l: GameLink) {
     openSheet({
-      title: `${l.name} · Tomodachi Life`,
-      options: [{ key: 1, main: 'Scollega', sub: 'Nomi e compleanno restano' }],
+      title: t('{name} · Tomodachi Life', { name: l.name }),
+      options: [{ key: 1, main: t('Unlink'), sub: t('Names and birthday stay') }],
       value: null,
       onpick: async () => {
         if (shownLink === l.id) shownLink = null;
@@ -285,17 +285,17 @@
 
   async function pickProfile(p: PersonEntry) {
     const list = (await profiles().catch(() => ({ profiles: [] }))).profiles.filter((x) => x.id !== auth.id);
-    if (!list.length) return showToast('Non ci sono altri profili');
+    if (!list.length) return showToast(t('There are no other profiles'));
     openSheet({
-      title: `Manda una copia di ${displayName(p)} a…`,
-      options: list.map((x, i) => ({ key: i, main: x.name, sub: 'Riceve un Mii tutto suo, senza le parentele' })),
+      title: t('Send a copy of {displayName} to…', { displayName: displayName(p) }),
+      options: list.map((x, i) => ({ key: i, main: x.name, sub: t('Gets a Mii of their own, without the family ties') })),
       value: null,
       onpick: async (i) => {
         try {
           await sendCopy(p, list[i].id);
-          showToast(`${displayName(p)} mandato a ${list[i].name}`);
+          showToast(t('{displayName} sent to {b}', { displayName: displayName(p), b: list[i].name }));
         } catch (e) {
-          showToast(`Non sono riuscito a mandarlo: ${e}`);
+          showToast(t('Couldn\'t send it: {e}', { e }));
         }
         closeSheet();
       },
@@ -329,7 +329,7 @@
   }
   function bday(p: PersonEntry) {
     const b = p.birthday;
-    if (!b) return 'Non impostato';
+    if (!b) return t('Not set');
     const a = age(b);
     return `${b.day} ${MONTHS[b.month - 1]}${b.year ? ` ${b.year}` : ''}${a !== null && a >= 0 ? ` · ${a === 1 ? '1 anno' : `${a} anni`}` : ''}`;
   }
@@ -346,7 +346,7 @@
       {#if body && !liveOn}<img src={body} alt="" />{/if}
       <div class="live" bind:this={box}></div>
       {#if liveOn}
-        <p class="hint">Levetta destra o <kbd>{key('LB')}</kbd> <kbd>{key('RB')}</kbd> per girarlo</p>
+        <p class="hint">{t('Right stick or')} <kbd>{key('LB')}</kbd> <kbd>{key('RB')}</kbd> {t('to turn it')}</p>
       {/if}
     </aside>
 
@@ -354,14 +354,14 @@
       <header>
         <h1>{displayName(p)}</h1>
         <p>
-          <span class="swatch"></span>{fav.name} · {ORIGIN[m.from]}{versions.length > 1 ? ` · ${versions.length} versioni` : ''}
+          <span class="swatch"></span>{fav.name} · {ORIGIN[m.from]}{versions.length > 1 ? t(' · {n} versions', { n: versions.length }) : ''}
         </p>
       </header>
 
-      <h2>Nomi</h2>
+      <h2>{t('Names')}</h2>
       <div class="fields">
         <label class="wide">
-          Nome nei giochi
+          {t('Name in games')}
           <input
             value={m.look.meta.name}
             maxlength="10"
@@ -370,7 +370,7 @@
             oninput={(e) => setMiiName(m, e.currentTarget.value)}
           />
           <small>
-            Quello che mostrano Wii e Switch, al massimo 10 lettere{versions.length > 1 ? ' (di questa versione: ognuna ha il suo)' : ''}
+            {t('What Wii and Switch show, 10 letters at most')}{versions.length > 1 ? t(' (of this version: each has its own)') : ''}
           </small>
         </label>
         {#each FIELDS as f (f.key)}
@@ -386,13 +386,13 @@
         {/each}
       </div>
 
-      <h2>Compleanno</h2>
+      <h2>{t('Birthday')}</h2>
       <button class="row" data-focusable data-key="birthday" onclick={() => pickBirthday(p)}>
         <span>{bday(p)}</span>
-        <small>Cambia</small>
+        <small>{t('Change')}</small>
       </button>
 
-      <h2>Famiglia e amici</h2>
+      <h2>{t('Family and friends')}</h2>
       <div class="kin">
         {#each kinOf(p) as k (k.person.id)}
           {@const km = mainOf(k.person)}
@@ -408,18 +408,18 @@
             <span class="pic">{#if pic}<img src={pic} alt="" />{/if}</span>
             <span class="txt">
               <strong>{displayName(k.person)}</strong>
-              <small>{k.label}{k.inferred ? ' · di conseguenza' : ''}</small>
+              <small>{k.label}{k.inferred ? t(' · as a result') : ''}</small>
             </span>
           </button>
         {/each}
         <button class="chip add" data-focusable data-key="add-kin" onclick={() => addKin(p)}>
           <span class="pic">+</span>
-          <span class="txt"><strong>Aggiungi</strong><small>un parente o un amico</small></span>
+          <span class="txt"><strong>{t('Add')}</strong><small>{t('a relative or a friend')}</small></span>
         </button>
       </div>
 
-      <h2>Versioni</h2>
-      <p class="note">Altri Mii della stessa persona: per le console restano Mii diversi.</p>
+      <h2>{t('Versions')}</h2>
+      <p class="note">{t('Other Miis of the same person: for the consoles they stay separate Miis.')}</p>
       <div class="kin">
         {#each versions as v, i (v.id)}
           {@const pic = face(v.nx)}
@@ -435,7 +435,7 @@
             <span class="pic">{#if pic}<img src={pic} alt="" />{/if}</span>
             <span class="txt">
               <strong>{v.look.meta.name}</strong>
-              <small>{ORIGIN[v.from]}{i === 0 && versions.length > 1 ? ' · principale' : ''}</small>
+              <small>{ORIGIN[v.from]}{i === 0 && versions.length > 1 ? t(' · main') : ''}</small>
             </span>
           </button>
         {/each}
@@ -452,20 +452,20 @@
             onclick={() => linkMenu(p, l)}
           >
             <span class="pic" class:drawn={pic}>{#if pic}<img src={pic} alt="" />{:else}TL{/if}</span>
-            <span class="txt"><strong>{l.name}</strong><small>Tomodachi Life{lnx ? ' · con le parti Switch più simili' : ''}</small></span>
+            <span class="txt"><strong>{l.name}</strong><small>Tomodachi Life{lnx ? t(' · with the closest Switch parts') : ''}</small></span>
           </button>
         {/each}
         <button class="chip add" data-focusable data-key="add-version" onclick={() => addVersion(p)}>
           <span class="pic">+</span>
-          <span class="txt"><strong>Aggiungi una versione</strong><small>da questa libreria o da Tomodachi Life</small></span>
+          <span class="txt"><strong>{t('Add a version')}</strong><small>{t('from this library or from Tomodachi Life')}</small></span>
         </button>
       </div>
 
       <div class="actions">
         <button class="btn" data-focusable data-key="edit" onclick={() => goto(`/mii/editor?mii=${m.id}`)}>
-          Modifica {versions.length > 1 ? 'questa versione' : 'il Mii'}
+          {versions.length > 1 ? t('Edit this version') : t('Edit the Mii')}
         </button>
-        <button class="btn" data-focusable data-key="send" onclick={() => pickProfile(p)}>Manda una copia a un altro profilo</button>
+        <button class="btn" data-focusable data-key="send" onclick={() => pickProfile(p)}>{t('Send a copy to another profile')}</button>
         <button
           class="btn danger"
           class:armed={confirming}
@@ -475,8 +475,10 @@
           onblur={() => (confirming = false)}
         >
           {confirming
-            ? `Premi di nuovo per eliminare ${displayName(p)}${versions.length > 1 ? ` e le sue ${versions.length} versioni` : ''}`
-            : 'Elimina'}
+            ? versions.length > 1
+              ? t('Press again to delete {name} and its {n} versions', { name: displayName(p), n: versions.length })
+              : t('Press again to delete {name}', { name: displayName(p) })
+            : t('Delete')}
         </button>
       </div>
     </section>
@@ -486,7 +488,7 @@
     <Picker light title={sheet.title} options={sheet.options} value={sheet.value} onpick={sheet.onpick} onclose={() => closeSheet()} />
   {/if}
 {:else if lib.loaded === auth.id}
-  <div class="page"><p class="gone">Questo Mii non c'è più.</p></div>
+  <div class="page"><p class="gone">{t('This Mii no longer exists.')}</p></div>
 {/if}
 
 <style>

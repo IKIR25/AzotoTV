@@ -6,6 +6,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { page } from '$app/state';
   import { openKeyboard, osk } from '$lib/osk.svelte';
@@ -75,15 +76,15 @@
       data-focusable
       data-key="search-input"
       data-osk="side"
-      placeholder="Cerca su YouTube"
-      aria-label="Cerca"
+      placeholder={t('Search YouTube')}
+      aria-label={t('Search')}
       autocomplete="off"
     />
   </div>
 
   <div class="results scroller" data-nav-peer={docked || undefined}>
     {#if res?.channels.length}
-      <Row title="Canali" list={docked}>
+      <Row title={t('Channels')} list={docked}>
         {#each res.channels as c (c.id)}<Card list={docked} size={10} tile={followed(channelTile(c, 'sc'))} />{/each}
       </Row>
     {/if}
@@ -99,13 +100,13 @@
     {/if}
     <p class="note">
       {#if q.trim().length < MIN}
-        Scrivi almeno {MIN} lettere.
+        {t('Type at least {MIN} letters.', { MIN })}
       {:else if busy}
-        Cerco…
+        {t('Searching…')}
       {:else if failed}
-        YouTube non risponde. Riprova tra poco.
+        {t('YouTube isn\'t answering. Try again in a moment.')}
       {:else if res && !res.videos.length && !res.channels.length}
-        Nessun risultato per “{q.trim()}”.
+        {t('No results for “{a}”.', { a: q.trim() })}
       {/if}
     </p>
   </div>

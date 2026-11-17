@@ -72,7 +72,7 @@ fn ensure_paired(cert: &str) -> Result<(), String> {
         return Ok(());
     }
     if crate::stream::active() {
-        return Err("Sunshine è occupato: riprova dopo".into());
+        return Err(t!("Sunshine is busy: try again later"));
     }
     eprintln!("[phonestream] pairing AzotoTV with Sunshine");
     let systemctl = |what: &str| Command::new("systemctl").args(["--user", what, UNIT]).status();
@@ -141,8 +141,8 @@ impl Sunshine {
         let provider = std::sync::Arc::new(rustls::crypto::ring::default_provider());
         let certs = CertificateDer::pem_slice_iter(cert.as_bytes())
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| format!("certificato: {e}"))?;
-        let key = PrivateKeyDer::from_pem_slice(key.as_bytes()).map_err(|e| format!("certificato: {e}"))?;
+            .map_err(|e| format!("certificate: {e}"))?;
+        let key = PrivateKeyDer::from_pem_slice(key.as_bytes()).map_err(|e| format!("certificate: {e}"))?;
         let mut tls = rustls::ClientConfig::builder_with_provider(provider.clone())
             .with_safe_default_protocol_versions()
             .map_err(|e| e.to_string())?
@@ -150,7 +150,7 @@ impl Sunshine {
             // Sunshine's own self-signed certificate, on this machine
             .with_custom_certificate_verifier(std::sync::Arc::new(crate::tv::AnyServer(provider)))
             .with_client_auth_cert(certs, key)
-            .map_err(|e| format!("certificato: {e}"))?;
+            .map_err(|e| format!("certificate: {e}"))?;
         // Sunshine refuses a resumed TLS session (no client certificate in
         // it): every other request failed with "InternalError"
         tls.resumption = rustls::client::Resumption::disabled();
@@ -168,7 +168,7 @@ impl Sunshine {
         let mut q: Vec<(&str, String)> = vec![("uniqueid", "0123456789ABCDEF".into()), ("uuid", uuid())];
         q.extend_from_slice(query);
         let r = self.http.get(format!("{}/{path}", self.base)).query(&q).send().await;
-        let text = r.map_err(|e| format!("Sunshine non risponde: {e}"))?.text().await.map_err(|e| e.to_string())?;
+        let text = r.map_err(|e| t!("Sunshine isn't answering: {e}", e = e))?.text().await.map_err(|e| e.to_string())?;
         match status(&text) {
             (200, _) => Ok(text),
             (code, msg) => Err(format!("Sunshine: {msg} ({code})")),
@@ -182,7 +182,7 @@ impl Sunshine {
             .find(|a| tag(a, "AppTitle") == Some(APP))
             .and_then(|a| tag(a, "ID"))
             .map(str::to_string)
-            .ok_or_else(|| format!("Sunshine non ha l'app {APP}"))
+            .ok_or_else(|| t!("Sunshine doesn't have the app {APP}", APP = APP))
     }
 }
 
@@ -216,7 +216,7 @@ pub struct Session {
 /// an earlier stream (the app still "running" with no client) is cancelled.
 pub async fn start(host: &str, width: u32, height: u32, fps: u32) -> Result<Session, String> {
     if crate::stream::active() {
-        return Err("C'è già qualcuno collegato in streaming".into());
+        return Err(t!("Someone is already streaming"));
     }
     let s = tauri::async_runtime::spawn_blocking(Sunshine::new).await.map_err(|e| e.to_string())??;
     launch(&s, host, width, height, fps, false).await
@@ -228,7 +228,7 @@ pub async fn start(host: &str, width: u32, height: u32, fps: u32) -> Result<Sess
 pub(crate) async fn launch(s: &Sunshine, host: &str, width: u32, height: u32, fps: u32, host_audio: bool) -> Result<Session, String> {
     let info = s.get("serverinfo", &[]).await?;
     if tag(&info, "PairStatus") != Some("1") {
-        return Err("AzotoTV non è associato a Sunshine".into());
+        return Err(t!("AzotoTV isn't paired with Sunshine"));
     }
     if tag(&info, "currentgame").is_some_and(|g| g != "0") {
         s.get("cancel", &[]).await?;
@@ -257,7 +257,7 @@ pub(crate) async fn launch(s: &Sunshine, host: &str, width: u32, height: u32, fp
             ],
         )
         .await?;
-    let url = tag(&launch, "sessionUrl0").ok_or("Sunshine non ha dato l'indirizzo dello stream")?;
+    let url = tag(&launch, "sessionUrl0").ok_or_else(|| t!("Sunshine didn't give the stream's address"))?;
     // rtspenc://127.0.0.1:48010 (the port follows Sunshine's) -> the phone's view of this machine
     let (scheme, rest) = url.split_once("://").ok_or("indirizzo dello stream non valido")?;
     let port = rest.rsplit_once(':').map(|(_, p)| p).ok_or("indirizzo dello stream senza porta")?;

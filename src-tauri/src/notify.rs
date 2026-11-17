@@ -5,10 +5,13 @@
 //!
 //! Sources: arr.rs (films / episodes that just arrived) and the live TV
 //! reminders kept here ("Ricordamelo" on a programme: a toast a minute before).
-//! The family's telegiornali (`TG`) get reminders by themselves, from the
-//! guide: ten minutes before, and again when they start unless that channel is
-//! already on (then the player offers "Guarda il Tg1" on A). A profile can turn
-//! those off (profile.rs): no toast while it's the one on the TV, and not in its list.
+//! Programmes a household never wants to miss (the evening news, say) get
+//! reminders by themselves, from the guide: ten minutes before, and again when
+//! they start unless that channel is already on (then the player offers to
+//! switch to it on A). They are listed in `~/.config/azototv/reminders.json`
+//! ([`rules`]; in the code these are the `tg` reminders, after the Italian
+//! news programmes they were made for). A profile can turn them off
+//! (profile.rs): no toast while it's the one on the TV, and not in its list.
 //! State: `~/.local/share/azototv/notifications.json`.
 
 use std::{
@@ -30,13 +33,52 @@ const REMIND_BEFORE: u64 = 60_000;
 /// A reminder found later than this after the start (AzotoTV was off) is dropped.
 const REMIND_LATE: u64 = 5 * 60_000;
 
-/// Telegiornali announced without anyone asking: channel, programme name in the
-/// guide, usual local start times (minutes after midnight, give or take `TG_SLACK`).
-const TG: &[(&str, &str, &[u32])] = &[
-    ("Rai 1", "Tg1", &[13 * 60 + 30, 20 * 60]),
-    ("Rai 2", "Tg2", &[13 * 60, 20 * 60 + 30]),
-    ("Rai 3", "Tg3", &[14 * 60 + 20, 19 * 60]),
-];
+/// A programme announced without anyone asking: its channel and its name as
+/// the guide has them, and its usual local start times (minutes after
+/// midnight, give or take `TG_SLACK`).
+struct Rule {
+    channel: String,
+    name: String,
+    times: Vec<u32>,
+}
+
+/// `reminders.json`: `[{"channel": "Rai 1", "programme": "Tg1", "times": ["13:30", "20:00"]}]`.
+fn parse_rules(text: &str) -> Result<Vec<Rule>, String> {
+    let v: serde_json::Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    let mut rules = Vec::new();
+    for r in v.as_array().ok_or("not a list")? {
+        let (Some(channel), Some(name)) = (r["channel"].as_str(), r["programme"].as_str()) else {
+            return Err(format!("no channel / programme in {r}"));
+        };
+        let mut times = Vec::new();
+        for t in r["times"].as_array().into_iter().flatten() {
+            let hm = t.as_str().and_then(|t| t.split_once(':')).and_then(|(h, m)| Some((h.trim().parse::<u32>().ok()?, m.trim().parse::<u32>().ok()?)));
+            match hm {
+                Some((h, m)) if h < 24 && m < 60 => times.push(h * 60 + m),
+                _ => return Err(format!("{t}: not a time like \"20:00\"")),
+            }
+        }
+        rules.push(Rule { channel: channel.trim().to_string(), name: name.trim().to_string(), times });
+    }
+    Ok(rules)
+}
+
+fn rules() -> &'static [Rule] {
+    static RULES: OnceLock<Vec<Rule>> = OnceLock::new();
+    RULES.get_or_init(|| {
+        let Ok(text) = fs::read_to_string(crate::jellyfin::config_dir().join("reminders.json")) else { return Vec::new() };
+        parse_rules(&text).unwrap_or_else(|e| {
+            eprintln!("[notify] reminders.json: {e}");
+            Vec::new()
+        })
+    })
+}
+
+/// Whether any programme is announced by itself here (reminders.json).
+pub fn has_rules() -> bool {
+    !rules().is_empty()
+}
+
 const TG_SLACK: u32 = 20;
 /// The first toast comes this long before a TG.
 const TG_BEFORE: u64 = 10 * 60_000;
@@ -297,7 +339,7 @@ impl Notify {
         let mut ids: HashMap<String, (String, usize, Option<String>)> = HashMap::new();
         for c in chans["Items"].as_array().into_iter().flatten() {
             let (Some(id), Some(name)) = (c["Id"].as_str(), c["Name"].as_str()) else { continue };
-            if let Some(rule) = TG.iter().position(|r| r.0.eq_ignore_ascii_case(name.trim())) {
+            if let Some(rule) = rules().iter().position(|r| r.channel.eq_ignore_ascii_case(name.trim())) {
                 let logo = c["ImageTags"]["Primary"]
                     .as_str()
                     .map(|tag| format!("/Items/{id}/Images/Primary?maxWidth=200&quality=85&v={tag}"));
@@ -320,7 +362,7 @@ impl Notify {
         let mut found = Vec::new();
         for p in progs["Items"].as_array().into_iter().flatten() {
             let Some((channel, rule, logo)) = p["ChannelId"].as_str().and_then(|c| ids.get(c)) else { continue };
-            let (_, name, times) = TG[*rule];
+            let Rule { name, times, .. } = &rules()[*rule];
             if !p["Name"].as_str().is_some_and(|n| n.trim().eq_ignore_ascii_case(name)) {
                 continue;
             }
@@ -366,13 +408,13 @@ impl Notify {
             && app.state::<Arc<Jf>>().session().is_some_and(|s| !crate::profile::tg_alerts(&s.user_id));
         let at = chrono_hhmm(r.start);
         let mut body = match &r.episode {
-            Some(e) => format!("Alle {at} · {e}"),
-            None => format!("Alle {at}"),
+            Some(e) => t!("At {at} · {e}", at = at, e = e),
+            None => t!("At {at}", at = at),
         };
         let (kind, kicker) = match stage {
-            Stage::Soon(1) => ("reminder", format!("Tra un minuto · {}", r.channel)),
-            Stage::Soon(m) => ("reminder", format!("Tra {m} minuti · {}", r.channel)),
-            Stage::Started if !r.tg => ("reminder", format!("Inizia ora · {}", r.channel)),
+            Stage::Soon(1) => ("reminder", t!("In a minute · {a}", a = r.channel)),
+            Stage::Soon(m) => ("reminder", t!("In {m} minutes · {a}", m = m, a = r.channel)),
+            Stage::Started if !r.tg => ("reminder", t!("Starting now · {a}", a = r.channel)),
             Stage::Started => {
                 let pl = app.state::<Arc<Player>>();
                 if pl.channel().as_deref() == Some(r.channel_id.as_str()) {
@@ -382,12 +424,12 @@ impl Notify {
                     // nothing offered
                 } else if pl.active() {
                     let until = (now_ms() + TG_OFFER) / 1000;
-                    pl.offer_channel(&r.channel_id, &format!("Guarda il {}", r.name), &format!("Inizia ora su {}", r.channel), until)
+                    pl.offer_channel(&r.channel_id, &t!("Watch {a}", a = r.name), &t!("Starting now on {a}", a = r.channel), until)
                         .await;
                 } else if !pad::paused() {
-                    body.push_str(" · START per guardarlo");
+                    body.push_str(&t!(" · START to watch it"));
                 }
-                ("onair", format!("Inizia ora · {}", r.channel))
+                ("onair", t!("Starting now · {a}", a = r.channel))
             }
         };
         self.push(
@@ -427,6 +469,9 @@ impl Notify {
         // the TGs, from the guide (once a profile is signed in, then every half hour)
         let me = self.clone();
         tauri::async_runtime::spawn(async move {
+            if !has_rules() {
+                return;
+            }
             tokio::time::sleep(Duration::from_secs(20)).await;
             let mut said = String::new();
             loop {
@@ -436,7 +481,7 @@ impl Notify {
                     None => Err("no app".into()),
                 };
                 let line = match r {
-                    Ok(n) => format!("{n} TG in the next 26 h"),
+                    Ok(n) => format!("{n} programme(s) of reminders.json in the next 26 h"),
                     Err(e) => format!("guide unavailable: {e}"),
                 };
                 if line != said {
@@ -457,9 +502,9 @@ impl Notify {
                         id: 0,
                         time: 0,
                         kind: "test".into(),
-                        kicker: "Pronto da guardare".into(),
-                        title: "Notifica di prova".into(),
-                        body: "Film · richiesto da Ada".into(),
+                        kicker: t!("Ready to watch"),
+                        title: t!("Test notification"),
+                        body: t!("Movie · requested by Ada"),
                         image: item.as_ref().map(|i| format!("/Items/{i}/Images/Primary?maxHeight=300")),
                         logo: false,
                         item_id: item,
@@ -535,6 +580,17 @@ fn iso_utc(ms: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reminder_rules() {
+        let r = parse_rules(r#"[{"channel": " Rai 1 ", "programme": "Tg1", "times": ["13:30", "20:00"]}, {"channel": "BBC One", "programme": "BBC News at Six", "times": ["18:00"]}]"#).unwrap();
+        assert_eq!(r.len(), 2);
+        assert_eq!((r[0].channel.as_str(), r[0].name.as_str(), r[0].times.as_slice()), ("Rai 1", "Tg1", &[13 * 60 + 30, 20 * 60][..]));
+        assert_eq!(r[1].times, vec![18 * 60]);
+        assert!(parse_rules(r#"[{"channel": "x", "programme": "y", "times": ["25:00"]}]"#).is_err());
+        assert!(parse_rules(r#"[{"channel": "x"}]"#).is_err());
+        assert!(parse_rules("{}").is_err());
+    }
 
     #[test]
     fn utc_dates() {

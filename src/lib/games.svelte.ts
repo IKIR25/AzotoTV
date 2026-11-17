@@ -5,6 +5,7 @@ import { listen } from '@tauri-apps/api/event';
 import { goto } from '$app/navigation';
 import { player } from './player.svelte';
 import { refresh, showToast } from './stage.svelte';
+import { locale, t } from '$lib/i18n';
 
 export type Art = 'cover' | 'hero' | 'logo' | 'header';
 
@@ -165,15 +166,15 @@ export function lastPlayed(unix: number): string {
   const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
   if (days < 1 && new Date().getDate() === d.getDate()) return 'oggi';
   if (days < 2) return 'ieri';
-  if (days < 7) return `${days} giorni fa`;
-  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  if (days < 7) return t('{days} days ago', { days });
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
 }
 
 const MODES: Record<World['mode'], string> = {
-  survival: 'Sopravvivenza',
-  creative: 'Creativa',
-  adventure: 'Avventura',
-  spectator: 'Spettatore',
+  survival: t('Survival'),
+  creative: t('Creative'),
+  adventure: t('Adventure'),
+  spectator: t('Spectator'),
 };
 export const worldMode = (w: World) => (w.hardcore ? 'Hardcore' : MODES[w.mode]);
 
@@ -203,7 +204,7 @@ export async function launch(id: string, chapter: number | null = null, world: W
     game.active = false;
     game.loading = false;
     game.id = '';
-    showToast(`Avvio non riuscito: ${e}`, 4000);
+    showToast(t('Couldn\'t start: {e}', { e }), 4000);
   } finally {
     game.starting = false;
   }
@@ -216,7 +217,7 @@ export async function playTrailer(g: Game, index = 0) {
     await invoke('game_trailer', { id: g.id, index, title: g.name });
   } catch (e) {
     player.active = false;
-    showToast(`Trailer non disponibile: ${e}`);
+    showToast(t('Trailer not available: {e}', { e }));
   }
 }
 
@@ -241,7 +242,7 @@ export function initGames() {
     game.loading = false;
     game.id = '';
     refresh.n++; // play history changed: shelves and pages reload
-    if (e.payload.reason === 'error') showToast(`Il gioco si è chiuso con un errore: ${e.payload.error}`);
+    if (e.payload.reason === 'error') showToast(t('The game closed with an error: {error}', { error: e.payload.error }));
   });
   return () => {
     void un.then((f) => f());

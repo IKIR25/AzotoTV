@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { showToast } from '$lib/stage.svelte';
@@ -30,10 +31,10 @@
     try {
       await invoke('tv_pair_pin', { pin: typed });
       done = true;
-      showToast("TV collegata: Spegni e l'accensione automatica vanno di nuovo", 4000);
+      showToast(t('TV connected: Turn off and automatic turning on work again'), 4000);
       history.back();
     } catch (e) {
-      error = `${e}: ne compare uno nuovo sulla TV`;
+      error = t('{e}: a new one appears on the TV', { e });
       pin = '';
       void start();
     }
@@ -52,15 +53,15 @@
     <span class="pic" aria-hidden="true">
       <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12.5" rx="2" /><path d="M8 20.5h8" /></svg>
     </span>
-    <h1>Collega la TV</h1>
+    <h1>{t('Connect the TV')}</h1>
     {#if step === 'off'}
       <p class="err">{error}</p>
       <div class="row">
-        <button class="btn primary" data-focusable onclick={() => ((error = ''), start())}>Riprova</button>
-        <button class="btn" data-focusable onclick={() => history.back()}>Annulla</button>
+        <button class="btn primary" data-focusable onclick={() => ((error = ''), start())}>{t('Try again')}</button>
+        <button class="btn" data-focusable onclick={() => history.back()}>{t('Cancel')}</button>
       </div>
     {:else}
-      <p class:err={!!error}>{error || (step === 'wait' ? 'Un attimo…' : 'Scrivi il codice di 4 cifre che compare sulla TV')}</p>
+      <p class:err={!!error}>{error || (step === 'wait' ? t('One moment…') : t('Type the 4-digit code the TV shows'))}</p>
       {#if step === 'pin'}<PinPad bind:value={pin} onfull={full} />{/if}
     {/if}
   </section>

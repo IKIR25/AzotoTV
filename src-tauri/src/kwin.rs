@@ -90,7 +90,7 @@ pub fn place_screens(w: &Windows, tv: &str, panel: &str) -> Result<(), String> {
     let out = busctl(&["call", "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript", "ss", &path, NAME])?;
     let id: i64 = out.split_whitespace().nth(1).and_then(|n| n.parse().ok()).ok_or_else(|| format!("loadScript: {out}"))?;
     if id < 0 {
-        return Err("KWin non ha caricato lo script".into());
+        return Err(t!("KWin didn't load the script"));
     }
     busctl(&["call", "org.kde.KWin", &format!("/Scripting/Script{id}"), "org.kde.kwin.Script", "run"])?;
     eprintln!("[kwin] placing {:?} on {tv} + {panel}", w.classes);

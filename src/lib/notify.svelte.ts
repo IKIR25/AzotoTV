@@ -9,6 +9,7 @@ import { showToast } from './stage.svelte';
 import { live, loadLive, watch } from './live.svelte';
 import { player } from './player.svelte';
 import { game } from './games.svelte';
+import { locale, t } from '$lib/i18n';
 
 export interface Notification {
   id: number;
@@ -86,7 +87,7 @@ export async function openNote(n: Notification) {
     await loadLive().catch(() => {});
     const ch = live.channels.find((c) => c.Id === n.channel_id);
     if (ch) return watch(ch);
-    showToast('Canale non disponibile');
+    showToast(t('Channel not available'));
   }
 }
 
@@ -94,24 +95,24 @@ export async function openNote(n: Notification) {
 export async function toggleReminder(r: Omit<Reminder, 'user'>) {
   const set = await invoke<boolean>('reminder_toggle', { reminder: { ...r, user: '' } });
   await loadNotes();
-  showToast(set ? `Ti avviso un minuto prima di «${r.name}»` : 'Promemoria tolto');
+  showToast(set ? t('I\'ll tell you a minute before “{name}”', { name: r.name }) : t('Reminder removed'));
   return set;
 }
 
 export const hasReminder = (programId: string) => notes.reminders.some((r) => r.program_id === programId);
 
 /** "5 min fa", "ieri alle 21:30". */
-export function ago(t: number, now = Date.now()) {
-  const m = Math.round((now - t) / 60_000);
-  if (m < 1) return 'adesso';
-  if (m < 60) return `${m} min fa`;
-  const d = new Date(t);
-  const hm = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+export function ago(time: number, now = Date.now()) {
+  const m = Math.round((now - time) / 60_000);
+  if (m < 1) return t('just now');
+  if (m < 60) return t('{m} min ago', { m });
+  const d = new Date(time);
+  const hm = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const days = Math.round((day(new Date(now)) - day(d)) / 86_400_000);
-  if (days === 0) return `oggi alle ${hm}`;
-  if (days === 1) return `ieri alle ${hm}`;
-  return `${d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} alle ${hm}`;
+  if (days === 0) return t('today at {hm}', { hm });
+  if (days === 1) return t('yesterday at {hm}', { hm });
+  return t('{day} at {hm}', { day: d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }), hm });
 }
 
 /** Call once at startup. */

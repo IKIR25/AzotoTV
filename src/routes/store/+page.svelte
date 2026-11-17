@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { APPS } from '$lib/apps';
@@ -22,7 +23,7 @@
 <div class="scroller">
   <header>
     <h1>Store</h1>
-    <p>Scegli le app della tua Home. Ogni profilo ha le sue: togliere un'app non cancella niente, e puoi rimetterla quando vuoi.</p>
+    <p>{t('Pick the apps of your Home. Each profile has its own: removing an app deletes nothing, and you can put it back whenever you like.')}</p>
   </header>
 
   <div class="list">
@@ -34,11 +35,11 @@
           <strong>{a.name}</strong>
           <span class="d">{a.description}</span>
         </span>
-        <span class="state">{on ? '✓ Nella Home' : '＋ Aggiungi'}</span>
+        <span class="state">{on ? t('✓ On Home') : t('＋ Add')}</span>
       </button>
     {/each}
   </div>
-  <p class="foot">{count === apps.length ? 'Hai tutte le app.' : `${count} di ${apps.length} app nella tua Home.`}</p>
+  <p class="foot">{count === apps.length ? t('You have every app.') : t('{count} of {length} apps on your Home.', { count, length: apps.length })}</p>
 </div>
 
 <style>

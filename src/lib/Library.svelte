@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { api, type Item } from '$lib/jf';
@@ -12,10 +13,10 @@
 
   const TYPES: Record<string, string> = { movies: 'Movie', tvshows: 'Series', music: 'Audio', boxsets: 'BoxSet' };
   const SORTS = [
-    { label: 'Aggiunti', by: 'DateCreated', order: 'Descending' },
-    { label: 'Nome', by: 'SortName', order: 'Ascending' },
-    { label: 'Anno', by: 'ProductionYear,SortName', order: 'Descending' },
-    { label: 'Voto', by: 'CommunityRating', order: 'Descending' },
+    { label: t('Added'), by: 'DateCreated', order: 'Descending' },
+    { label: t('Name'), by: 'SortName', order: 'Ascending' },
+    { label: t('Year'), by: 'ProductionYear,SortName', order: 'Descending' },
+    { label: t('Rating'), by: 'CommunityRating', order: 'Descending' },
   ];
   const PAGE = 60;
 
@@ -99,18 +100,18 @@
 <div class="scroller">
   <header class:app>
     <h1>{view?.Name ?? ''}</h1>
-    <span class="count">{total ? `${total} ${isMusic ? 'brani' : 'elementi'}` : ''}</span>
+    <span class="count">{total ? (isMusic ? t('{n} songs', { n: total }) : t('{n} items', { n: total })) : ''}</span>
     {#if isMusic && total}
       <div class="play">
         <button class="btn primary" data-focusable data-key="playall" data-scroll-top onclick={() => playFrom(null)}>
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg> Riproduci tutto
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg> {t('Play all')}
         </button>
         <button class="btn" data-focusable data-key="shuffleall" data-scroll-top onclick={() => playFrom(null, true)}>
           <svg viewBox="0 0 24 24"
             ><path
               d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04z"
             /></svg
-          > Casuale
+          > {t('Shuffle')}
         </button>
       </div>
     {/if}
@@ -118,9 +119,9 @@
       <div class="play">
         <button class="btn" data-focusable data-key="msearch" data-scroll-top onclick={() => goto('/musica/cerca')}>
           <svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" /></svg>
-          Cerca
+          {t('Search')}
         </button>
-        <button class="btn" data-focusable data-key="newlist" data-scroll-top onclick={() => (newList = true)}>＋ Nuova playlist</button>
+        <button class="btn" data-focusable data-key="newlist" data-scroll-top onclick={() => (newList = true)}>{t('＋ New playlist')}</button>
       </div>
     {/if}
     <div class="sorts">
@@ -140,10 +141,10 @@
   </header>
 
   {#if playlists.length}
-    <Row title="Le tue playlist">
+    <Row title={t('Your playlists')}>
       {#each playlists as p (p.Id)}<Card item={p} />{/each}
     </Row>
-    <h2 class="sub">Tutti i brani</h2>
+    <h2 class="sub">{t('All songs')}</h2>
   {/if}
 
   <div class="grid">
@@ -156,7 +157,7 @@
 
 {#if newList}
   <PlaylistSheet
-    title="Le tue playlist"
+    title={t('Your playlists')}
     onpick={(pid) => {
       newList = false;
       goto(`/tracks/${pid}`);

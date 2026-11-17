@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { locale, t } from '$lib/i18n';
   import { key } from './input.svelte';
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
@@ -46,11 +47,11 @@
     }
     armed = '';
     void invoke('phone_forget', { id: p.id, user }).then(refresh);
-    showToast(`${p.label} scollegato da ${auth.name}`);
+    showToast(t('{label} disconnected from {name}', { label: p.label, name: auth.name }));
     done.focus({ preventScroll: true });
   }
 
-  const when = (s: number) => new Date(s * 1000).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  const when = (s: number) => new Date(s * 1000).toLocaleDateString(locale, { day: 'numeric', month: 'long' });
 
   onMount(() => {
     const before = document.activeElement;
@@ -61,7 +62,7 @@
     // a phone typed the code: the list updates, and a new code for the next one
     const un = listen('phone-paired', () => {
       void refresh();
-      showToast('Telefono collegato ✓');
+      showToast(t('Phone connected ✓'));
       void newCode();
     });
     return () => {
@@ -76,37 +77,37 @@
 
 <div class="dim">
   <section class="panel glass" data-nav-trap>
-    <div class="qr" aria-label="Codice QR">
+    <div class="qr" aria-label={t('QR code')}>
       <!-- eslint-disable-next-line svelte/no-at-html-tags -->
       {#if pairing}{@html pairing.qr}{/if}
     </div>
     <div class="side">
-      <h1>Collega un telefono a {auth.name}</h1>
-      <p class="lead">Il telefono comanderà la TV quando c'è il profilo di {auth.name}.</p>
+      <h1>{t('Connect a phone to {name}', { name: auth.name })}</h1>
+      <p class="lead">{t('The phone will control the TV while {name}\'s profile is on it.', { name: auth.name })}</p>
       <ol>
-        <li>Inquadra il codice QR con la fotocamera del telefono, sulla Wi-Fi di casa.</li>
-        <li>Oppure apri <b>{pairing?.address ?? '…'}</b> e scrivi il codice:</li>
+        <li>{t('Point the phone\'s camera at the QR code, on the home Wi-Fi.')}</li>
+        <li>{t('Or open')} <b>{pairing?.address ?? '…'}</b> {t('and type the code:')}</li>
       </ol>
       <div class="code">
         {#each (pairing?.code ?? '····').split('') as d, i (i)}<span>{d}</span>{/each}
       </div>
-      <p class="small">Telefono già collegato a un altro profilo? Nell'app tocca il tuo nome › Aggiungi un profilo.</p>
-      <p class="small">Su iPhone: Condividi › Aggiungi alla schermata Home, e diventa un'app.</p>
+      <p class="small">{t('Phone already connected to another profile? In the app, tap your name › Add a profile.')}</p>
+      <p class="small">{t('On iPhone: Share › Add to Home Screen, and it becomes an app.')}</p>
 
       {#if phones.length}
-        <h2>Telefoni collegati a {auth.name}</h2>
+        <h2>{t('Phones connected to {name}', { name: auth.name })}</h2>
         <div class="list">
           {#each phones as p (p.id)}
             <button class="phone" class:armed={armed === p.id} data-focusable onblur={() => armed === p.id && (armed = '')} onclick={() => forget(p)}>
-              <span>{armed === p.id ? `Premi di nuovo per scollegarlo da ${auth.name}` : p.label}</span>
+              <span>{armed === p.id ? t('Press again to disconnect it from {name}', { name: auth.name }) : p.label}</span>
               <small>{armed === p.id ? '' : p.others.length ? `anche ${p.others.join(', ')}` : `dal ${when(p.paired)}`}</small>
-              {#if armed !== p.id}<em class="x">Scollega</em>{/if}
+              {#if armed !== p.id}<em class="x">{t('Unlink')}</em>{/if}
             </button>
           {/each}
         </div>
       {/if}
-      <button class="btn primary" data-focusable bind:this={done} onclick={close}>Fatto</button>
-      <div class="hint">{#if phones.length}<kbd>{key('A')}</kbd> su un telefono: lo scolleghi da {auth.name} · {/if}<kbd>{key('B')}</kbd> chiudi</div>
+      <button class="btn primary" data-focusable bind:this={done} onclick={close}>{t('Done')}</button>
+      <div class="hint">{#if phones.length}<kbd>{key('A')}</kbd> {t('on a phone: disconnects it from {name} ·', { name: auth.name })} {/if}<kbd>{key('B')}</kbd> {t('close')}</div>
     </div>
   </section>
 </div>

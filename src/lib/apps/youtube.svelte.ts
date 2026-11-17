@@ -3,17 +3,18 @@
 // profile has one linked); A plays them straight away. Never Shorts.
 import { account, continueWatching, feed, loadYoutube, newFromSubs, resumeAt, shortViews, thumb, watch, when, type Video } from '../youtube.svelte';
 import type { App, Slide } from './types';
+import { t } from '$lib/i18n';
 
 function slide(v: Video, kind: 'c' | 's' | 'r'): Slide {
   const pos = resumeAt(v.id);
   return {
     key: `${kind}:${v.id}`,
     title: v.title,
-    kicker: { text: kind === 'c' ? 'Continua a guardare' : kind === 's' ? `Nuovo · ${v.channel}` : `Consigliato · ${v.channel}` },
+    kicker: { text: kind === 'c' ? t('Continue watching') : kind === 's' ? t('New · {channel}', { channel: v.channel }) : t('Recommended · {channel}', { channel: v.channel }) },
     meta: [shortViews(v.views), when(v)].filter(Boolean),
     progress: kind === 'c' && v.length ? pos / v.length : undefined,
     backdrop: thumb(v.id, 'big'),
-    action: kind === 'c' ? 'Riprendi' : 'Guarda',
+    action: kind === 'c' ? t('Resume') : t('Watch'),
     open: () => watch(v),
   };
 }
@@ -21,7 +22,7 @@ function slide(v: Video, kind: 'c' | 's' | 'r'): Slide {
 export const youtubeApp: App = {
   key: 'youtube',
   name: 'YouTube',
-  description: 'Video e canali di YouTube, senza account o con il tuo. Shorts con un limite al giorno.',
+  description: t('YouTube videos and channels, with no account or with yours. Shorts with a daily limit.'),
   route: '/youtube',
   color: 'linear-gradient(135deg, #ff4e45 0%, #e0162b 55%, #a3001b 100%)',
   // a filled rounded screen with the play mark cut out (the TV tile's is an outline)

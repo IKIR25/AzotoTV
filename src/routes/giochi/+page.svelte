@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -20,8 +21,8 @@
   // trailer). Minecraft sits under PC in a section of its own: the game, then
   // each of this profile's worlds (A goes straight in).
   const SORTS: { label: string; order: (gs: Game[]) => Game[] }[] = [
-    { label: 'Recenti', order: byRecent },
-    { label: 'Nome', order: (gs) => [...gs].sort((a, b) => a.name.localeCompare(b.name)) },
+    { label: t('Recent'), order: byRecent },
+    { label: t('Name'), order: (gs) => [...gs].sort((a, b) => a.name.localeCompare(b.name)) },
   ];
   let sort = $state(0);
   let failed = $state(false);
@@ -74,12 +75,12 @@
   }
 
   const sub = (g: Game) =>
-    g.played ? `Giocato ${lastPlayed(g.played.last)}` : (g.genres[0] ?? g.year ?? '');
+    g.played ? t('Played {lastPlayed}', { lastPlayed: lastPlayed(g.played.last) }) : (g.genres[0] ?? g.year ?? '');
 </script>
 
 <div class="scroller">
   <header>
-    <h1>Giochi</h1>
+    <h1>{t('Games')}</h1>
     <span class="count">{inTab.length ? `${inTab.length} ${inTab.length === 1 ? 'gioco' : 'giochi'}` : ''}</span>
     {#if tabs.length > 1}
       <div class="tabs">
@@ -96,7 +97,7 @@
           ><path
             d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM7.5 18A1.5 1.5 0 1 1 9 16.5 1.5 1.5 0 0 1 7.5 18zm0-9A1.5 1.5 0 1 1 9 7.5 1.5 1.5 0 0 1 7.5 9zm4.5 4.5a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5zm4.5 4.5a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5zm0-9A1.5 1.5 0 1 1 18 7.5 1.5 1.5 0 0 1 16.5 9z"
           /></svg
-        > Gioco a caso
+        > {t('Random game')}
       </button>
       <div class="sorts">
         {#each SORTS as s, i}
@@ -107,9 +108,9 @@
   </header>
 
   {#if failed && !library.games.length}
-    <p class="msg">Impossibile leggere la libreria dei giochi.</p>
+    <p class="msg">{t('Couldn\'t read the game library.')}</p>
   {:else if library.user === auth.id && !library.games.length}
-    <p class="msg">Nessun gioco installato.</p>
+    <p class="msg">{t('No games installed.')}</p>
   {/if}
 
   {#if games.length}
@@ -132,7 +133,7 @@
             key: `g-${g.id}`,
             src: artUrl(g, 'header') ?? heroUrl(g),
             title: g.name,
-            sub: g.worlds.length ? 'Nuovo mondo · trailer' : 'Crea il tuo primo mondo: apparirà qui',
+            sub: g.worlds.length ? t('New world · trailer') : t('Create your first world: it will show up here'),
             pin: gamePin(g),
             open: () => goto(`/game/${g.id}`),
           }}
@@ -145,7 +146,7 @@
               src: w.icon ?? heroUrl(g),
               pixelated: !!w.icon,
               title: w.name,
-              sub: `Giocato ${lastPlayed(w.last)}`,
+              sub: t('Played {lastPlayed}', { lastPlayed: lastPlayed(w.last) }),
               badge: worldMode(w),
               pin: worldPin(g, w),
               open: () => launch(g.id, null, w),

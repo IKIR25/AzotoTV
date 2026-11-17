@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { api } from '$lib/jf';
   import { auth } from '$lib/session.svelte';
   import Library from '$lib/Library.svelte';
@@ -19,7 +20,7 @@
 {#if id}
   {#key id}<Library {id} app />{/key}
 {:else if missing}
-  <p class="msg">Nessuna libreria musicale su questo server.</p>
+  <p class="msg">{t('No music library on this server.')}</p>
 {/if}
 
 <style>

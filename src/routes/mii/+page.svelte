@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -37,12 +38,12 @@
       await importFound(found);
       found = [];
       await linkKnownTomodachi().catch(() => {});
-      showToast(n === 1 ? '1 Mii aggiunto' : `${n} Mii aggiunti`);
+      showToast(n === 1 ? t('1 Mii added') : t('{n} Miis added', { n }));
       // the banner is gone: focus the first Mii
       await tick();
       document.querySelector<HTMLElement>('.grid [data-focusable]')?.focus();
     } catch (e) {
-      showToast(`Non sono riuscito ad aggiungerli: ${e}`);
+      showToast(t('Couldn\'t add them: {e}', { e }));
     } finally {
       importing = false;
     }
@@ -51,10 +52,10 @@
   const consoles = (f: Found[]) => {
     const n = (c: string) => f.filter((x) => x.console === c).length;
     const where = [
-      n('switch') && `${n('switch')} su Switch`,
-      n('wii') && `${n('wii')} su Wii`,
-      n('miitopia') && `${n('miitopia')} in Miitopia`,
-      n('tomodachi') && `${n('tomodachi')} in Tomodachi Life`,
+      n('switch') && t('{a} on Switch', { a: n('switch') }),
+      n('wii') && t('{a} on Wii', { a: n('wii') }),
+      n('miitopia') && t('{a} in Miitopia', { a: n('miitopia') }),
+      n('tomodachi') && t('{a} in Tomodachi Life', { a: n('tomodachi') }),
     ].filter(Boolean) as string[];
     return where.length > 1 ? `${where.slice(0, -1).join(', ')} e ${where.at(-1)}` : (where[0] ?? '');
   };
@@ -70,7 +71,7 @@
   <header>
     <h1>Mii</h1>
     <div class="line">
-      <p>{lib.people.length ? `${lib.people.length} Mii di ${auth.name}` : `I Mii di ${auth.name}`}</p>
+      <p>{lib.people.length ? t('{length} Miis of {name}', { length: lib.people.length, name: auth.name }) : t('{name}\'s Miis', { name: auth.name })}</p>
       <button class="music" data-focusable data-key="music" onclick={() => nextTrack(auth.id)}>
         ♪ {trackName()}
       </button>
@@ -85,17 +86,17 @@
         {/each}
       </div>
       <div class="txt">
-        <strong>{found.length === 1 ? 'Un Mii' : `${found.length} Mii`} non ancora qui</strong>
+        <strong>{found.length === 1 ? t('One Mii not here yet') : t('{n} Miis not here yet', { n: found.length })}</strong>
         <span>{consoles(found)}: {found.map((f) => f.look.meta.name).join(', ')}</span>
       </div>
       <button class="btn" data-focusable data-key="import" disabled={importing} onclick={importAll}>
-        {importing ? 'Aggiungo…' : 'Aggiungi tutti'}
+        {importing ? t('Adding…') : t('Add all')}
       </button>
     </section>
   {/if}
 
   {#if !drawable}
-    <p class="note">Per disegnare i Mii serve il file FFLResHigh.dat della Wii U nella cartella dei dati di AzotoTV (mii/).</p>
+    <p class="note">{t('Drawing Miis needs the Wii U\'s FFLResHigh.dat file in AzotoTV\'s data folder (mii/).')}</p>
   {/if}
 
   {#if lib.people.length}
@@ -112,16 +113,16 @@
       {/each}
       <button class="card new" data-focusable data-key="mii-new" onclick={() => goto('/mii/editor')}>
         <span class="pic">+</span>
-        <strong>Nuovo Mii</strong>
+        <strong>{t('New Mii')}</strong>
         <span class="sub"> </span>
       </button>
     </div>
   {:else if !found.length}
-    <p class="empty">Non hai ancora nessun Mii.</p>
+    <p class="empty">{t('You have no Miis yet.')}</p>
     <div class="grid">
       <button class="card new" data-focusable data-key="mii-new" onclick={() => goto('/mii/editor')}>
         <span class="pic">+</span>
-        <strong>Nuovo Mii</strong>
+        <strong>{t('New Mii')}</strong>
         <span class="sub"> </span>
       </button>
     </div>

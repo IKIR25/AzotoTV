@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { key } from './input.svelte';
   import { onMount, tick } from 'svelte';
   import { api, type Item } from './jf';
@@ -9,7 +10,7 @@
   // (A on the name field opens the keyboard; "Fatto" creates it). D-pad stays
   // inside (data-nav-trap, given up while the keyboard is open); B closes.
   let {
-    title = 'Aggiungi a una playlist',
+    title = t('Add to a playlist'),
     onpick,
     onclose,
   }: {
@@ -52,7 +53,7 @@
       const id = await api.createPlaylist(n);
       onpick(id, n);
     } catch (err) {
-      showToast(`Non riuscito: ${err}`, 4000);
+      showToast(t('Didn\'t work: {err}', { err }), 4000);
     }
   }
 </script>
@@ -66,18 +67,18 @@
         bind:value={name}
         data-focusable
         data-osk-submit
-        placeholder="＋ Nuova playlist…"
-        aria-label="Nome della nuova playlist"
+        placeholder={t('＋ New playlist…')}
+        aria-label={t('Name of the new playlist')}
         autocomplete="off"
       />
     </form>
     {#each lists ?? [] as p (p.Id)}
       <button class="opt" data-focusable onclick={() => onpick(p.Id, p.Name)}>
-        <span class="txt">{p.Name}{#if p.ChildCount}<small>{p.ChildCount} brani</small>{/if}</span>
+        <span class="txt">{p.Name}{#if p.ChildCount}<small>{t('{ChildCount} songs', { ChildCount: p.ChildCount })}</small>{/if}</span>
       </button>
     {/each}
   </div>
-  <div class="hint"><kbd>{key('A')}</kbd> scegli · <kbd>{key('B')}</kbd> chiudi</div>
+  <div class="hint"><kbd>{key('A')}</kbd> {t('select ·')} <kbd>{key('B')}</kbd> {t('close')}</div>
 </aside>
 
 <style>

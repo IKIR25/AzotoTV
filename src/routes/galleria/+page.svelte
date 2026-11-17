@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { page } from '$app/state';
@@ -55,10 +56,10 @@
   async function slideshowAll() {
     try {
       const assets = await invoke<Asset[]>('im_random', { n: 150 });
-      if (!assets.length) return showToast('Nessuna foto da mostrare');
-      view = { assets, title: 'Galleria', show: true, back: 'show' };
+      if (!assets.length) return showToast(t('No photos to show'));
+      view = { assets, title: t('Gallery'), show: true, back: 'show' };
     } catch {
-      showToast('Il server delle foto non risponde');
+      showToast(t('The photo server isn\'t answering'));
     }
   }
 
@@ -72,15 +73,15 @@
 
 <div class="scroller">
   <header>
-    <h1>Galleria</h1>
+    <h1>{t('Gallery')}</h1>
     {#if gallery.albums.length}
       <div class="row">
         <button class="btn primary" data-focusable data-key="show" data-scroll-top onclick={slideshowAll}>
           <svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" /></svg>
-          Presentazione
+          {t('Slideshow')}
         </button>
         {#if wallpaper()}
-          <button class="btn" data-focusable data-key="wall" data-scroll-top onclick={clearWallpaper}>✕ Togli lo sfondo</button>
+          <button class="btn" data-focusable data-key="wall" data-scroll-top onclick={clearWallpaper}>{t('✕ Remove the wallpaper')}</button>
         {/if}
       </div>
     {/if}
@@ -88,17 +89,16 @@
 
   <div class="content" data-remember>
     {#if !gallery.enabled}
-      <p class="msg">La Galleria non è ancora collegata al server delle foto.</p>
+      <p class="msg">{t('Gallery isn\'t connected to the photo server yet.')}</p>
     {:else if failed && !gallery.loaded}
-      <p class="msg">Il server delle foto non risponde. Riprova tra poco.</p>
+      <p class="msg">{t('The photo server isn\'t answering. Try again in a moment.')}</p>
     {:else if gallery.loaded && !gallery.albums.length}
       <p class="msg">
-        Ancora nessun album. Dall'app Immich (sul telefono o sul computer) condividi un album con l'utente «TV»: comparirà qui, per
-        tutti i profili.
+        {t('No albums yet. From the Immich app (on the phone or the computer), share an album with the “TV” user: it will show up here, for every profile.')}
       </p>
     {:else}
       {#if gallery.memories.length}
-        <Row title="Accadde oggi">
+        <Row title={t('On this day')}>
           {#each gallery.memories as m (m.year)}<Card wide size={24} tile={memoryTile(m)} />{/each}
         </Row>
       {/if}

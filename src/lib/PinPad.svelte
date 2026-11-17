@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount } from 'svelte';
   import { modal } from './stage.svelte';
   import { key } from './input.svelte';
@@ -50,7 +51,7 @@
     {#if k}
       <button class="key" class:del={k === 'del'} data-focusable onclick={() => press(k)}>
         {#if k === 'del'}
-          <svg viewBox="0 0 24 24" aria-label="Cancella"><path d="M9 5h11v14H9l-6-7z" /><path d="M12.5 9.5l5 5M17.5 9.5l-5 5" /></svg>
+          <svg viewBox="0 0 24 24" aria-label={t('Erase')}><path d="M9 5h11v14H9l-6-7z" /><path d="M12.5 9.5l5 5M17.5 9.5l-5 5" /></svg>
         {:else}{k}{/if}
       </button>
     {:else}
@@ -59,7 +60,7 @@
   {/each}
 </div>
 
-<div class="hint"><kbd>{key('A')}</kbd> scrivi · <kbd>{key('B')}</kbd> cancella</div>
+<div class="hint"><kbd>{key('A')}</kbd> {t('type ·')} <kbd>{key('B')}</kbd> {t('erase')}</div>
 
 <style>
   .dots { display: flex; gap: 1.6rem; justify-content: center; margin: 0.6rem 0 1rem; }

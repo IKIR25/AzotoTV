@@ -3,11 +3,12 @@
 import { goto } from '$app/navigation';
 import { albumCount, counts, gallery, loadGallery, longDate, memoryRoute, pic, span, yearsAgo } from '../gallery.svelte';
 import type { App, Slide } from './types';
+import { t } from '$lib/i18n';
 
 export const galleriaApp: App = {
   key: 'galleria',
-  name: 'Galleria',
-  description: 'Le foto e i video di famiglia: gli album condivisi con la TV, «Accadde oggi» e le presentazioni.',
+  name: t('Gallery'),
+  description: t('The family\'s photos and videos: the albums shared with the TV, “On this day” and slideshows.'),
   route: '/galleria',
   color: 'linear-gradient(135deg, #ffd25e 0%, #ff8a5c 50%, #e8457c 100%)',
   // a picture frame: sun and hills
@@ -20,10 +21,10 @@ export const galleriaApp: App = {
       return {
         key: `m:${m.year}`,
         title: longDate(first.taken),
-        kicker: { text: `Accadde oggi · ${yearsAgo(m.year)}` },
+        kicker: { text: t('On this day · {yearsAgo}', { yearsAgo: yearsAgo(m.year) }) },
         meta: [counts(m.assets)],
         backdrop: pic(first.id, 'preview'),
-        action: 'Guarda',
+        action: t('Watch'),
         open: () => goto(memoryRoute(m)),
       };
     });
@@ -32,10 +33,10 @@ export const galleriaApp: App = {
         key: `a:${a.id}`,
         title: a.name,
         kicker: { text: 'Album' },
-        meta: [albumCount(a), span(a), a.owner ? `Condiviso da ${a.owner}` : ''].filter(Boolean),
+        meta: [albumCount(a), span(a), a.owner ? t('Shared by {owner}', { owner: a.owner }) : ''].filter(Boolean),
         overview: a.description || undefined,
         backdrop: a.cover ? pic(a.cover, 'preview') : null,
-        action: 'Apri',
+        action: t('Open'),
         open: () => goto(`/galleria/album/${a.id}`),
       }),
     );
@@ -43,14 +44,14 @@ export const galleriaApp: App = {
     return [
       {
         key: 'empty',
-        title: 'Galleria',
-        kicker: { text: 'Foto di famiglia' },
+        title: t('Gallery'),
+        kicker: { text: t('Family photos') },
         meta: [],
         overview: gallery.enabled
-          ? "Dall'app Immich (telefono o computer) condividi un album con l'utente «TV»: comparirà qui."
-          : 'La Galleria non è ancora collegata al server delle foto.',
+          ? t('From the Immich app (phone or computer), share an album with the “TV” user: it will show up here.')
+          : t('Gallery isn\'t connected to the photo server yet.'),
         backdrop: null,
-        action: 'Apri',
+        action: t('Open'),
         open: () => goto('/galleria'),
       },
     ];

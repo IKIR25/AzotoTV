@@ -1,8 +1,10 @@
-# Installed with the user's home in place of @HOME@ (~/.local/share/applications).
+# The desktop's menu entry: install.sh puts it in ~/.local/share/applications
+# with the user's home in place of @HOME@.
 [Desktop Entry]
 Type=Application
 Name=AzotoTV
-Comment=Torna a AzotoTV (chiude il desktop)
+Comment=Back to AzotoTV (closes the desktop)
+Comment[it]=Torna a AzotoTV (chiude il desktop)
 Exec=@HOME@/azototv/tv-mode.sh
 Icon=video-television
 Categories=AudioVideo;

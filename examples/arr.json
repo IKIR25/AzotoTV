@@ -1,0 +1,6 @@
+{
+  "jellyfinKey": "A JELLYFIN API KEY (Dashboard > API Keys)",
+  "radarr": { "url": "http://localhost:7878", "apiKey": "RADARR API KEY" },
+  "sonarr": { "url": "http://localhost:8989", "apiKey": "SONARR API KEY" },
+  "rdt": { "url": "http://localhost:6500", "username": "RDT-CLIENT USER", "password": "RDT-CLIENT PASSWORD" }
+}

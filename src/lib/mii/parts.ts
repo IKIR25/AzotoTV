@@ -3,6 +3,7 @@
 // value encoded to StoreData and back), grouped in tabs like the consoles'
 // Mii makers.
 import { COMMON, FAVORITE, SKIN } from './colors';
+import { t } from '$lib/i18n';
 
 /** A choice from a grid of pictures (the Mii with each option), laid out
  * like the Switch's Mii maker: `grid` = its rows of values. */
@@ -73,48 +74,48 @@ export const PALETTES = {
   favorite: FAVORITE.map((f) => f.hex),
 };
 
-const size = (path: string, max: number): SliderField => ({ kind: 'slider', path, label: 'Dimensione', min: 0, max, low: 'Piccolo', high: 'Grande' });
-const squash = (path: string): SliderField => ({ kind: 'slider', path, label: 'Proporzioni', min: 0, max: 6, low: 'Schiacciato', high: 'Allungato' });
-const rotation = (path: string, max: number): SliderField => ({ kind: 'slider', path, label: 'Rotazione', min: 0, max });
-const apart = (path: string): SliderField => ({ kind: 'slider', path, label: 'Distanza', min: 0, max: 12, low: 'Vicini', high: 'Lontani' });
-const yPos = (path: string, min: number, max: number): SliderField => ({ kind: 'slider', path, label: 'Posizione', min, max, low: 'Su', high: 'Giù' });
+const size = (path: string, max: number): SliderField => ({ kind: 'slider', path, label: t('Size'), min: 0, max, low: t('Small'), high: t('Large') });
+const squash = (path: string): SliderField => ({ kind: 'slider', path, label: t('Proportions'), min: 0, max: 6, low: t('Squashed'), high: t('Stretched') });
+const rotation = (path: string, max: number): SliderField => ({ kind: 'slider', path, label: t('Rotation'), min: 0, max });
+const apart = (path: string): SliderField => ({ kind: 'slider', path, label: t('Spacing'), min: 0, max: 12, low: t('Close'), high: t('Far apart') });
+const yPos = (path: string, min: number, max: number): SliderField => ({ kind: 'slider', path, label: t('Position'), min, max, low: t('Up'), high: t('Down') });
 
 export const TABS: Tab[] = [
   {
     key: 'profile',
-    name: 'Profilo',
+    name: t('Profile'),
     fields: [
-      { kind: 'toggle', path: 'general.gender', label: 'Sesso', options: ['Maschio', 'Femmina'], values: [0, 1] },
-      color('general.favoriteColor', 'Colore preferito', 'favorite'),
-      { kind: 'slider', path: 'general.height', label: 'Altezza', min: 0, max: 127, low: 'Basso', high: 'Alto' },
-      { kind: 'slider', path: 'general.weight', label: 'Corporatura', min: 0, max: 127, low: 'Magro', high: 'Robusto' },
+      { kind: 'toggle', path: 'general.gender', label: t('Gender'), options: [t('Male'), t('Female')], values: [0, 1] },
+      color('general.favoriteColor', t('Favorite color'), 'favorite'),
+      { kind: 'slider', path: 'general.height', label: t('Height'), min: 0, max: 127, low: t('Short'), high: t('Tall') },
+      { kind: 'slider', path: 'general.weight', label: t('Build'), min: 0, max: 127, low: t('Thin'), high: t('Heavy') },
     ],
   },
   {
     key: 'face',
-    name: 'Viso',
+    name: t('Face'),
     fields: [
-      { kind: 'parts', path: 'face.type', label: 'Forma', grid: GRIDS.face },
-      color('face.color', 'Carnagione', 'skin'),
-      { kind: 'parts', path: 'face.feature', label: 'Rughe', grid: GRIDS.face, zoom: true },
-      { kind: 'parts', path: 'face.makeup', label: 'Trucco', grid: GRIDS.face, zoom: true },
+      { kind: 'parts', path: 'face.type', label: t('Shape'), grid: GRIDS.face },
+      color('face.color', t('Skin tone'), 'skin'),
+      { kind: 'parts', path: 'face.feature', label: t('Wrinkles'), grid: GRIDS.face, zoom: true },
+      { kind: 'parts', path: 'face.makeup', label: t('Make-up'), grid: GRIDS.face, zoom: true },
     ],
   },
   {
     key: 'hair',
-    name: 'Capelli',
+    name: t('Hair'),
     fields: [
-      { kind: 'parts', path: 'hair.type', label: 'Acconciatura', grid: GRIDS.hair },
-      color('hair.color', 'Colore'),
-      { kind: 'toggle', path: 'hair.flipped', label: 'Riga', options: ['Normale', 'Invertita'], values: [false, true] },
+      { kind: 'parts', path: 'hair.type', label: t('Hairstyle'), grid: GRIDS.hair },
+      color('hair.color', t('Color')),
+      { kind: 'toggle', path: 'hair.flipped', label: t('Parting'), options: [t('Normal'), t('Flipped')], values: [false, true] },
     ],
   },
   {
     key: 'eyebrows',
-    name: 'Sopracciglia',
+    name: t('Eyebrows'),
     fields: [
-      { kind: 'parts', path: 'eyebrows.type', label: 'Forma', grid: GRIDS.eyebrows, zoom: true },
-      color('eyebrows.color', 'Colore'),
+      { kind: 'parts', path: 'eyebrows.type', label: t('Shape'), grid: GRIDS.eyebrows, zoom: true },
+      color('eyebrows.color', t('Color')),
       size('eyebrows.size', 8),
       squash('eyebrows.squash'),
       rotation('eyebrows.rotation', 11),
@@ -124,10 +125,10 @@ export const TABS: Tab[] = [
   },
   {
     key: 'eyes',
-    name: 'Occhi',
+    name: t('Eyes'),
     fields: [
-      { kind: 'parts', path: 'eyes.type', label: 'Forma', grid: GRIDS.eyes, zoom: true },
-      color('eyes.color', 'Colore'),
+      { kind: 'parts', path: 'eyes.type', label: t('Shape'), grid: GRIDS.eyes, zoom: true },
+      color('eyes.color', t('Color')),
       size('eyes.size', 7),
       squash('eyes.squash'),
       rotation('eyes.rotation', 7),
@@ -137,19 +138,19 @@ export const TABS: Tab[] = [
   },
   {
     key: 'nose',
-    name: 'Naso',
+    name: t('Nose'),
     fields: [
-      { kind: 'parts', path: 'nose.type', label: 'Forma', grid: GRIDS.noses, zoom: true },
+      { kind: 'parts', path: 'nose.type', label: t('Shape'), grid: GRIDS.noses, zoom: true },
       size('nose.size', 8),
       yPos('nose.yPosition', 0, 18),
     ],
   },
   {
     key: 'mouth',
-    name: 'Bocca',
+    name: t('Mouth'),
     fields: [
-      { kind: 'parts', path: 'mouth.type', label: 'Forma', grid: GRIDS.mouths, zoom: true },
-      color('mouth.color', 'Colore'),
+      { kind: 'parts', path: 'mouth.type', label: t('Shape'), grid: GRIDS.mouths, zoom: true },
+      color('mouth.color', t('Color')),
       size('mouth.size', 8),
       squash('mouth.squash'),
       yPos('mouth.yPosition', 0, 18),
@@ -157,33 +158,33 @@ export const TABS: Tab[] = [
   },
   {
     key: 'beard',
-    name: 'Barba',
+    name: t('Beard'),
     fields: [
-      { kind: 'parts', path: 'beard.type', label: 'Barba', grid: GRIDS.beard, zoom: true },
-      { kind: 'parts', path: 'beard.mustache.type', label: 'Baffi', grid: GRIDS.beard, zoom: true },
-      color('beard.color', 'Colore'),
+      { kind: 'parts', path: 'beard.type', label: t('Beard'), grid: GRIDS.beard, zoom: true },
+      { kind: 'parts', path: 'beard.mustache.type', label: t('Mustache'), grid: GRIDS.beard, zoom: true },
+      color('beard.color', t('Color')),
       size('beard.mustache.size', 8),
       yPos('beard.mustache.yPosition', 0, 16),
     ],
   },
   {
     key: 'glasses',
-    name: 'Occhiali',
+    name: t('Glasses'),
     fields: [
-      { kind: 'parts', path: 'glasses.type', label: 'Montatura', grid: GRIDS.glasses, zoom: true },
-      color('glasses.color', 'Colore'),
+      { kind: 'parts', path: 'glasses.type', label: t('Frames'), grid: GRIDS.glasses, zoom: true },
+      color('glasses.color', t('Color')),
       size('glasses.size', 7),
       yPos('glasses.yPosition', 0, 20),
     ],
   },
   {
     key: 'mole',
-    name: 'Neo',
+    name: t('Mole'),
     fields: [
-      { kind: 'toggle', path: 'mole.on', label: 'Neo', options: ['No', 'Sì'], values: [false, true] },
+      { kind: 'toggle', path: 'mole.on', label: t('Mole'), options: ['No', t('Yes')], values: [false, true] },
       size('mole.size', 8),
-      { kind: 'slider', path: 'mole.xPosition', label: 'Orizzontale', min: 0, max: 16, low: 'Sinistra', high: 'Destra' },
-      { kind: 'slider', path: 'mole.yPosition', label: 'Verticale', min: 0, max: 30, low: 'Su', high: 'Giù' },
+      { kind: 'slider', path: 'mole.xPosition', label: t('Horizontal'), min: 0, max: 16, low: t('Left'), high: t('Right') },
+      { kind: 'slider', path: 'mole.yPosition', label: t('Vertical'), min: 0, max: 30, low: t('Up'), high: t('Down') },
     ],
   },
 ];

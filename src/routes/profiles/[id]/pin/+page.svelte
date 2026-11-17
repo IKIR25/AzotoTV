@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -25,7 +26,7 @@
         if (!(await enterProfile(p, true))) busy = false;
         return;
       }
-      error = 'PIN sbagliato';
+      error = t('Wrong PIN');
     } catch (e) {
       error = String(e);
     }
@@ -40,11 +41,11 @@
     <section class="glass">
       <span class="pic">{#if src}<img {src} alt="" />{:else}<em>{p.name[0]?.toUpperCase()}</em>{/if}</span>
       <h1>{p.name}</h1>
-      <p class:err={!!error}>{error || 'Inserisci il PIN'}</p>
+      <p class:err={!!error}>{error || t('Enter the PIN')}</p>
       {#key p.id}<PinPad bind:value={pin} onfull={full} />{/key}
       {#if p.has_password}
         <button class="link" data-focusable onclick={() => goto(`/profiles/${p!.id}`, { replaceState: true })}>
-          PIN dimenticato? Usa la password
+          {t('Forgot the PIN? Use the password')}
         </button>
       {/if}
     </section>

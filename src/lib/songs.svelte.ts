@@ -8,6 +8,7 @@ import { api, img, type Item } from './jf';
 import { playTracks } from './music.svelte';
 import { showToast } from './stage.svelte';
 import { ytImage } from './youtube.svelte';
+import { t } from '$lib/i18n';
 
 export interface Song {
   id: string;
@@ -44,11 +45,11 @@ export function songState(id: string): 'library' | 'queued' | 'downloading' | 'a
 }
 
 export const STATE_LABEL: Record<string, string> = {
-  library: '✓ Nella libreria',
-  queued: 'In coda',
-  downloading: 'Scarico…',
-  adding: 'Quasi pronto…',
-  error: 'Non riuscito',
+  library: t('✓ In the library'),
+  queued: t('Queued'),
+  downloading: t('Downloading…'),
+  adding: t('Almost ready…'),
+  error: t('Didn\'t work'),
 };
 
 export const search = (query: string) => invoke<Song[]>('ytm_search', { query });
@@ -64,8 +65,8 @@ export function initSongs() {
   const un = listen<Status>('songs-changed', ({ payload: s }) => {
     for (const j of s.jobs) {
       const was = songs.jobs.find((x) => x.song.id === j.song.id)?.state;
-      if (was && was !== j.state && j.state === 'done') showToast(`Scaricato: ${j.song.title}`);
-      if (was && was !== j.state && j.state === 'error') showToast(`Non sono riuscito a scaricare ${j.song.title}`, 4000);
+      if (was && was !== j.state && j.state === 'done') showToast(t('Downloaded: {title}', { title: j.song.title }));
+      if (was && was !== j.state && j.state === 'error') showToast(t('Couldn\'t download {title}', { title: j.song.title }), 4000);
     }
     Object.assign(songs, s);
   });
@@ -104,8 +105,8 @@ export async function playSong(s: Song) {
 export async function download(s: Song, playlists: string[] = []) {
   try {
     await invoke('songs_download', { song: s, playlists });
-    if (songs.library[s.id]) showToast(playlists.length ? 'Aggiunto alla playlist' : 'È già nella libreria');
-    else showToast(playlists.length ? `${s.title}: lo scarico e lo aggiungo alla playlist` : `${s.title}: lo scarico`);
+    if (songs.library[s.id]) showToast(playlists.length ? t('Added to the playlist') : t('Already in the library'));
+    else showToast(playlists.length ? t('{title}: downloading it and adding it to the playlist', { title: s.title }) : t('{title}: downloading it', { title: s.title }));
   } catch (e) {
     showToast(String(e), 4000);
   }
@@ -117,7 +118,7 @@ export async function addToPlaylist(playlist: string, what: Item | Song) {
     // a YouTube song: in the library first (downloaded if needed), then in the playlist
     const lib = songs.library[what.id];
     if (lib) return addToPlaylist(playlist, { Id: lib } as Item);
-    if (!songs.enabled) return showToast('Scaricare è possibile solo sul server', 4000);
+    if (!songs.enabled) return showToast(t('Downloading only works on the server'), 4000);
     return download(what, [playlist]);
   }
   if (what.Id.startsWith('yt:')) {
@@ -126,8 +127,8 @@ export async function addToPlaylist(playlist: string, what: Item | Song) {
   }
   try {
     await api.addToPlaylist(playlist, [what.Id]);
-    showToast('Aggiunto alla playlist');
+    showToast(t('Added to the playlist'));
   } catch (e) {
-    showToast(`Non riuscito: ${e}`, 4000);
+    showToast(t('Didn\'t work: {e}', { e }), 4000);
   }
 }

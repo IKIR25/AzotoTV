@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { locale } from '$lib/i18n';
   import { onMount } from 'svelte';
   import { api, backdropUrl, logoUrl } from './jf';
   import { longDate, pic, saverPhotos } from './gallery.svelte';
@@ -94,8 +95,8 @@
   onMount(() => {
     const tick = () => {
       const d = new Date();
-      clock = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-      date = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+      clock = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+      date = d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
     };
     tick();
     const clockTimer = setInterval(tick, 5000);

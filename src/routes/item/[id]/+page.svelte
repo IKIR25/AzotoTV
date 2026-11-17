@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { api, backdropUrl, cardImage, episodeLabel, img, logoUrl, progress, runtime, type Item } from '$lib/jf';
@@ -117,21 +118,21 @@
       <div class="actions">
         {#if playable}
           <button class="btn primary" data-focusable data-key="play" data-scroll-top onclick={() => play(item!, { tracks: choice ?? undefined })}>
-            ▶ {pct > 0 ? 'Riprendi' : 'Riproduci'}
+            ▶ {pct > 0 ? t('Resume') : t('Play')}
           </button>
         {/if}
         {#if pct > 0 && playable}
           <button class="btn icon" data-focusable data-key="restart" data-scroll-top onclick={() => play(item!, { fromStart: true, tracks: choice ?? undefined })}>
-            ↺ Dall'inizio
+            {t('↺ From the start')}
           </button>
         {/if}
         {#if item.Type !== 'BoxSet'}
           <button class="btn icon" data-focusable data-key="watched" data-scroll-top onclick={toggleWatched}>
-            {item.UserData?.Played ? '✓ Visto' : '○ Da vedere'}
+            {item.UserData?.Played ? t('✓ Watched') : t('○ Not watched')}
           </button>
         {/if}
         <button class="btn icon" data-focusable data-key="fav" data-scroll-top onclick={toggleFav}>
-          {item.UserData?.IsFavorite ? '♥ Preferito' : '♡ Preferiti'}
+          {item.UserData?.IsFavorite ? t('♥ Favorite') : t('♡ Favorites')}
         </button>
         {#if pin}<PinButton {pin} />{/if}
       </div>
@@ -139,18 +140,18 @@
         <div class="tracks">
           <button class="btn chip" data-focusable data-key="audio" data-scroll-top onclick={() => (sheet = 'audio')}>
             <span class="k">Audio</span>
-            {curAudio ? `${audioLabel(curAudio).main} · ${audioLabel(curAudio).sub}` : 'Predefinito'}
+            {curAudio ? `${audioLabel(curAudio).main} · ${audioLabel(curAudio).sub}` : t('Default')}
           </button>
           <button class="btn chip" data-focusable data-key="sub" data-scroll-top onclick={() => (sheet = 'sub')}>
-            <span class="k">Sottotitoli</span>
-            {curSub ? subLabel(curSub).main : 'Nessuno'}
+            <span class="k">{t('Subtitles')}</span>
+            {curSub ? subLabel(curSub).main : t('None')}
           </button>
         </div>
       {/if}
     </section>
 
     {#if seasons.length}
-      <Row title="Stagioni">
+      <Row title={t('Seasons')}>
         {#each seasons as s (s.Id)}<Card item={s} />{/each}
       </Row>
     {/if}
@@ -165,7 +166,7 @@
             </span>
             <span class="txt">
               <strong>{e.IndexNumber ?? ''}. {e.Name}</strong>
-              <small>{runtime(e)}{e.UserData?.Played ? ' · ✓ visto' : ''}</small>
+              <small>{runtime(e)}{e.UserData?.Played ? t(' · ✓ watched') : ''}</small>
               <span class="ov">{e.Overview ?? ''}</span>
             </span>
           </button>
@@ -174,7 +175,7 @@
     {/if}
 
     {#if children.length}
-      <Row title="Contenuto">
+      <Row title={t('Contents')}>
         {#each children as c (c.Id)}<Card item={c} />{/each}
       </Row>
     {/if}
@@ -194,7 +195,7 @@
     {/if}
 
     {#if similar.length}
-      <Row title="Simili">
+      <Row title={t('More like this')}>
         {#each similar as s (s.Id)}<Card item={s} />{/each}
       </Row>
     {/if}
@@ -213,8 +214,8 @@
   />
 {:else if sheet === 'sub'}
   <Picker
-    title="Sottotitoli"
-    options={[{ key: -1, main: 'Nessuno' }, ...subs.map((s) => ({ key: s.Index, ...subLabel(s) }))]}
+    title={t('Subtitles')}
+    options={[{ key: -1, main: t('None') }, ...subs.map((s) => ({ key: s.Index, ...subLabel(s) }))]}
     value={choice?.sub ?? -1}
     onpick={pickTrack}
     onclose={closeSheet}

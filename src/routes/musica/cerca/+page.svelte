@@ -7,6 +7,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { page } from '$app/state';
   import { api } from '$lib/jf';
@@ -107,15 +108,15 @@
       data-focusable
       data-key="search-input"
       data-osk="side"
-      placeholder={target ? `Cerca brani da aggiungere a «${targetName}»` : 'Cerca una canzone o un artista'}
-      aria-label="Cerca"
+      placeholder={target ? t('Search songs to add to “{targetName}”', { targetName }) : t('Search for a song or an artist')}
+      aria-label={t('Search')}
       autocomplete="off"
     />
   </div>
 
   <div class="results scroller" data-remember data-nav-peer={docked || undefined}>
     {#if lib.length}
-      <h2>Nella libreria</h2>
+      <h2>{t('In the library')}</h2>
       <div class="list">
         {#each lib as it, i (it.Id)}
           <div class="row">
@@ -126,10 +127,10 @@
             </button>
             {#if target}
               <button class="btn act" data-focusable data-key="la:{it.Id}" onclick={() => addHere(`l:${it.Id}`, it)}>
-                {added[`l:${it.Id}`] ? (docked ? '✓' : '✓ Aggiunto') : docked ? '＋' : '＋ Aggiungi'}
+                {added[`l:${it.Id}`] ? (docked ? '✓' : t('✓ Added')) : docked ? '＋' : t('＋ Add')}
               </button>
             {:else}
-              <button class="btn act" data-focusable data-key="lp:{it.Id}" onclick={() => (picking = { what: it, back: `lp:${it.Id}` })}>{docked ? '≡+' : '＋ Playlist'}</button>
+              <button class="btn act" data-focusable data-key="lp:{it.Id}" onclick={() => (picking = { what: it, back: `lp:${it.Id}` })}>{docked ? '≡+' : t('＋ Playlist')}</button>
             {/if}
           </div>
         {/each}
@@ -137,7 +138,7 @@
     {/if}
 
     {#if yt.length}
-      <h2>Da YouTube Music</h2>
+      <h2>{t('From YouTube Music')}</h2>
       <div class="list">
         {#each yt as s (s.id)}
           {@const st = songState(s.id)}
@@ -150,13 +151,13 @@
             </button>
             {#if target}
               <button class="btn act" data-focusable data-key="ya:{s.id}" onclick={() => addHere(`y:${s.id}`, s)}>
-                {added[`y:${s.id}`] ? (docked ? '✓' : '✓ Aggiunto') : docked ? '＋' : '＋ Aggiungi'}
+                {added[`y:${s.id}`] ? (docked ? '✓' : t('✓ Added')) : docked ? '＋' : t('＋ Add')}
               </button>
             {:else}
               {#if songs.enabled && (!st || st === 'error')}
-                <button class="btn act" data-focusable data-key="yd:{s.id}" onclick={() => download(s)}>{docked ? '↓' : '↓ Scarica'}</button>
+                <button class="btn act" data-focusable data-key="yd:{s.id}" onclick={() => download(s)}>{docked ? '↓' : t('↓ Download')}</button>
               {/if}
-              <button class="btn act" data-focusable data-key="yp:{s.id}" onclick={() => (picking = { what: s, back: `yp:${s.id}` })}>{docked ? '≡+' : '＋ Playlist'}</button>
+              <button class="btn act" data-focusable data-key="yp:{s.id}" onclick={() => (picking = { what: s, back: `yp:${s.id}` })}>{docked ? '≡+' : t('＋ Playlist')}</button>
             {/if}
           </div>
         {/each}
@@ -165,16 +166,16 @@
 
     <p class="note">
       {#if q.trim().length < MIN}
-        Scrivi almeno {MIN} lettere.
+        {t('Type at least {MIN} letters.', { MIN })}
       {:else if busy}
-        Cerco…
+        {t('Searching…')}
       {:else if failed && !lib.length}
-        YouTube Music non risponde. Riprova tra poco.
+        {t('YouTube Music isn\'t answering. Try again in a moment.')}
       {:else if !lib.length && !yt.length}
-        Nessun brano per “{q.trim()}”.
+        {t('No songs for “{a}”.', { a: q.trim() })}
       {:else if yt.length}
-        I brani di YouTube si ascoltano subito; scaricati restano nella libreria per tutti.
-        {#if docked}<br />↓ scarica · ≡+ in una playlist{/if}
+        {t('YouTube songs play right away; downloaded, they stay in the library for everyone.')}
+        {#if docked}<br />{t('↓ download · ≡+ to a playlist')}{/if}
       {/if}
     </p>
   </div>

@@ -14,8 +14,8 @@ cd "$(dirname "$0")"
 BT=${BUILD_TOOLS:-/opt/android-sdk/build-tools/37.0.0}
 JAR=${ANDROID_JAR:-$HOME/.local/share/android-sdk/platforms/android-36/android.jar}
 KS=${KEYSTORE:-$HOME/.android/debug.keystore}
-VERSION_CODE=4
-VERSION_NAME=1.3
+VERSION_CODE=5
+VERSION_NAME=1.4
 
 rm -rf build
 mkdir -p build/gen build/classes build/dex

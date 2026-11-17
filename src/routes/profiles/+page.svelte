@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { auth, enterProfile, profiles, signOut, userImage, type Profile } from '$lib/session.svelte';
@@ -67,16 +68,16 @@
 </script>
 
 {#if booting}
-  <Splash note={slow ? 'In attesa del server…' : ''} />
+  <Splash note={slow ? t('Waiting for the server…') : ''} />
 {:else}
 <div class="wrap">
   <Logo size={2} />
-  <h1>{manage ? 'Gestisci profili' : 'Chi sta guardando?'}</h1>
+  <h1>{manage ? t('Manage profiles') : t('Who is watching?')}</h1>
 
   {#if failed}
-    <p class="note">Impossibile contattare il server: {failed}</p>
+    <p class="note">{t('Couldn\'t reach the server: {failed}', { failed })}</p>
   {:else if offline}
-    <p class="note">Jellyfin non risponde: profili salvati su questo dispositivo</p>
+    <p class="note">{t('Jellyfin isn\'t answering: profiles saved on this device')}</p>
   {/if}
 
   <div class="row" style="--pic: {pic}rem">
@@ -91,26 +92,26 @@
         </span>
         <span class="name">{p.name}</span>
         <small>
-          {#if busy === p.id}Accesso…
-          {:else if manage}{p.signed_in ? 'Esci da questo dispositivo' : 'Non connesso'}
-          {:else if !p.signed_in && p.has_password}Password richiesta
-          {:else if p.pin}PIN richiesto{/if}
+          {#if busy === p.id}{t('Signing in…')}
+          {:else if manage}{p.signed_in ? t('Sign out of this device') : t('Not signed in')}
+          {:else if !p.signed_in && p.has_password}{t('Password needed')}
+          {:else if p.pin}{t('PIN needed')}{/if}
         </small>
       </button>
     {/each}
     {#if !manage}
       <button class="prof add" data-focusable data-key="other" use:liftOnFocus={1.1} onclick={() => goto('/login')}>
         <span class="pic"><em>＋</em></span>
-        <span class="name">Altro utente</span>
+        <span class="name">{t('Another user')}</span>
         <small></small>
       </button>
     {/if}
   </div>
 
   <div class="tools">
-    {#if failed || offline}<button class="btn" data-focusable onclick={load}>Riprova</button>{/if}
+    {#if failed || offline}<button class="btn" data-focusable onclick={load}>{t('Try again')}</button>{/if}
     <button class="btn" data-focusable data-key="manage" onclick={() => (manage = !manage)}>
-      {manage ? 'Fatto' : 'Gestisci profili'}
+      {manage ? t('Done') : t('Manage profiles')}
     </button>
   </div>
 </div>

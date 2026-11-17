@@ -224,7 +224,7 @@ impl Downloads {
             }
             *self.cookie.lock().unwrap() = None;
         }
-        Err("RDT-Client: accesso non riuscito".into())
+        Err(t!("RDT-Client: sign-in failed"))
     }
 
     /// RDT-Client's torrents, at most 2 s old.
@@ -263,9 +263,9 @@ impl Downloads {
                 p.eta = speed.filter(|_| size > 0).map(|s| ((1.0 - rd) * size as f64 / s as f64) as u64);
                 if status_is(&t["rdStatus"], 0, "Queued") {
                     p.stage = "wait";
-                    p.note = Some("In coda su RDT-Client".into());
+                    p.note = Some(t!("Queued in RDT-Client"));
                 } else if t["rdSeeders"].as_i64() == Some(0) && status_is(&t["rdStatus"], 3, "Downloading") {
-                    p.note = Some("TorBox aspetta qualcuno che condivida il file".into());
+                    p.note = Some(t!("TorBox is waiting for someone to share the file"));
                 }
                 return Some(p);
             }
@@ -327,20 +327,20 @@ impl Downloads {
         match state {
             "importPending" | "importBlocked" if warn => {
                 let mut p = Progress::new("error", IMPORT);
-                p.note = Some(format!("Scaricato, ma non riesco a metterlo in libreria: {}", messages().unwrap_or_default()));
+                p.note = Some(t!("Downloaded, but I can't put it in the library: {a}", a = messages().unwrap_or_default()));
                 return p;
             }
             "importPending" | "importing" | "imported" => return Progress::new("import", IMPORT),
             "failedPending" | "failed" => {
                 let mut p = Progress::new("error", SEARCH);
-                p.note = Some(format!("Download non riuscito, ne cerco un altro. {}", messages().unwrap_or_default()));
+                p.note = Some(t!("Download failed, looking for another one. {a}", a = messages().unwrap_or_default()));
                 return p;
             }
             _ => {}
         }
         if status == "delay" {
             let mut p = Progress::new("wait", SEARCH);
-            p.note = Some("Trovato, aspetto qualche minuto una versione migliore".into());
+            p.note = Some(t!("Found, waiting a few minutes for a better version"));
             return p;
         }
         let hash = r["downloadId"].as_str().unwrap_or("");
@@ -395,8 +395,8 @@ impl Downloads {
                 .filter(|d| unix(d).is_some_and(|t| t > now()))
                 .min_by_key(|d| unix(d));
             p.note = Some(match date {
-                Some(d) => format!("Non è ancora uscito in digitale: arriverà da solo verso il {}", it_date(d)),
-                None => "Non è ancora uscito in digitale: arriverà da solo quando esce".into(),
+                Some(d) => t!("Not out digitally yet: it will arrive by itself around {a}", a = it_date(d)),
+                None => t!("Not out digitally yet: it will arrive by itself when it is"),
             });
             return Ok(Some(p));
         }
@@ -500,7 +500,7 @@ impl Downloads {
 fn searching(added: Option<&str>) -> Progress {
     let mut p = Progress::new("search", SEARCH);
     if added.and_then(unix).is_some_and(|t| now() - t > 3600) {
-        p.note = Some("Non ho ancora trovato una versione da scaricare: riprovo da solo ogni tanto".into());
+        p.note = Some(t!("No version to download found yet: I keep trying now and then"));
     }
     p
 }

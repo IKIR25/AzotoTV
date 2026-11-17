@@ -96,7 +96,7 @@ impl Seerr {
     }
 
     fn cfg(&self) -> Result<&Config, String> {
-        self.config.as_ref().ok_or_else(|| "Seerr non configurato".to_string())
+        self.config.as_ref().ok_or_else(|| t!("Seerr isn't set up"))
     }
 
     /// Look up (and cache) the Seerr user linked to a Jellyfin user id.
@@ -115,7 +115,7 @@ impl Seerr {
             .header("X-Api-Key", &c.api_key)
             .send()
             .await
-            .map_err(|e| format!("Seerr non raggiungibile: {e}"))?
+            .map_err(|e| t!("Can't reach Seerr: {e}", e = e))?
             .error_for_status()
             .map_err(|e| e.to_string())?
             .json()
@@ -159,15 +159,15 @@ impl Seerr {
         body: Option<Value>,
     ) -> Result<Value, String> {
         if path.contains("..") || path.contains('?') || path.contains('#') {
-            return Err("percorso non valido".into());
+            return Err(t!("not a valid path"));
         }
         let rule = ALLOWED
             .iter()
             .find(|(m, p, _)| *m == method && path.starts_with(p))
-            .ok_or_else(|| format!("Seerr: {method} {path} non consentito"))?;
+            .ok_or_else(|| t!("Seerr: {method} {path} isn't allowed", method = method, path = path))?;
         let linked = self.linked(jf_user, false).await?;
         if rule.2 && linked.is_none() {
-            return Err("Il tuo utente non è collegato a Seerr".into());
+            return Err(t!("Your user isn't linked to Seerr"));
         }
         let c = self.cfg()?;
         let m = reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| e.to_string())?;
@@ -182,7 +182,7 @@ impl Seerr {
         if let Some(b) = body {
             rb = rb.json(&b);
         }
-        let resp = rb.send().await.map_err(|e| format!("Seerr non raggiungibile: {e}"))?;
+        let resp = rb.send().await.map_err(|e| t!("Can't reach Seerr: {e}", e = e))?;
         let status = resp.status();
         let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
         if !status.is_success() {
@@ -196,7 +196,7 @@ impl Seerr {
         if bytes.is_empty() {
             return Ok(Value::Null);
         }
-        serde_json::from_slice(&bytes).map_err(|e| format!("risposta Seerr non valida: {e}"))
+        serde_json::from_slice(&bytes).map_err(|e| t!("Seerr's answer makes no sense: {e}", e = e))
     }
 
     /// Who asked for a film (`media` "movie") or a series ("tv", the requests

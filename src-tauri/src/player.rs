@@ -26,6 +26,26 @@ use crate::jellyfin::Jf;
 
 const INPUT_CONF: &str = include_str!("mpv-input.conf");
 const OSD_LUA: &str = include_str!("azoto-osd.lua");
+
+/// The overlay script with the dictionary for its texts (`tr('…')` in the
+/// Lua) in the language in use on top, as the table `AZOTO_T`.
+fn osd_script() -> String {
+    let quote = |s: &str| format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""));
+    let mut table = String::from("AZOTO_T = {\n");
+    let mut seen = std::collections::HashSet::new();
+    for open in ["tr('", "trf('"] {
+        for call in OSD_LUA.split(open).skip(1) {
+            let Some(en) = call.split('\'').next() else { continue };
+            let it = crate::locale::t(en);
+            if it != en && seen.insert(en) {
+                table.push_str(&format!("  [{}] = {},\n", quote(en), quote(&it)));
+            }
+        }
+    }
+    table.push_str("}\n");
+    table + OSD_LUA
+}
+
 const TICKS: f64 = 10_000_000.0;
 /// YouTube: at most 1080p, VP9 (decoded by the GPU; AV1 isn't) or else H.264,
 /// plain HTTPS streams first (their HLS copies keep dropping connections).
@@ -297,14 +317,18 @@ impl Player {
         let conf = conf_dir.join("mpv-input.conf");
         let _ = std::fs::write(&conf, INPUT_CONF);
         let osd = conf_dir.join("azoto-osd.lua");
-        let _ = std::fs::write(&osd, OSD_LUA);
+        let _ = std::fs::write(&osd, osd_script());
 
         let sock = runtime_dir().join("azototv-mpv.sock");
         let _ = std::fs::remove_file(&sock);
 
         let bin = std::env::var("AZOTOTV_MPV").unwrap_or_else(|_| "mpv".into());
         let mut cmd = Command::new(bin);
-        cmd.envs(crate::games::ON_NVIDIA);
+        cmd.envs(crate::games::gpu_env());
+        // the interface's language first, then English; subtitles in it only
+        // when the film isn't spoken in it
+        let own = crate::locale::track_langs();
+        cmd.arg(format!("--alang={own},eng,en")).arg(format!("--slang={own}"));
         cmd.args([
             "--idle=yes",
             "--force-window=immediate",
@@ -312,8 +336,6 @@ impl Player {
             "--no-terminal",
             "--input-gamepad=yes",
             "--hwdec=auto-safe",
-            "--alang=ita,it,eng,en",
-            "--slang=ita,it",
             "--subs-with-matching-audio=no",
             // our own UI (azoto-osd.lua) replaces mpv's OSC/OSD and default keys
             "--osc=no",

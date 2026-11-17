@@ -10,6 +10,9 @@ fn main() {
         unsafe { std::env::set_var("__NV_DISABLE_EXPLICIT_SYNC", "1") };
     }
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("--system") {
+        return azototv_lib::system_check();
+    }
     if args.get(1).map(String::as_str) == Some("--arr-check") {
         return azototv_lib::arr_check(args.get(2).and_then(|n| n.parse().ok()).unwrap_or(3));
     }

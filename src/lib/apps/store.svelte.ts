@@ -6,21 +6,22 @@ import { showToast } from '../stage.svelte';
 import { APPS } from './index';
 import { installed, setInstalled } from './installed.svelte';
 import type { App, Slide } from './types';
+import { t } from '$lib/i18n';
 
 export function install(a: App) {
   setInstalled(auth.id, a.key, true);
-  showToast(`${a.name} aggiunta alla Home`);
+  showToast(t('{name} added to Home', { name: a.name }));
 }
 
 export function uninstall(a: App) {
   setInstalled(auth.id, a.key, false);
-  showToast(`${a.name} tolta dalla Home`);
+  showToast(t('{name} removed from Home', { name: a.name }));
 }
 
 export const storeApp: App = {
   key: 'store',
   name: 'Store',
-  description: 'Aggiungi o togli le app dalla tua Home.',
+  description: t('Add apps to your Home or remove them.'),
   fixed: true,
   route: '/store',
   color: 'linear-gradient(135deg, #5ee7df 0%, #3a8dff 55%, #6a4cff 100%)',
@@ -33,12 +34,12 @@ export const storeApp: App = {
       return [
         {
           key: 'all',
-          title: 'Hai già tutte le app',
+          title: t('You already have every app'),
           kicker: { text: 'Store' },
           meta: [],
-          overview: 'Nello Store puoi anche togliere dalla Home quelle che non usi.',
+          overview: t('In the Store you can also remove from Home the ones you don\'t use.'),
           backdrop: null,
-          action: 'Apri lo Store',
+          action: t('Open the Store'),
           open: () => goto('/store'),
         },
       ];
@@ -47,11 +48,11 @@ export const storeApp: App = {
       (a): Slide => ({
         key: a.key,
         title: a.name,
-        kicker: { text: 'Store · da aggiungere' },
+        kicker: { text: t('Store · to add') },
         meta: [],
         overview: a.description,
         backdrop: null,
-        action: 'Aggiungi alla Home',
+        action: t('Add to Home'),
         open: () => install(a),
       }),
     );

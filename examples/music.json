@@ -1,0 +1,5 @@
+{
+  "dir": "/path/to/your/music/library/AzotoTV",
+  "jellyfinUrl": "http://localhost:8096",
+  "jellyfinKey": "A JELLYFIN API KEY"
+}

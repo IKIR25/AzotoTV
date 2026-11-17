@@ -1,6 +1,12 @@
 //! Game streaming: Sunshine on the server, Moonlight (or a browser) elsewhere,
 //! with the TV left alone.
 //!
+//! This is written around a laptop used as the box under the TV (system.rs
+//! finds its built-in screen, the "panel"): Sunshine streams the panel, so a
+//! PC or a phone can play while the TV shows something else or is off. On a
+//! machine with no panel there is only the TV's screen: Sunshine streams
+//! that one, and "screens off" is plain DPMS.
+//!
 //! Sunshine copies the picture from a screen that is on: with every screen off
 //! it refuses the stream ("Is a display connected and turned on?", checked
 //! before any of its prep commands run). So the laptop panel never switches
@@ -21,9 +27,10 @@
 //! laptop's muted speakers, so the TV's HDMI is made the default again whenever
 //! the TV comes back ([`tv_audio`]).
 //!
-//! Sunshine runs in the session (kiosk.sh) with KMS capture of the panel and
-//! the Intel iGPU's VAAPI encoder: the panel is scanned out by the Intel, and
-//! the NVIDIA can't import its tiled frames (~9 ms host latency measured).
+//! Sunshine runs in the session (kiosk.sh). On the laptop this was made on it
+//! captures the panel with KMS and encodes on the GPU that scans it out (the
+//! Intel's VAAPI: the NVIDIA can't import its tiled frames; ~9 ms host
+//! latency measured): see examples/sunshine.conf.
 
 use std::{
     fs,
@@ -38,8 +45,10 @@ use std::{
 use serde_json::{Value, json};
 use tauri::{AppHandle, Emitter};
 
-/// The laptop panel: the screen Sunshine streams.
-pub(crate) const PANEL: &str = "eDP-1";
+/// The laptop panel, when there is one: the screen Sunshine streams.
+pub(crate) fn panel() -> Option<&'static str> {
+    crate::system::system().panel.as_deref()
+}
 
 static STREAMING: AtomicBool = AtomicBool::new(false);
 
@@ -64,7 +73,8 @@ fn kscreen(args: &[String]) {
 fn others() -> Vec<Value> {
     let Ok(o) = Command::new("kscreen-doctor").arg("-j").stdin(Stdio::null()).output() else { return Vec::new() };
     let Ok(j) = serde_json::from_slice::<Value>(&o.stdout) else { return Vec::new() };
-    j["outputs"].as_array().into_iter().flatten().filter(|o| o["name"] != PANEL).cloned().collect()
+    let panel = panel();
+    j["outputs"].as_array().into_iter().flatten().filter(|o| o["name"].as_str() != panel).cloned().collect()
 }
 
 /// The TV's output (KWin's name), when it is on.
@@ -104,8 +114,17 @@ fn saved_path() -> PathBuf {
     run.join("azototv-backlight")
 }
 
-/// The TV's sound: the NVIDIA's HDMI audio (as in wireplumber-hdmi-suspend.conf).
-const TV_SINK: &str = "alsa_output.pci-0000_01_00.1.";
+/// The TV's sound output among `sinks` (`pactl list short sinks`): the one
+/// set in system.json, else the HDMI sound of the GPU the TV hangs on, else
+/// any HDMI output.
+fn tv_sink(sinks: &str, wanted: Option<&str>, gpu: Option<&str>) -> Option<String> {
+    let names: Vec<&str> = sinks.lines().filter_map(|l| l.split('\t').nth(1)).collect();
+    let starts = |p: &str| names.iter().find(|n| n.starts_with(p)).map(|n| n.to_string());
+    if let Some(p) = wanted {
+        return starts(p);
+    }
+    gpu.and_then(starts).or_else(|| names.iter().find(|n| n.starts_with("alsa_output.") && n.contains("hdmi")).map(|n| n.to_string()))
+}
 /// Sunshine's own outputs, which it makes the default while a client is in.
 const SUNSHINE_SINKS: [&str; 3] = ["sink-sunshine-stereo", "sink-sunshine-surround51", "sink-sunshine-surround71"];
 
@@ -119,13 +138,24 @@ fn pactl(args: &[&str]) -> Option<String> {
 /// speakers, and Sunshine "restores" that one when a client leaves; WirePlumber
 /// then keeps preferring it. The sink comes back a moment after the output.
 fn tv_audio() {
-    std::thread::spawn(|| {
+    let sys = crate::system::system();
+    // only a machine with speakers of its own has a wrong output to fall to
+    if sys.panel.is_none() && sys.tv_sink.is_none() {
+        return;
+    }
+    std::thread::spawn(move || {
+        let gpu = others()
+            .iter()
+            .find(|o| o["connected"] == true)
+            .and_then(|o| o["name"].as_str())
+            .and_then(crate::system::gpu_of)
+            .and_then(|g| g.sink_prefix());
         for _ in 0..20 {
             let sinks = pactl(&["list", "short", "sinks"]).unwrap_or_default();
-            if let Some(tv) = sinks.lines().filter_map(|l| l.split('\t').nth(1)).find(|n| n.starts_with(TV_SINK)) {
+            if let Some(tv) = tv_sink(&sinks, sys.tv_sink.as_deref(), gpu.as_deref()) {
                 if pactl(&["get-default-sink"]).is_none_or(|d| d.trim() != tv) {
                     eprintln!("[stream] default sound output -> {tv}");
-                    let _ = pactl(&["set-default-sink", tv]);
+                    let _ = pactl(&["set-default-sink", &tv]);
                 }
                 return;
             }
@@ -174,6 +204,9 @@ pub fn screens(on: bool) {
             }
             let _ = fs::remove_file(saved_path());
         }
+    } else if panel().is_none() {
+        // the TV is the only screen: it can't be taken away, only put to sleep
+        kscreen(&["--dpms".into(), "off".into()]);
     } else {
         let args: Vec<String> = others()
             .iter()
@@ -288,6 +321,19 @@ pub fn spawn(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_tvs_sound_output() {
+        let sinks = "55\talsa_output.pci-0000_00_1f.3.analog-stereo\tPipeWire\ts32le 2ch 48000Hz\tSUSPENDED\n\
+                     61\talsa_output.pci-0000_01_00.1.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n\
+                     70\tsink-sunshine-stereo\tPipeWire\tfloat32le 2ch 48000Hz\tSUSPENDED\n";
+        // the TV's GPU, then any HDMI output, then what system.json says
+        assert_eq!(tv_sink(sinks, None, Some("alsa_output.pci-0000_01_00.1.")).as_deref(), Some("alsa_output.pci-0000_01_00.1.hdmi-stereo"));
+        assert_eq!(tv_sink(sinks, None, Some("alsa_output.pci-0000_05_00.1.")).as_deref(), Some("alsa_output.pci-0000_01_00.1.hdmi-stereo"));
+        assert_eq!(tv_sink(sinks, None, None).as_deref(), Some("alsa_output.pci-0000_01_00.1.hdmi-stereo"));
+        assert_eq!(tv_sink(sinks, Some("alsa_output.pci-0000_00_1f.3."), None).as_deref(), Some("alsa_output.pci-0000_00_1f.3.analog-stereo"));
+        assert_eq!(tv_sink(sinks, Some("alsa_output.usb"), Some("alsa_output.pci-0000_01_00.1.")), None);
+    }
 
     #[test]
     fn last_client_event_wins() {

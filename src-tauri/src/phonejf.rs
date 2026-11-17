@@ -94,7 +94,7 @@ async fn token(jf: &Jf, phone: &str, label: &str, user: &str) -> Result<String, 
     if let Some(t) = TOKENS.lock().unwrap().get(&key(phone, user)) {
         return Ok(t.clone());
     }
-    let tv = jf.session_of(user).ok_or("Questo profilo non è più aperto sulla TV")?;
+    let tv = jf.session_of(user).ok_or_else(|| t!("This profile is no longer open on the TV"))?;
     let base = tv.base.trim_end_matches('/').to_string();
     let dev = device_id(phone, user);
     let call = |method: Method, path: &str, auth: String, body: Option<Value>| {
@@ -114,7 +114,7 @@ async fn token(jf: &Jf, phone: &str, label: &str, user: &str) -> Result<String, 
     };
     let init = call(Method::POST, "/QuickConnect/Initiate", auth_header(label, &dev, None), None).await?;
     let (Some(code), Some(secret)) = (init["Code"].as_str(), init["Secret"].as_str()) else {
-        return Err("Quick Connect non risponde".into());
+        return Err(t!("Quick Connect isn't answering"));
     };
     // the TV's own login for the profile says yes
     let tv_auth = format!(
@@ -123,7 +123,7 @@ async fn token(jf: &Jf, phone: &str, label: &str, user: &str) -> Result<String, 
     );
     call(Method::POST, &format!("/QuickConnect/Authorize?code={code}&userId={user}"), tv_auth, None).await?;
     let auth = call(Method::POST, "/Users/AuthenticateWithQuickConnect", auth_header(label, &dev, None), Some(json!({ "Secret": secret }))).await?;
-    let t = auth["AccessToken"].as_str().ok_or("Jellyfin non ha dato l'accesso")?.to_string();
+    let t = auth["AccessToken"].as_str().ok_or_else(|| t!("Jellyfin didn't give access"))?.to_string();
     eprintln!("[phonejf] phone {phone} has its own Jellyfin login for {}", auth["User"]["Name"].as_str().unwrap_or(user));
     let mut all = TOKENS.lock().unwrap();
     all.insert(key(phone, user), t.clone());
@@ -203,7 +203,7 @@ pub async fn proxy(
     body: Vec<u8>,
 ) -> Response {
     if !allowed(&method, path) {
-        return (StatusCode::FORBIDDEN, axum::Json(json!({ "error": "Non permesso dal telefono" }))).into_response();
+        return (StatusCode::FORBIDDEN, axum::Json(json!({ "error": &t!("Not allowed from the phone") }))).into_response();
     }
     let Some(base) = jf.server() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();

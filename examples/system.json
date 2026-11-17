@@ -1,0 +1,6 @@
+{
+  "panel": "eDP-1",
+  "gpuEnv": { "DRI_PRIME": "1" },
+  "tvSink": "alsa_output.pci-0000_01_00.1.",
+  "turbo": false
+}

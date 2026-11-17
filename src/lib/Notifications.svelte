@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { locale, t } from '$lib/i18n';
   import { key } from './input.svelte';
   import { onMount } from 'svelte';
   import { control, modal } from './stage.svelte';
@@ -32,11 +33,11 @@
     void clearNotes();
   }
 
-  const at = (t: number) => new Date(t).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-  const day = (t: number) => {
-    const d = new Date(t);
+  const at = (ms: number) => new Date(ms).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  const day = (ms: number) => {
+    const d = new Date(ms);
     const today = new Date();
-    return d.toDateString() === today.toDateString() ? 'Oggi' : d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'short' });
+    return d.toDateString() === today.toDateString() ? t('Today') : d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });
   };
 
   let list: HTMLElement;
@@ -54,24 +55,24 @@
 </script>
 
 <aside class="sheet glass" data-nav-trap>
-  <h2>Notifiche</h2>
+  <h2>{t('Notifications')}</h2>
   <div class="list scroller" bind:this={list}>
     {#if notes.reminders.length}
-      <h3>Promemoria</h3>
+      <h3>{t('Reminders')}</h3>
       {#each notes.reminders as r (r.program_id)}
         <button class="row" data-focusable onclick={() => toggleReminder(r)}>
           <span class="pic logo">{#if r.image}<img src={`jf://localhost${r.image}`} alt="" />{/if}</span>
           <span class="txt">
-            <small class="k">{day(r.start)} alle {at(r.start)} · {r.channel}</small>
+            <small class="k">{t('{day} at {at} · {channel}', { day: day(r.start), at: at(r.start), channel: r.channel })}</small>
             <b>{r.name}</b>
-            <small>{r.episode ?? `${key('A')} togli il promemoria`}</small>
+            <small>{r.episode ?? t('{a} remove the reminder', { a: key('A') })}</small>
           </span>
           <span class="bell" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg>
           </span>
         </button>
       {/each}
-      <h3>Recenti</h3>
+      <h3>{t('Recent')}</h3>
     {/if}
 
     {#each notes.items as n, i (n.id)}
@@ -83,19 +84,19 @@
           {#if n.body}<small>{n.body}</small>{/if}
           <small class="t">{ago(n.time, now)}</small>
         </span>
-        {#if i < unread}<span class="dot" aria-label="nuova"></span>{/if}
+        {#if i < unread}<span class="dot" aria-label={t('new')}></span>{/if}
       </button>
     {:else}
-      <p class="empty">Nessuna notifica. Qui arrivano i film e gli episodi appena aggiunti e i promemoria della Diretta TV.</p>
+      <p class="empty">{t('No notifications. Films and episodes that were just added and Live TV reminders show up here.')}</p>
     {/each}
 
     {#if notes.items.length}
       <button class="row clear" class:armed data-focusable onblur={() => (armed = false)} onclick={clearAll}>
-        <span class="txt"><b>{armed ? 'Premi di nuovo per svuotare' : 'Svuota notifiche'}</b></span>
+        <span class="txt"><b>{armed ? t('Press again to clear') : t('Clear notifications')}</b></span>
       </button>
     {/if}
   </div>
-  <div class="hint"><kbd>{key('A')}</kbd> apri · <kbd>{key('B')}</kbd> chiudi</div>
+  <div class="hint"><kbd>{key('A')}</kbd> {t('open ·')} <kbd>{key('B')}</kbd> {t('close')}</div>
 </aside>
 
 <style>

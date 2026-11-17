@@ -105,7 +105,7 @@ fn profile_index(player: &Path, user_name: &str) -> Result<usize, String> {
     let mut raw = std::fs::read(&path).unwrap_or_default();
     if raw.len() != FILE_LEN {
         if !raw.is_empty() {
-            return Err(format!("{}: formato inatteso", path.display()));
+            return Err(format!("{}: unexpected format", path.display()));
         }
         raw = vec![0; FILE_LEN];
     }
@@ -138,7 +138,7 @@ fn profile_index(player: &Path, user_name: &str) -> Result<usize, String> {
     };
     let link = serde_json::to_string(&Link { uuid: uuid.clone() }).map_err(|e| e.to_string())?;
     std::fs::write(&link_path, link).map_err(|e| e.to_string())?;
-    index_of(&raw, &uuid).ok_or_else(|| "profilo Switch non trovato".into())
+    index_of(&raw, &uuid).ok_or_else(|| t!("Switch profile not found"))
 }
 
 /// Where Eden keeps this player's game saves (`<title id>/` inside), if
@@ -246,7 +246,7 @@ fn prepare_config() -> Result<PathBuf, String> {
             let _ = std::fs::remove_dir_all(dir.join("custom"));
             let st = Command::new("cp").arg("-a").arg(&custom).arg(dir.join("custom")).status();
             if !st.is_ok_and(|s| s.success()) {
-                return Err("copia della configurazione di Eden non riuscita".into());
+                return Err(t!("couldn't copy Eden's configuration"));
             }
         }
     }
@@ -306,7 +306,7 @@ impl Applet {
     pub fn parse(s: &str) -> Result<Applet, String> {
         match s {
             "mii" => Ok(Applet::Mii),
-            _ => Err(format!("applet sconosciuto: {s}")),
+            _ => Err(format!("unknown applet: {s}")),
         }
     }
 
@@ -348,7 +348,7 @@ pub fn emulation_stopped() -> bool {
 pub fn applet_command(player: &Path, user_name: &str) -> Result<Command, String> {
     let eden = appimage();
     if !eden.exists() {
-        return Err(format!("Eden non trovato: {}", eden.display()));
+        return Err(t!("Eden not found: {a}", a = eden.display()));
     }
     let user = profile_index(player, user_name)?;
     let config = prepare_config()?;
@@ -369,7 +369,7 @@ pub fn applet_command(player: &Path, user_name: &str) -> Result<Command, String>
 pub fn command(player: &Path, user_name: &str, game: &Path) -> Result<Command, String> {
     let eden = appimage();
     if !eden.exists() {
-        return Err(format!("Eden non trovato: {}", eden.display()));
+        return Err(t!("Eden not found: {a}", a = eden.display()));
     }
     let user = profile_index(player, user_name)?;
     let config = prepare_config()?;

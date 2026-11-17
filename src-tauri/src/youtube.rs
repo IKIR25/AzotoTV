@@ -191,7 +191,7 @@ impl Yt {
 
     async fn call(&self, endpoint: &str, mut body: Value) -> Result<Value, String> {
         body["context"] = json!({
-            "client": { "clientName": "WEB", "clientVersion": self.version().await, "hl": "it", "gl": "IT" }
+            "client": { "clientName": "WEB", "clientVersion": self.version().await, "hl": crate::locale::lang(), "gl": crate::locale::region() }
         });
         let resp = self
             .client
@@ -200,7 +200,7 @@ impl Yt {
             .json(&body)
             .send()
             .await
-            .map_err(|e| format!("YouTube non raggiungibile: {e}"))?;
+            .map_err(|e| t!("Can't reach YouTube: {e}", e = e))?;
         if !resp.status().is_success() {
             return Err(format!("YouTube HTTP {}", resp.status()));
         }
@@ -210,7 +210,7 @@ impl Yt {
     /// Songs on YouTube Music (official tracks, not videos), best match first.
     pub async fn songs(&self, query: &str) -> Result<Vec<Song>, String> {
         let body = json!({
-            "context": { "client": { "clientName": "WEB_REMIX", "clientVersion": self.music_version().await, "hl": "it", "gl": "IT" } },
+            "context": { "client": { "clientName": "WEB_REMIX", "clientVersion": self.music_version().await, "hl": crate::locale::lang(), "gl": crate::locale::region() } },
             "query": query,
             "params": ONLY_SONGS,
         });
@@ -222,7 +222,7 @@ impl Yt {
             .json(&body)
             .send()
             .await
-            .map_err(|e| format!("YouTube Music non raggiungibile: {e}"))?;
+            .map_err(|e| t!("Can't reach YouTube Music: {e}", e = e))?;
         if !resp.status().is_success() {
             return Err(format!("YouTube Music HTTP {}", resp.status()));
         }
@@ -263,7 +263,7 @@ impl Yt {
         let secondary = find_all(&results["results"], "videoSecondaryInfoRenderer").into_iter().next().cloned();
         let (primary, secondary) = match (primary, secondary) {
             (Some(p), Some(s)) => (p, s),
-            _ => return Err("video non disponibile".into()),
+            _ => return Err(t!("video not available")),
         };
         let o = &secondary["owner"]["videoOwnerRenderer"];
         let owner = match o["navigationEndpoint"]["browseEndpoint"]["browseId"].as_str() {
@@ -282,7 +282,7 @@ impl Yt {
                     avatar: largest_source(&first["leadingAccessory"])
                         .or_else(|| largest_source(&o["avatarStack"]))
                         .map(|u| avatar_url(&u)),
-                    subs: text(&first["subtitle"]).split('•').find(|p| p.contains("iscritt")).unwrap_or_default().trim().into(),
+                    subs: text(&first["subtitle"]).split('•').find(|p| is_subscribers(p)).unwrap_or_default().trim().into(),
                 }
             }
         };
@@ -372,7 +372,7 @@ impl Yt {
             .into_iter()
             .flat_map(|p| p.as_array().cloned().unwrap_or_default())
             .map(|p| text(&p["text"]))
-            .find(|t| t.contains("iscritt"))
+            .find(|t| is_subscribers(t))
             .unwrap_or_default();
         let channel = Channel {
             id: id.into(),
@@ -783,7 +783,7 @@ fn channel_renderer(x: &Value) -> Option<Channel> {
         id: x["channelId"].as_str()?.into(),
         name: text(&x["title"]),
         avatar: last_thumb(&x["thumbnail"]).map(|u| avatar_url(&u)),
-        subs: if b.contains("iscritt") { b } else { a },
+        subs: if is_subscribers(&b) { b } else { a },
     })
 }
 
@@ -811,7 +811,7 @@ fn parse_feed(xml: &str, shorts: bool) -> Vec<Video> {
                 title: unescape(tag(e, "<title>", "</title>").unwrap_or_default()),
                 channel: unescape(tag(e, "<name>", "</name>").unwrap_or_default()),
                 channel_id: channel_id.clone(),
-                views: tag(e, "<media:statistics views=\"", "\"").map(|n| format!("{} visualizzazioni", group(n))).unwrap_or_default(),
+                views: tag(e, "<media:statistics views=\"", "\"").map(|n| t!("{n} views", n = group(n))).unwrap_or_default(),
                 ts: parse_rfc3339(published),
                 short: shorts,
                 ..Default::default()
@@ -821,6 +821,12 @@ fn parse_feed(xml: &str, shorts: bool) -> Vec<Video> {
 }
 
 /// "1234567" → "1.234.567"
+/// "1.2M subscribers", "1,2 Mln di iscritti": YouTube's wording in the
+/// languages it is asked in (locale.rs).
+fn is_subscribers(s: &str) -> bool {
+    s.contains("subscriber") || s.contains("iscritt")
+}
+
 fn group(n: &str) -> String {
     let mut out = String::new();
     for (i, c) in n.chars().enumerate() {

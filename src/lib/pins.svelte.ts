@@ -13,6 +13,7 @@ import { showToast } from './stage.svelte';
 import { progressOf, thumb } from './youtube.svelte';
 import { albumCount, gallery, pic, span } from './gallery.svelte';
 import { key } from './input.svelte';
+import { t } from '$lib/i18n';
 
 export interface Pin {
   kind: 'item' | 'channel' | 'game' | 'world' | 'video' | 'ytchannel' | 'album';
@@ -83,13 +84,13 @@ export function togglePin(p: Pin) {
   const list = pinList();
   if (list.some((x) => pinKey(x) === key)) {
     write(list.filter((x) => pinKey(x) !== key));
-    showToast(`${p.name}: tolto dalla Home`);
+    showToast(t('{name}: removed from Home', { name: p.name }));
   } else if (list.length >= MAX) {
-    showToast(`Nella Home ci sono già ${MAX} elementi: togline uno (tieni premuto ${btnName('A')})`, 4000);
+    showToast(t('Home already has {MAX} items: remove one (hold {b})', { MAX, b: btnName('A') }), 4000);
   } else {
     // (a Minecraft icon is a data: URL: not worth keeping, the library has it)
     write([...list, { ...p, art: p.art?.src.startsWith('data:') ? null : (p.art ?? null) }]);
-    showToast(`${p.name}: aggiunto alla Home`);
+    showToast(t('{name}: added to Home', { name: p.name }));
   }
 }
 
@@ -180,14 +181,14 @@ export interface PinRow {
 }
 
 const ROWS: Omit<PinRow, 'cards'>[] = [
-  { key: 'film', title: 'Film', app: 'tv' },
-  { key: 'serie', title: 'Serie TV', app: 'tv' },
-  { key: 'box', title: 'Collezioni', app: 'tv' },
+  { key: 'film', title: t('Movies'), app: 'tv' },
+  { key: 'serie', title: t('TV series'), app: 'tv' },
+  { key: 'box', title: t('Collections'), app: 'tv' },
   { key: 'playlist', title: 'Playlist', app: 'music' },
-  { key: 'canali', title: 'Canali', app: 'live' },
-  { key: 'giochi', title: 'Giochi', app: 'giochi' },
+  { key: 'canali', title: t('Channels'), app: 'live' },
+  { key: 'giochi', title: t('Games'), app: 'giochi' },
   { key: 'youtube', title: 'YouTube', app: 'youtube' },
-  { key: 'album', title: 'Album di foto', app: 'galleria' },
+  { key: 'album', title: t('Photo albums'), app: 'galleria' },
 ];
 
 function rowOf(p: Pin): string {
@@ -212,7 +213,7 @@ function itemCard(p: Pin, key: string): PinCard {
   const route = p.type === 'Playlist' ? `/tracks/${p.id}` : `/item/${p.id}`;
   const base = { key, pin: p, title: p.name, sub: '', art: p.art ?? null, backdrop: null, open: () => goto(route) };
   const x = items.user === auth.id ? items.byId[p.id] : undefined;
-  if (!x) return { ...base, sub: items.user === auth.id && items.loaded ? 'Non più disponibile' : '' };
+  if (!x) return { ...base, sub: items.user === auth.id && items.loaded ? t('No longer available') : '' };
   const card: PinCard = { ...base, title: x.Name, art: itemArt(x) ?? base.art, backdrop: backdropUrl(x) };
   if (x.Type === 'Movie') {
     const pct = progress(x) / 100;
@@ -220,12 +221,12 @@ function itemCard(p: Pin, key: string): PinCard {
     card.sub = pct && x.RunTimeTicks ? minsLeft(pct, x.RunTimeTicks) : [x.ProductionYear, runtime(x)].filter(Boolean).join(' · ');
   } else if (x.Type === 'Series') {
     const ep = items.next[x.Id];
-    card.sub = ep ? `${episodeLabel(ep)} · ${ep.Name}` : 'Serie TV';
+    card.sub = ep ? `${episodeLabel(ep)} · ${ep.Name}` : t('TV series');
     card.progress = ep ? progress(ep) / 100 || undefined : undefined;
   } else if (x.Type === 'BoxSet') {
-    card.sub = x.ChildCount ? `${x.ChildCount} titoli` : 'Collezione';
+    card.sub = x.ChildCount ? `${x.ChildCount} titoli` : t('Collection');
   } else {
-    card.sub = x.ChildCount ? `${x.ChildCount} brani` : 'Playlist';
+    card.sub = x.ChildCount ? t('{ChildCount} songs', { ChildCount: x.ChildCount }) : 'Playlist';
     card.backdrop = x.ImageTags?.Primary ? img(x.Id, 'Primary', 40, x.ImageTags.Primary) : null;
     card.ambient = true;
   }
@@ -242,7 +243,7 @@ function channelCard(p: Pin, key: string): PinCard {
     key,
     pin: p,
     title: ch.Name,
-    sub: now ? `${now.Name} · fino alle ${hhmm(now.EndDate)}` : 'In diretta',
+    sub: now ? now.Name + t(' · until {time}', { time: hhmm(now.EndDate) }) : t('Live'),
     art: channelArt(ch) ?? p.art ?? null,
     progress: now ? onAir(now, live.clock) : undefined,
     backdrop: pic ?? logo,
@@ -259,7 +260,7 @@ function gameCard(p: Pin, key: string): PinCard {
     key,
     pin: p,
     title: g.name,
-    sub: g.played ? `Giocato ${lastPlayed(g.played.last)}` : (g.genres[0] ?? g.year ?? ''),
+    sub: g.played ? t('Played {lastPlayed}', { lastPlayed: lastPlayed(g.played.last) }) : (g.genres[0] ?? g.year ?? ''),
     art: gameArt(g),
     backdrop: heroUrl(g),
     open: () => goto(route),
@@ -286,7 +287,7 @@ function worldCard(p: Pin, key: string): PinCard {
 /** YouTube: what was saved with the pin is all there is (no server to ask). */
 function youtubeCard(p: Pin, key: string): PinCard {
   if (p.kind === 'ytchannel') {
-    return { key, pin: p, title: p.name, sub: p.sub ?? 'Canale', art: p.art ?? null, backdrop: p.art?.src ?? null, ambient: true, open: () => goto(`/youtube/channel/${p.id}`) };
+    return { key, pin: p, title: p.name, sub: p.sub ?? t('Channel'), art: p.art ?? null, backdrop: p.art?.src ?? null, ambient: true, open: () => goto(`/youtube/channel/${p.id}`) };
   }
   const pct = progressOf(p.id);
   return {
@@ -309,7 +310,7 @@ function albumCard(p: Pin, key: string): PinCard {
     key,
     pin: p,
     title: a?.name ?? p.name,
-    sub: a ? [albumCount(a), span(a)].filter(Boolean).join(' · ') : gallery.loaded ? 'Non più condiviso' : (p.sub ?? ''),
+    sub: a ? [albumCount(a), span(a)].filter(Boolean).join(' · ') : gallery.loaded ? t('No longer shared') : (p.sub ?? ''),
     art: src ? { src, fit: 'cover' } : null,
     backdrop: src,
     open: () => goto(`/galleria/album/${p.id}`),

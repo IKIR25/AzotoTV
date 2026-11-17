@@ -5,6 +5,18 @@
 // `window.AzotoApp`: vibration, shared links and photos, volume keys).
 'use strict';
 
+// The page's language: /i18n.js (written by AzotoTV for the language it is in)
+// sets window.I18N = { lang, dict }, the dictionary from the English text used
+// here to that language. A note after a bar ("Play|game") only tells two
+// translations apart.
+const I18N = window.I18N || { lang: 'en', dict: {} };
+document.documentElement.lang = I18N.lang;
+function tr(en, values) {
+  let text = I18N.dict[en] || en.split('|')[0];
+  if (values) for (const name in values) text = text.split(`{${name}}`).join(String(values[name]));
+  return text;
+}
+
 const app = document.getElementById('app');
 const native = window.AzotoApp || null;
 
@@ -127,14 +139,14 @@ async function api(path, { method = 'GET', body } = {}) {
     headers: { 'x-azoto-key': token, ...(body ? { 'content-type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   }).catch(() => {
-    throw new Error('La TV non risponde: sei sulla Wi-Fi di casa?');
+    throw new Error(tr('The TV isn\'t answering: are you on the home Wi-Fi?'));
   });
   const data = await r.json().catch(() => ({}));
   if (r.status === 401) {
     keep('');
-    throw new Unpaired(data.error || 'Telefono non collegato');
+    throw new Unpaired(data.error || tr('Phone not connected'));
   }
-  if (!r.ok) throw new Error(data.error || `Errore ${r.status}`);
+  if (!r.ok) throw new Error(data.error || tr('Error {status}', { status: r.status }));
   return data;
 }
 
@@ -158,7 +170,7 @@ function show(...nodes) {
 const androidBrowser = !native && /Android/i.test(navigator.userAgent);
 const getApp = () =>
   androidBrowser
-    ? h('a', { class: 'btn wide', href: '/AzotoTV.apk', download: 'AzotoTV.apk' }, 'Scarica l’app Android')
+    ? h('a', { class: 'btn wide', href: '/AzotoTV.apk', download: 'AzotoTV.apk' }, tr('Download the Android app'))
     : null;
 
 function logo() {
@@ -179,7 +191,7 @@ function deviceLabel() {
   if (/iPad/.test(ua)) return 'iPad';
   const m = ua.match(/Android [\d.]+; ([^;)]+)/);
   if (m && m[1].trim() !== 'K') return m[1].trim();
-  return /Android/.test(ua) ? 'Telefono Android' : 'Telefono';
+  return /Android/.test(ua) ? tr('Android phone') : tr('Phone');
 }
 
 /**
@@ -197,7 +209,7 @@ function pairScreen(prefill, error, adding = false) {
     placeholder: '••••',
     value: prefill || '',
   });
-  const go = h('button', { class: 'btn primary wide', type: 'submit' }, adding ? 'Aggiungi' : 'Collega');
+  const go = h('button', { class: 'btn primary wide', type: 'submit' }, adding ? tr('Add') : tr('Connect'));
   const form = h(
     'form',
     {
@@ -205,7 +217,7 @@ function pairScreen(prefill, error, adding = false) {
       onsubmit: async (e) => {
         e.preventDefault();
         const code = input.value.trim();
-        if (!/^\d{4}$/.test(code)) return (err.textContent = 'Il codice ha 4 cifre');
+        if (!/^\d{4}$/.test(code)) return (err.textContent = tr('The code has 4 digits'));
         go.disabled = true;
         err.textContent = '';
         try {
@@ -220,14 +232,14 @@ function pairScreen(prefill, error, adding = false) {
         }
       },
     },
-    adding ? h('button', { class: 'back', type: 'button', onclick: () => accountsScreen() }, icon('left'), 'Indietro') : logo(),
-    h('h1', {}, adding ? 'Aggiungi un profilo' : 'Collega il telefono'),
+    adding ? h('button', { class: 'back', type: 'button', onclick: () => accountsScreen() }, icon('left'), tr('Back')) : logo(),
+    h('h1', {}, adding ? tr('Add a profile') : tr('Connect the phone')),
     h(
       'p',
       { class: 'muted' },
       adding
-        ? 'Sulla TV, dal profilo da aggiungere: START (o il suo avatar) › «Collega un telefono». Scrivi qui il codice che vedi.'
-        : 'Sulla TV, dal tuo profilo: START (o il tuo avatar) › «Collega un telefono». Scrivi qui il codice che vedi.',
+        ? tr('On the TV, from the profile to add: START (or its avatar) › “Connect a phone”. Type the code you see here.')
+        : tr('On the TV, from your profile: START (or your avatar) › “Connect a phone”. Type the code you see here.'),
     ),
     input,
     err,
@@ -245,12 +257,12 @@ function accountsScreen() {
     h(
       'div',
       { class: 'center' },
-      h('button', { class: 'back', onclick: () => main() }, icon('left'), 'Indietro'),
-      h('h1', {}, 'Profili collegati'),
-      h('p', { class: 'muted' }, 'Il telefono comanda la TV quando c’è uno di questi profili, e dalla scelta del profilo.'),
+      h('button', { class: 'back', onclick: () => main() }, icon('left'), tr('Back')),
+      h('h1', {}, tr('Connected profiles')),
+      h('p', { class: 'muted' }, tr('The phone controls the TV while one of these profiles is on it, and from the profile picker.')),
       h('div', { class: 'accounts' }, ...me.users.map((u) => h('div', { class: 'account' }, h('span', { class: 'avatar' }, initial(u.name)), u.name))),
-      h('button', { class: 'btn primary wide', onclick: () => pairScreen('', '', true) }, icon('plus'), 'Aggiungi un profilo'),
-      h('p', { class: 'muted small' }, 'Per scollegare un profilo: sulla TV, da quel profilo, «Collega un telefono».'),
+      h('button', { class: 'btn primary wide', onclick: () => pairScreen('', '', true) }, icon('plus'), tr('Add a profile')),
+      h('p', { class: 'muted small' }, tr('To disconnect a profile: on the TV, from that profile, “Connect a phone”.')),
     ),
   );
 }
@@ -328,15 +340,15 @@ function main() {
       h('span', { class: 'name' }, me.users.map((u) => u.name).join(' · ')),
     ),
   );
-  const banner = h('div', { class: 'banner', hidden: true }, 'Non collegato alla TV, riprovo…');
+  const banner = h('div', { class: 'banner', hidden: true }, tr('Not connected to the TV, trying again…'));
   const other = h('div', { class: 'banner info', hidden: true });
   page = h('main', { class: 'page' });
   const tabs = h('nav', { class: 'tabs' });
-  const pill = h('button', { class: 'typepill', hidden: true, onclick: () => go('remote') }, icon('keyboard'), ' Scrivi sulla TV');
+  const pill = h('button', { class: 'typepill', hidden: true, onclick: () => go('remote') }, icon('keyboard'), tr(' Type on the TV'));
   const TABS = [
-    ['remote', 'Telecomando', 'remote'],
-    ['photos', 'Foto', 'photo'],
-    ['send', 'Manda alla TV', 'send'],
+    ['remote', tr('Remote'), 'remote'],
+    ['photos', tr('Photos'), 'photo'],
+    ['send', tr('Send to the TV'), 'send'],
   ];
   function go(t) {
     tab = t;
@@ -355,7 +367,9 @@ function main() {
     pill.hidden = !(tv.text && tab !== 'remote');
     const elsewhere = connected && !tv.picker && tv.user && !me.users.some((u) => u.id === tv.user);
     other.hidden = !elsewhere;
-    if (elsewhere) other.textContent = `Sulla TV c’è ${tv.user_name ? `il profilo di ${tv.user_name}` : 'un altro profilo'}: se premi qualcosa, la TV chiede di passare al tuo.`;
+    if (elsewhere) other.textContent = tv.user_name
+      ? tr("{name}'s profile is on the TV: if you press something, the TV asks to switch to yours.", { name: tv.user_name })
+      : tr('Another profile is on the TV: if you press something, the TV asks to switch to yours.');
   }
   show(top, banner, other, page, tabs, pill);
   connect();
@@ -415,18 +429,18 @@ function press(el, action, { repeat = false, hold = false } = {}) {
 }
 
 function remote() {
-  const power = h('button', { class: 'round power', 'aria-label': 'Accendi / spegni' }, icon('power'));
-  const powerLabel = h('span', {}, 'Spegni');
+  const power = h('button', { class: 'round power', 'aria-label': tr('Turn on / off') }, icon('power'));
+  const powerLabel = h('span', {}, tr('Turn off'));
   press(power, () => sendTv({ t: 'power' }));
 
   const pad = h(
     'div',
     { class: 'dpad' },
-    press(h('button', { class: 'k up', 'aria-label': 'Su' }, icon('up')), 'up', { repeat: true }),
-    press(h('button', { class: 'k left', 'aria-label': 'Sinistra' }, icon('left')), 'left', { repeat: true }),
+    press(h('button', { class: 'k up', 'aria-label': tr('Up') }, icon('up')), 'up', { repeat: true }),
+    press(h('button', { class: 'k left', 'aria-label': tr('Left') }, icon('left')), 'left', { repeat: true }),
     press(h('button', { class: 'ok' }, 'OK'), 'a', { hold: true }),
-    press(h('button', { class: 'k right', 'aria-label': 'Destra' }, icon('right')), 'right', { repeat: true }),
-    press(h('button', { class: 'k downk', 'aria-label': 'Giù' }, icon('down')), 'down', { repeat: true }),
+    press(h('button', { class: 'k right', 'aria-label': tr('Right') }, icon('right')), 'right', { repeat: true }),
+    press(h('button', { class: 'k downk', 'aria-label': tr('Down') }, icon('down')), 'down', { repeat: true }),
   );
 
   const labeled = (btn, label) => h('div', { class: 'label-under' }, btn, label);
@@ -434,9 +448,9 @@ function remote() {
   const volume = h(
     'div',
     { class: 'vol' },
-    press(h('button', { class: 'round', 'aria-label': 'Volume giù' }, icon('minus')), () => sendTv({ t: 'vol', d: -1 }), { repeat: true }),
+    press(h('button', { class: 'round', 'aria-label': tr('Volume down') }, icon('minus')), () => sendTv({ t: 'vol', d: -1 }), { repeat: true }),
     vol,
-    press(h('button', { class: 'round', 'aria-label': 'Volume su' }, icon('plus')), () => sendTv({ t: 'vol', d: 1 }), { repeat: true }),
+    press(h('button', { class: 'round', 'aria-label': tr('Volume up') }, icon('plus')), () => sendTv({ t: 'vol', d: 1 }), { repeat: true }),
   );
 
   // the TV's keyboard is open: type here instead
@@ -464,18 +478,18 @@ function remote() {
       done();
     }
   });
-  const lbl = h('span', {}, 'Scrivi sulla TV');
+  const lbl = h('span', {}, tr('Type on the TV'));
   const textcard = h(
     'div',
     { class: 'textcard', hidden: true },
     h('div', { class: 'lbl' }, lbl, icon('keyboard')),
-    h('div', { class: 'line' }, field, h('button', { class: 'btn primary', onclick: done }, 'Fatto')),
+    h('div', { class: 'line' }, field, h('button', { class: 'btn primary', onclick: done }, tr('Done'))),
   );
 
   function update() {
-    vol.replaceChildren(tv.volume == null ? '—' : String(tv.volume), h('small', {}, 'volume TV'));
+    vol.replaceChildren(tv.volume == null ? '—' : String(tv.volume), h('small', {}, tr('TV volume')));
     power.classList.toggle('off', !!tv.dark);
-    powerLabel.textContent = tv.dark ? 'Accendi' : 'Spegni';
+    powerLabel.textContent = tv.dark ? tr('Turn on') : tr('Turn off');
     const t = tv.text;
     const was = !textcard.hidden;
     textcard.hidden = !t;
@@ -483,7 +497,7 @@ function remote() {
       if (was && document.activeElement === field) field.blur();
       return;
     }
-    lbl.textContent = t.label ? `Scrivi sulla TV · ${t.label}` : 'Scrivi sulla TV';
+    lbl.textContent = t.label ? tr('Type on the TV · {label}', { label: t.label }) : tr('Type on the TV');
     const type = t.secret ? 'password' : 'text';
     if (field.type !== type) field.type = type;
     // a password never comes back from the TV; and don't fight the user's typing with the echo
@@ -506,14 +520,14 @@ function remote() {
     const multi = g && g.players > 1;
     gameCard.classList.toggle('quiet', !(tv.controllers || multi));
     if (tv.controllers) {
-      gameName.textContent = 'La TV cerca controller';
-      gameSub.textContent = 'Tocca qui per entrare col telefono';
+      gameName.textContent = tr('The TV is looking for controllers');
+      gameSub.textContent = tr('Tap here to join with the phone');
     } else if (multi) {
-      gameName.textContent = `${g.name} · fino a ${g.players} giocatori`;
-      gameSub.textContent = 'Tocca qui per giocare col telefono';
+      gameName.textContent = tr('{name} · up to {players} players', { name: g.name, players: g.players });
+      gameSub.textContent = tr('Tap here to play with the phone');
     } else {
-      gameName.textContent = 'Usa come controller';
-      gameSub.textContent = 'Il telefono diventa un controller per la TV e i giochi';
+      gameName.textContent = tr('Use as a controller');
+      gameSub.textContent = tr('The phone becomes a controller for the TV and the games');
     }
   };
   onTv.add(updateGame);
@@ -536,16 +550,16 @@ function remote() {
     h(
       'div',
       { class: 'row' },
-      labeled(press(h('button', { class: 'round' }, icon('back')), 'b'), 'Indietro'),
+      labeled(press(h('button', { class: 'round' }, icon('back')), 'b'), tr('Back')),
       labeled(press(h('button', { class: 'round' }, icon('home')), 'home'), 'Home'),
-      labeled(press(h('button', { class: 'round' }, icon('play')), 'play'), 'Play/Pausa'),
+      labeled(press(h('button', { class: 'round' }, icon('play')), 'play'), tr('Play/Pause')),
     ),
     h(
       'div',
       { class: 'row' },
-      labeled(press(h('button', { class: 'round' }, icon('rew')), 'rew', { repeat: true }), 'Riavvolgi'),
+      labeled(press(h('button', { class: 'round' }, icon('rew')), 'rew', { repeat: true }), tr('Rewind')),
       volume,
-      labeled(press(h('button', { class: 'round' }, icon('ff')), 'ff', { repeat: true }), 'Avanti'),
+      labeled(press(h('button', { class: 'round' }, icon('ff')), 'ff', { repeat: true }), tr('Forward')),
     ),
   );
 }
@@ -676,7 +690,7 @@ function controller() {
     }
   };
 
-  const status = h('span', { class: 'who-play' }, 'Mi collego…');
+  const status = h('span', { class: 'who-play' }, tr('Connecting…'));
   const button = (label, cls, onDown, onUp) => {
     const el = h('button', { class: `cb ${cls}` }, label);
     el.addEventListener('pointerdown', (e) => {
@@ -728,7 +742,7 @@ function controller() {
       'div',
       { class: 'ctl-top' },
       h('div', { class: 'shoulders' }, trigger('ZL', 0), btn('L', 'lb')),
-      h('div', { class: 'mid' }, status, h('button', { class: 'cx', 'aria-label': 'Esci', onclick: () => close() }, icon('close'))),
+      h('div', { class: 'mid' }, status, h('button', { class: 'cx', 'aria-label': tr('Exit'), onclick: () => close() }, icon('close'))),
       h('div', { class: 'shoulders' }, btn('R', 'rb'), trigger('ZR', 1)),
     ),
     h(
@@ -745,13 +759,13 @@ function controller() {
   let linked = connected;
   const watchLink = () => {
     if (connected && !linked) sendTv({ t: 'join' });
-    if (!connected) status.textContent = 'Mi ricollego…';
+    if (!connected) status.textContent = tr('Reconnecting…');
     linked = connected;
   };
   onTv.add(watchLink);
   onPlayer = (m) => {
     if (m.error) return close(m.error);
-    status.textContent = m.player ? `Giocatore ${m.player}` : 'Collegato (oltre il 4° giocatore)';
+    status.textContent = m.player ? tr('Player {player}', { player: m.player }) : tr('Connected (beyond the 4th player)');
     buzz(30);
   };
   document.body.append(el);
@@ -763,13 +777,13 @@ function controller() {
 
 let albums = null;
 const thumb = (id) => `/api/thumb/${id}?k=${token}`;
-const count = (n) => (n === 1 ? '1 elemento' : `${n} elementi`);
+const count = (n) => (n === 1 ? tr('1 item') : tr('{n} items', { n }));
 
 function photos() {
   const box = h('section', {});
   const err = h('p', { class: 'err' });
-  const name = h('input', { class: 'field', placeholder: 'Nome del nuovo album', maxlength: '80', enterkeyhint: 'done' });
-  const create = h('button', { class: 'btn primary', type: 'submit' }, 'Crea');
+  const name = h('input', { class: 'field', placeholder: tr('Name of the new album'), maxlength: '80', enterkeyhint: 'done' });
+  const create = h('button', { class: 'btn primary', type: 'submit' }, tr('Create'));
   const form = h(
     'form',
     {
@@ -808,10 +822,10 @@ function photos() {
           },
         },
         icon('plus'),
-        'Nuovo album',
+        tr('New album'),
       ),
     ),
-    wants.shareCount ? h('p', { class: 'muted small', style: 'margin-top:.6rem' }, `Scegli l'album per ${shareLabel()}.`) : '',
+    wants.shareCount ? h('p', { class: 'muted small', style: 'margin-top:.6rem' }, tr('Pick the album for {shareLabel}.', { shareLabel: shareLabel() })) : '',
     form,
     err,
     grid,
@@ -830,7 +844,7 @@ function photos() {
     );
   if (albums) fill();
   else {
-    grid.append(h('p', { class: 'muted' }, 'Carico gli album…'));
+    grid.append(h('p', { class: 'muted' }, tr('Loading the albums…')));
     api('/api/albums').then(
       (list) => {
         albums = list;
@@ -854,14 +868,14 @@ function shareCount() {
     return 0;
   }
 }
-const shareLabel = () => (wants.shareCount === 1 ? 'la foto condivisa' : `le ${wants.shareCount} foto condivise`);
+const shareLabel = () => (wants.shareCount === 1 ? tr('the shared photo') : tr('the {shareCount} shared photos', { shareCount: wants.shareCount }));
 if (wants.share) wants.shareCount = shareCount();
 
 function openAlbum(a) {
   const picker = h('input', { type: 'file', accept: 'image/*,video/*', multiple: true, hidden: true });
   const status = h('div');
   const err = h('p', { class: 'err' });
-  const addBtn = h('button', { class: 'btn primary wide', onclick: () => picker.click() }, icon('plus'), wants.shareCount ? `Aggiungi ${shareLabel()}` : 'Aggiungi foto e video');
+  const addBtn = h('button', { class: 'btn primary wide', onclick: () => picker.click() }, icon('plus'), wants.shareCount ? tr('Add {shareLabel}', { shareLabel: shareLabel() }) : tr('Add photos and videos'));
   const showBtn = h(
     'button',
     {
@@ -871,14 +885,14 @@ function openAlbum(a) {
         try {
           const r = await api('/api/show', { method: 'POST', body: { album: a.id } });
           buzz(20);
-          showBtn.textContent = r.ask ? '✓ Conferma il tuo profilo sulla TV' : '✓ Sulla TV';
+          showBtn.textContent = r.ask ? tr('✓ Confirm your profile on the TV') : tr('✓ On the TV');
         } catch (e) {
           err.textContent = e.message;
         }
       },
     },
     icon('play'),
-    'Mostra l’album sulla TV',
+    tr('Show the album on the TV'),
   );
   picker.addEventListener('change', () => {
     const files = [...picker.files];
@@ -929,11 +943,11 @@ function uploadOne(album, file, onProgress) {
       } catch {}
       if (x.status === 401) {
         keep('');
-        return reject(new Unpaired(data.error || 'Telefono non collegato'));
+        return reject(new Unpaired(data.error || tr('Phone not connected')));
       }
-      x.status >= 200 && x.status < 300 ? resolve(data) : reject(new Error(data.error || `Errore ${x.status}`));
+      x.status >= 200 && x.status < 300 ? resolve(data) : reject(new Error(data.error || tr('Error {status}', { status: x.status })));
     };
-    x.onerror = () => reject(new Error('Invio interrotto'));
+    x.onerror = () => reject(new Error(tr('Upload interrupted')));
     x.send(file);
   });
 }
@@ -944,7 +958,7 @@ async function uploadAll(album, files, status, addBtn) {
   const label = h('p', {});
   const bar = h('i');
   const thumbs = h('div', { class: 'thumbs' });
-  const note = h('p', { class: 'muted small' }, 'Tieni aperta questa pagina finché finisce.');
+  const note = h('p', { class: 'muted small' }, tr('Keep this page open until it finishes.'));
   const failures = h('p', { class: 'err' });
   status.replaceChildren(h('div', { class: 'progress' }, label, h('div', { class: 'bar' }, bar), thumbs, note, failures));
   const total = files.reduce((s, f) => s + (f.size || 1), 0);
@@ -952,7 +966,7 @@ async function uploadAll(album, files, status, addBtn) {
   const ids = [];
   let failed = 0;
   for (const [i, f] of files.entries()) {
-    label.textContent = `Invio ${i + 1} di ${files.length}…`;
+    label.textContent = tr('Sending {a} of {length}…', { a: i + 1, length: files.length });
     try {
       const r = await uploadOne(album, f, (p) => (bar.style.width = `${Math.round(((doneBytes + p * (f.size || 1)) / total) * 100)}%`));
       ids.push(r.id);
@@ -960,7 +974,7 @@ async function uploadAll(album, files, status, addBtn) {
     } catch (e) {
       if (e instanceof Unpaired) return pairScreen('', e.message);
       failed++;
-      failures.textContent = `${failed} non inviat${failed === 1 ? 'a' : 'e'}: ${e.message}`;
+      failures.textContent = failed === 1 ? tr('1 not sent: {message}', { message: e.message }) : tr('{failed} not sent: {message}', { failed, message: e.message });
     }
     doneBytes += f.size || 1;
     bar.style.width = `${Math.round((doneBytes / total) * 100)}%`;
@@ -968,7 +982,7 @@ async function uploadAll(album, files, status, addBtn) {
   albums = null;
   addBtn.disabled = false;
   note.remove();
-  if (!ids.length) return (label.textContent = 'Nessuna foto inviata');
+  if (!ids.length) return (label.textContent = tr('No photos sent'));
   buzz(30);
   label.textContent = `✓ ${ids.length === 1 ? '1 elemento aggiunto' : `${ids.length} elementi aggiunti`} a «${album.name}»`;
   api('/api/added', { method: 'POST', body: { album: album.name, n: ids.length } }).catch(() => {});
@@ -982,14 +996,14 @@ async function uploadAll(album, files, status, addBtn) {
         try {
           const r = await api('/api/show', { method: 'POST', body: { ids } });
           buzz(20);
-          btn.textContent = r.ask ? '✓ Conferma il tuo profilo sulla TV' : '✓ Sulla TV';
+          btn.textContent = r.ask ? tr('✓ Confirm your profile on the TV') : tr('✓ On the TV');
         } catch (e) {
           err.textContent = e.message;
         }
       },
     },
     icon('play'),
-    'Mostrale subito sulla TV',
+    tr('Show them on the TV now'),
   );
   status.firstChild.append(btn, err);
 }
@@ -999,7 +1013,7 @@ async function uploadAll(album, files, status, addBtn) {
 let sendMsg = null;
 
 function sendPage() {
-  const field = h('textarea', { class: 'field', placeholder: 'Incolla un link: YouTube, Instagram, TikTok…', rows: '3' });
+  const field = h('textarea', { class: 'field', placeholder: tr('Paste a link: YouTube, Instagram, TikTok…'), rows: '3' });
   const msg = h('p', { class: 'okmsg' });
   sendMsg = msg;
   const btn = h(
@@ -1014,24 +1028,24 @@ function sendPage() {
       },
     },
     icon('send'),
-    'Manda alla TV',
+    tr('Send to the TV'),
   );
   const how = native
-    ? h('div', { class: 'hint' }, 'Dalle altre app: tocca ', h('b', {}, 'Condividi'), ' e scegli ', h('b', {}, 'AzotoTV'), '. Il video parte subito sulla TV.')
-    : h('div', { class: 'hint' }, 'Nell’app (YouTube, Instagram…) tocca ', h('b', {}, 'Condividi › Copia link'), ', poi incollalo qui.');
-  return h('section', { class: 'send' }, h('h1', {}, 'Manda alla TV'), field, btn, msg, how, androidBrowser ? h('p', { class: 'muted small' }, 'Con l’app Android basta Condividi › AzotoTV, senza copiare il link.') : null, getApp());
+    ? h('div', { class: 'hint' }, tr('From other apps: tap '), h('b', {}, tr('Share')), tr(' and pick '), h('b', {}, 'AzotoTV'), tr('. The video starts on the TV right away.'))
+    : h('div', { class: 'hint' }, tr('In the app (YouTube, Instagram…) tap '), h('b', {}, tr('Share › Copy link')), tr(', then paste it here.'));
+  return h('section', { class: 'send' }, h('h1', {}, tr('Send to the TV')), field, btn, msg, how, androidBrowser ? h('p', { class: 'muted small' }, tr('With the Android app, Share › AzotoTV is enough: no link to copy.')) : null, getApp());
 }
 
 async function sendLink(text) {
   const msg = sendMsg;
   if (msg) {
     msg.className = 'okmsg';
-    msg.textContent = 'Mando…';
+    msg.textContent = tr('Sending…');
   }
   try {
     const r = await api('/api/send', { method: 'POST', body: { url: text } });
     buzz(25);
-    if (msg) msg.textContent = r.ask ? '✓ Mandato: sulla TV conferma il passaggio al tuo profilo' : r.kind === 'youtube' ? '✓ Parte su YouTube sulla TV' : '✓ Mandato alla TV';
+    if (msg) msg.textContent = r.ask ? tr('✓ Sent: on the TV, confirm the switch to your profile') : r.kind === 'youtube' ? tr('✓ Starting in YouTube on the TV') : tr('✓ Sent to the TV');
     return true;
   } catch (e) {
     if (e instanceof Unpaired) {
@@ -1055,7 +1069,7 @@ async function start() {
   } catch (e) {
     if (e instanceof Unpaired) return pairScreen(wants.code, wants.code ? '' : e.message);
     // the TV is off or out of reach: try again soon
-    show(h('div', { class: 'center' }, logo(), h('h1', {}, 'La TV non risponde'), h('p', { class: 'muted' }, e.message), h('button', { class: 'btn primary wide', onclick: start }, 'Riprova')));
+    show(h('div', { class: 'center' }, logo(), h('h1', {}, tr('The TV isn\'t answering')), h('p', { class: 'muted' }, e.message), h('button', { class: 'btn primary wide', onclick: start }, tr('Try again'))));
     return;
   }
   setTimeout(reportScreen, 1500);

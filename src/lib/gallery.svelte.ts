@@ -12,6 +12,7 @@ import { auth } from './session.svelte';
 import { showToast } from './stage.svelte';
 import type { Tile } from './Card.svelte';
 import type { Pin } from './pins.svelte';
+import { MONTHS, WEEKDAYS, t } from '$lib/i18n';
 
 export interface Album {
   id: string;
@@ -105,8 +106,7 @@ export async function moreAssets(id: string): Promise<boolean> {
 
 // ---- words ----
 
-const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
-const DAYS = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+const DAYS = WEEKDAYS;
 
 function parts(iso: string) {
   const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
@@ -142,7 +142,7 @@ export function span(a: Album) {
 
 export const yearsAgo = (year: number) => {
   const n = new Date().getFullYear() - year;
-  return n === 1 ? 'Un anno fa' : `${n} anni fa`;
+  return n === 1 ? t('A year ago') : t('{n} years ago', { n });
 };
 
 /** "12 foto · 2 video" */
@@ -210,12 +210,12 @@ export const wallpaper = () => prefs().wallpaper;
 export function toggleWallpaper(a: Asset) {
   const on = wallpaper()?.id === a.id;
   savePrefs({ ...prefs(), wallpaper: on ? null : { id: a.id, width: a.width, height: a.height } });
-  showToast(on ? 'Sfondo tolto' : 'Foto impostata come sfondo');
+  showToast(on ? t('Wallpaper removed') : t('Photo set as wallpaper'));
 }
 
 export function clearWallpaper() {
   savePrefs({ ...prefs(), wallpaper: null });
-  showToast('Sfondo tolto');
+  showToast(t('Wallpaper removed'));
 }
 
 /** Albums of this profile's screensaver. */
@@ -229,9 +229,9 @@ export function toggleSaverAlbum(a: Album) {
   showToast(
     on
       ? left
-        ? `«${a.name}» tolto dal salvaschermo`
-        : 'Il salvaschermo mostrerà foto da tutti gli album'
-      : `Il salvaschermo mostrerà le foto di «${a.name}»`,
+        ? t('“{name}” removed from the screensaver', { name: a.name })
+        : t('The screensaver will show photos from every album')
+      : t('The screensaver will show the photos of “{name}”', { name: a.name }),
   );
 }
 
@@ -289,7 +289,7 @@ export async function playVideo(a: Asset, title: string) {
     await invoke('im_play', { id: a.id, title, subtitle: longDate(a.taken) });
   } catch (e) {
     player.active = false;
-    showToast(`Riproduzione non riuscita: ${e}`);
+    showToast(t('Couldn\'t play: {e}', { e }));
   }
 }
 

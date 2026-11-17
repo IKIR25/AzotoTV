@@ -7,6 +7,7 @@ import { goto } from '$app/navigation';
 import type { Item } from './jf';
 import { showToast } from './stage.svelte';
 import { saver } from './idle.svelte';
+import { t } from '$lib/i18n';
 
 export type Repeat = 'off' | 'all' | 'one';
 
@@ -79,7 +80,7 @@ export async function playTracks(items: Item[], start = 0, o: { shuffle?: boolea
     music.active = true;
     applyRepeat();
   } catch (e) {
-    showToast(`Riproduzione non riuscita: ${e}`);
+    showToast(t('Couldn\'t play: {e}', { e }));
     return;
   }
   if (o.open !== false) goto('/music');

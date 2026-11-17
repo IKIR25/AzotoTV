@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="send_to_tv">Manda alla TV</string>
+    <string name="add_to_gallery">Aggiungi alla Galleria</string>
+    <string name="looking">Cerco la TV…</string>
+    <string name="connect_tv">Collega la TV</string>
+    <string name="no_answer">La TV non risponde</string>
+    <string name="same_wifi">Il telefono dev\'essere sulla Wi-Fi di casa, e AzotoTV acceso.</string>
+    <string name="address">Indirizzo della TV (START › Collega un telefono):</string>
+    <string name="retry">Riprova</string>
+</resources>

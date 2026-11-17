@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-"""A library entry's info.json (Italian Steam store data) and art/{cover,hero,logo,header}.
+"""A library entry's info.json (Steam store data, in $STEAM_LANGUAGE for $STEAM_COUNTRY:
+English for the US unless set, e.g. STEAM_LANGUAGE=italian STEAM_COUNTRY=it) and art/{cover,hero,logo,header}.
 
 usage: steaminfo.py <appid> <library entry>
 
-Store descriptions are often clumsy or English: read info.json and fix it by hand.
+Store descriptions are often clumsy: read info.json and fix it by hand.
 """
 import html, json, os, re, sys, urllib.request
 
 appid, entry = sys.argv[1], sys.argv[2]
 UA = {'User-Agent': 'Mozilla/5.0'}
+LANGUAGE = os.environ.get('STEAM_LANGUAGE', 'english')
+COUNTRY = os.environ.get('STEAM_COUNTRY', 'us').lower()
 
 
 def get(url):
     return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30).read()
 
 
-d = json.loads(get(f'https://store.steampowered.com/api/appdetails?appids={appid}&l=italian&cc=it'))[appid]['data']
+d = json.loads(get(f'https://store.steampowered.com/api/appdetails?appids={appid}&l={LANGUAGE}&cc={COUNTRY}'))[appid]['data']
 desc = html.unescape(re.sub(r'<[^>]+>', ' ', d.get('short_description', ''))).strip()
 desc = re.sub(r'\s+', ' ', desc)
 trailers = []

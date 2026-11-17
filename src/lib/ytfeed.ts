@@ -7,6 +7,7 @@
 // Free of Svelte and Tauri on purpose: it also runs under plain node against
 // the real YouTube, with a stand-in for youtube.rs as the `Source`.
 import type { Channel, SearchResult, Video, VideoPage, Watched } from './youtube.svelte';
+import { lang, t } from '$lib/i18n';
 
 export interface Source {
   video(id: string): Promise<VideoPage>;
@@ -45,21 +46,25 @@ export interface Feed {
 }
 
 /**
- * Nothing watched or followed yet: popular this week on a few of these. Words
- * that bring Italian videos (plain "scienza" or "tecnologia" bring the whole
- * world's, auto-translated).
+ * Nothing watched or followed yet: popular this week on a few of these. For
+ * Italian, words that bring Italian videos (plain "scienza" or "tecnologia"
+ * bring the whole world's, auto-translated).
  */
-const DISCOVER = [
-  'minecraft ita',
-  'gameplay ita',
-  'calcio highlights',
-  'ricette italiane',
-  'trailer italiano',
-  'documentario animali',
-  'viaggi italia',
-  'musica italiana',
-  'geopop',
-];
+const DISCOVER_BY_LANGUAGE: Record<string, string[]> = {
+  it: [
+    'minecraft ita',
+    'gameplay ita',
+    'calcio highlights',
+    'ricette italiane',
+    'trailer italiano',
+    'documentario animali',
+    'viaggi italia',
+    'musica italiana',
+    'geopop',
+  ],
+  en: ['minecraft', 'gameplay', 'sports highlights', 'easy recipes', 'official trailer', 'animal documentary', 'travel vlog', 'music video', 'science explained'],
+};
+const DISCOVER = DISCOVER_BY_LANGUAGE[lang] ?? DISCOVER_BY_LANGUAGE.en;
 const DAY = 86_400_000;
 const SIZE = 36;
 /** a recommendation passed over this many times is dropped (for `SHOWN_DAYS`) */
@@ -100,20 +105,21 @@ function channelTaste(p: Profile, now: number): Map<string, number> {
   return taste;
 }
 
+// YouTube words ages in the language it is asked in (locale.rs): English and Italian
 const UNITS: [RegExp, number][] = [
   [/^second/, 0],
   [/^minut/, 0],
-  [/^or[ae]$/, 0.04],
-  [/^giorn/, 1],
-  [/^settiman/, 7],
-  [/^mes[ei]$/, 30],
-  [/^ann[oi]$/, 365],
+  [/^(hours?|or[ae])$/, 0.04],
+  [/^(days?|giorn[oi])$/, 1],
+  [/^(weeks?|settiman[ae])$/, 7],
+  [/^(months?|mes[ei])$/, 30],
+  [/^(years?|ann[oi])$/, 365],
 ];
 
-/** A video's age in days, from its date or "3 giorni fa" (null: unknown). */
+/** A video's age in days, from its date or "3 days ago" / "3 giorni fa" (null: unknown). */
 export function ageDays(v: Video, now: number): number | null {
   if (v.ts) return Math.max(0, now / 1000 - v.ts) / 86400;
-  const m = /(\d+)\s+(\S+)\s+fa/.exec(v.published);
+  const m = /(\d+)\s+(\S+)\s+(?:fa|ago)/.exec(v.published);
   const unit = m && UNITS.find(([re]) => re.test(m[2]));
   return unit ? Number(m[1]) * unit[1] : null;
 }
@@ -203,10 +209,10 @@ export async function buildFeed(p: Profile, src: Source, now = Date.now(), rand 
   for (const w of p.history) {
     if (w.v.short || nope.has(w.v.id)) continue;
     const weight = engagement(w) * Math.max(0.15, fade(w.at, now, 14)) + (liked.has(w.v.id) ? 0.5 : 0);
-    pool.push({ id: w.v.id, w: weight, row: `Perché hai guardato «${clip(w.v.title)}»` });
+    pool.push({ id: w.v.id, w: weight, row: t('Because you watched “{clip}”', { clip: clip(w.v.title) }) });
   }
-  p.liked.forEach((v, i) => !watched.has(v.id) && pool.push({ id: v.id, w: 0.8 * 0.9 ** i, row: `Perché ti piace «${clip(v.title)}»` }));
-  for (const s of p.searches.slice(0, 5)) pool.push({ q: s.q, w: 0.5 * Math.max(0.1, fade(s.at, now, 7)), row: `Perché hai cercato «${clip(s.q)}»` });
+  p.liked.forEach((v, i) => !watched.has(v.id) && pool.push({ id: v.id, w: 0.8 * 0.9 ** i, row: t('Because you like “{clip}”', { clip: clip(v.title) }) }));
+  for (const s of p.searches.slice(0, 5)) pool.push({ q: s.q, w: 0.5 * Math.max(0.1, fade(s.at, now, 7)), row: t('Because you searched for “{clip}”', { clip: clip(s.q) }) });
   pool.sort((a, b) => b.w - a.w);
   const blank = !pool.length && !p.subs.length;
   const discovering = blank ? discover(src, ok, rand) : null;

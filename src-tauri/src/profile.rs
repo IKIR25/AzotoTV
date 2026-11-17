@@ -42,6 +42,9 @@ impl Default for Stored {
 pub struct Prefs {
     pub pin: bool,
     pub tg_alerts: bool,
+    /// some programmes are announced by themselves here (reminders.json), so
+    /// `tg_alerts` is worth showing
+    pub auto_reminders: bool,
 }
 
 fn load(user: &str) -> Stored {
@@ -63,7 +66,7 @@ fn save(user: &str, s: &Stored) -> Result<(), String> {
 
 pub fn prefs(user: &str) -> Prefs {
     let s = load(user);
-    Prefs { pin: s.pin.is_some(), tg_alerts: s.tg_alerts }
+    Prefs { pin: s.pin.is_some(), tg_alerts: s.tg_alerts, auto_reminders: crate::notify::has_rules() }
 }
 
 pub fn has_pin(user: &str) -> bool {
@@ -93,15 +96,15 @@ pub fn set_pin(user: &str, pin: Option<&str>) -> Result<(), String> {
     let mut s = load(user);
     s.pin = match pin {
         // a linked Google account (ytaccount.rs) is only behind the PIN
-        None if crate::ytaccount::linked(user) => return Err("prima scollega l'account Google da YouTube".into()),
+        None if crate::ytaccount::linked(user) => return Err(t!("first unlink the Google account from YouTube")),
         None => None,
         Some(p) if p.len() == 4 && p.bytes().all(|b| b.is_ascii_digit()) => {
             let mut salt = [0u8; 16];
-            ring::rand::SystemRandom::new().fill(&mut salt).map_err(|_| "random non disponibile")?;
+            ring::rand::SystemRandom::new().fill(&mut salt).map_err(|_| t!("no random numbers available"))?;
             let salt = hex(&salt);
             Some(format!("{salt}${}", hash(&salt, p)))
         }
-        Some(_) => return Err("Il PIN è di 4 cifre".into()),
+        Some(_) => return Err(t!("The PIN has 4 digits")),
     };
     save(user, &s)
 }
@@ -118,7 +121,7 @@ pub fn check_pin(user: &str, pin: &str) -> Result<bool, String> {
     if let Some(&(n, at)) = fails.get(user) {
         let left = WAIT.saturating_sub(at.elapsed());
         if n >= TRIES && !left.is_zero() {
-            return Err(format!("Troppi tentativi: riprova tra {} secondi", left.as_secs().max(1)));
+            return Err(t!("Too many tries: try again in {a} seconds", a = left.as_secs().max(1)));
         }
     }
     let ok = stored.split_once('$').is_some_and(|(salt, h)| hash(salt, pin) == h);

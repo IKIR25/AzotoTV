@@ -22,10 +22,11 @@ s=$entry/steam_settings
 mkdir -p "$s"
 echo "$appid" > "$s/steam_appid.txt"
 # the player's name and Steam id are written by AzotoTV into each player's own saves folder
+# the game's language and country, as Steam names them: STEAM_LANGUAGE, STEAM_COUNTRY
 cat > "$s/configs.user.ini" <<EOF
 [user::general]
-language=italian
-ip_country=IT
+language=${STEAM_LANGUAGE:-english}
+ip_country=${STEAM_COUNTRY:-US}
 EOF
 cat > "$s/configs.main.ini" <<EOF
 [main::connectivity]

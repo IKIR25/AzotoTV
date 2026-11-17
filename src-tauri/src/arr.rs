@@ -391,17 +391,17 @@ impl Arr {
         let by = if who.is_empty() {
             None
         } else {
-            Some(format!("richiesto da {}", who.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>().join(", ")))
+            Some(t!("requested by {a}", a = who.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>().join(", ")))
         };
         let first = new.first().and_then(|i| found.get(&i.path));
         let n = if g.movie {
             let year = first.and_then(|i| i["ProductionYear"].as_u64()).or(g.year);
-            let body = [year.map(|y| y.to_string()), Some("Film".into()), by.clone().or(Some("nuovo nella libreria".into()))];
+            let body = [year.map(|y| y.to_string()), Some(t!("Movie")), by.clone().or(Some(t!("new in the library")))];
             Notification {
                 id: 0,
                 time: 0,
                 kind: "movie".into(),
-                kicker: "Pronto da guardare".into(),
+                kicker: t!("Ready to watch"),
                 title: first.and_then(|i| i["Name"].as_str()).unwrap_or(&g.title).to_string(),
                 body: body.into_iter().flatten().collect::<Vec<_>>().join(" · "),
                 image: first.and_then(|i| {
@@ -426,16 +426,16 @@ impl Arr {
                     None => se,
                 }
             } else if seasons.len() == 1 {
-                format!("Stagione {} · {} episodi", seasons[0], new.len())
+                t!("Season {a} · {b} episodes", a = seasons[0], b = new.len())
             } else {
-                format!("Stagioni {}–{} · {} episodi", seasons[0], seasons[seasons.len() - 1], new.len())
+                t!("Seasons {a}–{b} · {c} episodes", a = seasons[0], b = seasons[seasons.len() - 1], c = new.len())
             };
             let series = |k: &str| first.and_then(|i| i[k].as_str()).map(str::to_string);
             Notification {
                 id: 0,
                 time: 0,
                 kind: "episode".into(),
-                kicker: if new.len() == 1 { "Nuovo episodio".into() } else { "Nuovi episodi".into() },
+                kicker: if new.len() == 1 { t!("New episode") } else { t!("New episodes") },
                 title: series("SeriesName").unwrap_or_else(|| g.title.clone()),
                 body: [Some(what), by].into_iter().flatten().collect::<Vec<_>>().join(" · "),
                 image: series("SeriesId")

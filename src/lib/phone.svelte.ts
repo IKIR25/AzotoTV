@@ -24,6 +24,7 @@ import { useProfile, watch, yt, type Video } from './youtube.svelte';
 import { gallery, loadGallery, type Asset } from './gallery.svelte';
 import { findGame, game, loadGames, platform } from './games.svelte';
 import { reportAllApps } from './apps';
+import { t } from '$lib/i18n';
 
 export interface Account {
   id: string;
@@ -104,7 +105,7 @@ export async function answer(u: Account | null) {
   ask.then = null;
   if (!u) return;
   const p = (await profiles().catch(() => ({ profiles: [] }))).profiles.find((x) => x.id === u.id);
-  if (!p) return showToast(`Il profilo ${u.name} non c'è più su questa TV`);
+  if (!p) return showToast(t('The profile {name} is no longer on this TV', { name: u.name }));
   sent.assets = [];
   await stopPlayer();
   // straight in, or its password page (the phone can type it): then only once in
@@ -147,9 +148,9 @@ async function onSend(s: Send) {
     try {
       v = (await yt.video(s.id)).video;
     } catch {
-      v = { id: s.id, title: 'Video di YouTube', channel: '', channel_id: '', length: 0, views: '', published: '', ts: 0, short: false, live: false };
+      v = { id: s.id, title: t('YouTube video'), channel: '', channel_id: '', length: 0, views: '', published: '', ts: 0, short: false, live: false };
     }
-    showToast(`${s.from || 'Un telefono'} ha mandato «${v.title}»`);
+    showToast(t('{from} sent “{title}”', { from: s.from || t('A phone'), title: v.title }));
     await watch(v);
     return;
   }
@@ -157,12 +158,12 @@ async function onSend(s: Send) {
   try {
     await invoke('phone_play', {
       url: s.url,
-      title: 'Video dal telefono',
-      subtitle: [s.host, s.from && `mandato da ${s.from}`].filter(Boolean).join(' · '),
+      title: t('Video from the phone'),
+      subtitle: [s.host, s.from && t('sent by {from}', { from: s.from })].filter(Boolean).join(' · '),
     });
   } catch (e) {
     player.active = false;
-    showToast(`Riproduzione non riuscita: ${e}`);
+    showToast(t('Couldn\'t play: {e}', { e }));
   }
 }
 
@@ -173,18 +174,18 @@ async function onWatch(w: Watch) {
   if (w.channel) {
     await loadLive().catch(() => {});
     const ch = live.channels.find((c) => c.Id === w.channel);
-    if (!ch) return showToast('Canale non disponibile');
-    showToast(`${w.from || 'Un telefono'}: ${ch.Name} sulla TV`);
+    if (!ch) return showToast(t('Channel not available'));
+    showToast(t('{from}: {title} on the TV', { from: w.from || t('A phone'), title: ch.Name }));
     return watchChannel(ch);
   }
   if (!w.item) return;
   try {
     const it = await api.item(w.item);
-    showToast(`${w.from || 'Un telefono'}: «${it.Type === 'Episode' ? (it.SeriesName ?? it.Name) : it.Name}» sulla TV`);
+    showToast(t('{from}: “{title}” on the TV', { from: w.from || t('A phone'), title: it.Type === 'Episode' ? (it.SeriesName ?? it.Name) : it.Name }));
     const tracks = w.audio != null || w.sub != null ? { audio: w.audio ?? null, sub: w.sub ?? -1 } : undefined;
     await play(it, { startTicks: w.ticks ?? undefined, fromStart: !w.ticks, tracks });
   } catch (e) {
-    showToast(`Riproduzione non riuscita: ${e}`);
+    showToast(t('Couldn\'t play: {e}', { e }));
   }
 }
 
@@ -195,7 +196,7 @@ async function forPhone(user: Account, phone: Who, then: () => void) {
   if (onPicker() || saver.dark) {
     poke();
     const p = (await profiles().catch(() => ({ profiles: [] }))).profiles.find((x) => x.id === user.id);
-    if (!p) return showToast(`Il profilo ${user.name} non c'è più su questa TV`);
+    if (!p) return showToast(t('The profile {name} is no longer on this TV', { name: user.name }));
     sent.assets = [];
     await stopPlayer();
     if (await enterProfile(p, true)) then();
@@ -253,11 +254,11 @@ export function initPhone() {
     }),
     listen<{ album: string; n: number; from: string }>('phone-added', (e) => {
       const { album, n, from } = e.payload;
-      showToast(`${from || 'Un telefono'} ha aggiunto ${n} foto a «${album}»`, 4000);
+      showToast(t('{from} added {n} photos to “{album}”', { from: from || t('A phone'), n, album }), 4000);
       if (gallery.loaded) void loadGallery(true).catch(() => {});
     }),
     // over a video, when the overlay can't show (phone.rs `tell`)
-    listen<Who>('phone-denied', (e) => showToast(`Questo telefono è collegato a ${names(e.payload.users)}`)),
+    listen<Who>('phone-denied', (e) => showToast(t('This phone is connected to {names}', { names: names(e.payload.users) }))),
   ];
   // the iPhone app's homes
   reportAllApps();

@@ -448,16 +448,16 @@ pub fn worlds(player: &Path) -> Vec<World> {
 /// `world`: one of the player's worlds (its folder) to go straight into.
 pub fn command(player: &Path, user_name: &str, instance: &Path, world: Option<&str>) -> Result<Command, String> {
     if prism_running() {
-        return Err("Prism Launcher è già aperto: chiudilo e riprova".into());
+        return Err(t!("Prism Launcher is already open: close it and try again"));
     }
     stop_pregen();
     if let Some(w) = world {
         if w.is_empty() || w.starts_with('.') || w.contains('/') || !player_dir(player).join("saves").join(w).join("level.dat").exists() {
-            return Err(format!("mondo non trovato: {w}"));
+            return Err(t!("world not found: {w}", w = w));
         }
     }
-    let name = instance.file_name().and_then(|n| n.to_str()).ok_or("istanza Prism non valida")?;
-    let prism = instance.parent().and_then(Path::parent).ok_or("cartella Prism non valida")?;
+    let name = instance.file_name().and_then(|n| n.to_str()).ok_or_else(|| t!("not a valid Prism instance"))?;
+    let prism = instance.parent().and_then(Path::parent).ok_or_else(|| t!("not a valid Prism folder"))?;
     let account = account(player, user_name, &prism.join("accounts.json"))?;
 
     let game = game_dir(instance);

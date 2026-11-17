@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   // A request on its way: which step it is at, one bar from request to library,
   // speed and time left. Data from `dlProgress` (downloads.rs).
   import type { DlProgress } from './seerr';
@@ -7,16 +8,16 @@
 
   const LABEL: Record<DlProgress['stage'], string> = {
     none: '',
-    unreleased: 'Non ancora uscito',
-    search: 'Cerco una versione',
-    wait: 'In attesa',
-    cloud: 'TorBox lo sta prendendo',
-    download: 'Lo scarico sul server',
-    unpack: 'Estraggo i file',
-    import: 'Lo metto in libreria',
-    error: "C'è un problema",
+    unreleased: t('Not released yet'),
+    search: t('Looking for a version'),
+    wait: t('Waiting'),
+    cloud: t('TorBox is fetching it'),
+    download: t('Downloading it to the server'),
+    unpack: t('Extracting the files'),
+    import: t('Putting it in the library'),
+    error: t('There\'s a problem'),
   };
-  const STEPS = ['Ricerca', 'TorBox', 'Download', 'Libreria'];
+  const STEPS = [t('Search|step'), 'TorBox', 'Download', t('Library')];
   const step = $derived(
     p.stage === 'cloud' ? 1
     : p.stage === 'download' || p.stage === 'unpack' ? 2
@@ -31,15 +32,15 @@
     return mb >= 1 ? `${mb.toFixed(1).replace('.', ',')} MB/s` : `${Math.round(b / 1000)} kB/s`;
   }
   function eta(s: number) {
-    if (s < 60) return 'meno di un minuto';
+    if (s < 60) return t('less than a minute');
     const m = Math.round(s / 60);
-    if (m < 60) return `circa ${m} min`;
+    if (m < 60) return t('about {m} min', { m });
     const h = Math.floor(m / 60);
-    return `circa ${h} h${m % 60 ? ` ${m % 60} min` : ''}`;
+    return m % 60 ? t('about {h} h {m} min', { h, m: m % 60 }) : t('about {h} h', { h });
   }
   const facts = $derived(
     [
-      p.episodes ? `${p.episodes[0]} di ${p.episodes[1]} episodi` : '',
+      p.episodes ? t('{a} of {b} episodes', { a: p.episodes[0], b: p.episodes[1] }) : '',
       p.speed ? speed(p.speed) : '',
       p.eta != null && (p.stage === 'cloud' || p.stage === 'download') ? eta(p.eta) : '',
     ].filter(Boolean),

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount } from 'svelte';
   import { input, key } from './input.svelte';
   import { backspace, closeKeyboard, cycleShift, osk, toggleMode, type } from './osk.svelte';
@@ -35,7 +36,7 @@
       bksp: '⌫',
       mode: osk.mode === 'abc' ? '&123' : 'ABC',
       space: 'spazio',
-      done: 'Fatto',
+      done: t('Done'),
     }[k.act];
   }
   function press(k: Key) {
@@ -47,13 +48,13 @@
     else closeKeyboard(true);
   }
 
-  const t = osk.target!;
+  const field = osk.target!;
   const name =
-    t.closest('label')?.firstChild?.textContent?.trim() || t.placeholder || t.getAttribute('aria-label') || '';
-  const secret = t.type === 'password';
+    field.closest('label')?.firstChild?.textContent?.trim() || field.placeholder || field.getAttribute('aria-label') || '';
+  const secret = field.type === 'password';
   // `data-osk="side"` on the input docks the keyboard on the left, so the page
   // can show live results on the right (search).
-  const side = t.dataset.osk === 'side';
+  const side = field.dataset.osk === 'side';
   const shown = $derived(secret ? '•'.repeat(osk.value.length) : osk.value);
 
   let box: HTMLElement;
@@ -104,18 +105,18 @@
   {/each}
 
   <div class="legend">
-    {#if side}<span><kbd>▶</kbd> ai risultati</span>{/if}
+    {#if side}<span><kbd>▶</kbd> {t('to the results')}</span>{/if}
     {#if input.remote}
-      <span><kbd>OK</kbd> scrivi</span>
-      <span><kbd>Indietro</kbd> cancella</span>
-      <span>spazio, maiuscole e Fatto sono tasti qui sopra</span>
+      <span><kbd>OK</kbd> {t('type')}</span>
+      <span><kbd>{t('Back')}</kbd> {t('erase')}</span>
+      <span>{t('space, caps and Done are keys up here')}</span>
     {:else}
-      <span><kbd>{key('A')}</kbd> scrivi</span>
-      <span><kbd>{key('B')}</kbd> cancella</span>
-      <span><kbd>{key('Y')}</kbd> spazio</span>
-      <span><kbd>{key('X')}</kbd> maiuscole</span>
-      <span><kbd>{key('LB')}</kbd><kbd>{key('RB')}</kbd> cursore</span>
-      <span><kbd>{key('START')}</kbd> fatto</span>
+      <span><kbd>{key('A')}</kbd> {t('type')}</span>
+      <span><kbd>{key('B')}</kbd> {t('erase')}</span>
+      <span><kbd>{key('Y')}</kbd> {t('space')}</span>
+      <span><kbd>{key('X')}</kbd> {t('caps')}</span>
+      <span><kbd>{key('LB')}</kbd><kbd>{key('RB')}</kbd> {t('cursor')}</span>
+      <span><kbd>{key('START')}</kbd> {t('done')}</span>
     {/if}
   </div>
 </div>

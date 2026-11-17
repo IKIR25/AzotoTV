@@ -37,10 +37,10 @@ export const auth = $state<{
 });
 
 /** AzotoTV's own settings of the active profile (profile.rs). */
-export const prefs = $state({ pin: false, tg_alerts: true });
+export const prefs = $state({ pin: false, tg_alerts: true, auto_reminders: false });
 
 export async function loadPrefs() {
-  Object.assign(prefs, await invoke<typeof prefs>('profile_prefs').catch(() => ({ pin: false, tg_alerts: true })));
+  Object.assign(prefs, await invoke<typeof prefs>('profile_prefs').catch(() => ({ pin: false, tg_alerts: true, auto_reminders: false })));
 }
 
 /** A 4-digit PIN for the active profile, or none (null). */

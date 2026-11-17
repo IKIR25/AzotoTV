@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -40,7 +41,7 @@
       <h1>{p.name}</h1>
       <label>Password<input bind:this={input} bind:value={pass} type="password" data-focusable data-osk-submit /></label>
       {#if auth.error}<p class="err">{auth.error}</p>{/if}
-      <button class="btn primary" data-focusable>{busy ? 'Accesso…' : 'Accedi'}</button>
+      <button class="btn primary" data-focusable>{busy ? t('Signing in…') : t('Sign in')}</button>
     </form>
   </div>
 {/if}

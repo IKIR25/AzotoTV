@@ -1,17 +1,18 @@
 // The 12 favourite colours (shirt colour), as the Wii and the Switch show them.
+import { t } from '$lib/i18n';
 export const FAVORITE = [
-  { name: 'Rosso', hex: '#d21e14' },
-  { name: 'Arancione', hex: '#ff6e19' },
-  { name: 'Giallo', hex: '#ffd820' },
-  { name: 'Verde chiaro', hex: '#78d220' },
-  { name: 'Verde', hex: '#00782d' },
-  { name: 'Blu', hex: '#0a48b4' },
-  { name: 'Azzurro', hex: '#3caade' },
-  { name: 'Rosa', hex: '#f55a7d' },
-  { name: 'Viola', hex: '#7328ad' },
-  { name: 'Marrone', hex: '#483818' },
-  { name: 'Bianco', hex: '#e0e0e0' },
-  { name: 'Nero', hex: '#181814' },
+  { name: t('Red'), hex: '#d21e14' },
+  { name: t('Orange'), hex: '#ff6e19' },
+  { name: t('Yellow'), hex: '#ffd820' },
+  { name: t('Light green'), hex: '#78d220' },
+  { name: t('Green'), hex: '#00782d' },
+  { name: t('Blue'), hex: '#0a48b4' },
+  { name: t('Light blue'), hex: '#3caade' },
+  { name: t('Pink'), hex: '#f55a7d' },
+  { name: t('Purple'), hex: '#7328ad' },
+  { name: t('Brown'), hex: '#483818' },
+  { name: t('White'), hex: '#e0e0e0' },
+  { name: t('Black'), hex: '#181814' },
 ];
 
 export const favorite = (i: number) => FAVORITE[i] ?? FAVORITE[0];

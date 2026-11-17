@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { key } from './input.svelte';
   import { onMount } from 'svelte';
   import { modal } from './stage.svelte';
@@ -30,18 +31,18 @@
     <span class="ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
     </span>
-    <h1>Questo telefono è collegato a {names(who.users)}</h1>
+    <h1>{t('This phone is connected to {names}', { names: names(who.users) })}</h1>
     <p>
-      {#if onProfile}Sulla TV c'è il profilo di {auth.name}.{/if}
-      Vuoi passare {who.users.length === 1 ? `a ${who.users[0].name}` : 'a uno di questi profili'}?
+      {#if onProfile}{t('{name}\'s profile is on the TV.', { name: auth.name })}{/if}
+      {who.users.length === 1 ? t('Switch to {name}?', { name: who.users[0].name }) : t('Switch to one of these profiles?')}
     </p>
     <div class="row">
       {#each who.users as u (u.id)}
-        <button class="btn primary" data-focusable onclick={() => answer(u)}>Passa a {u.name}</button>
+        <button class="btn primary" data-focusable onclick={() => answer(u)}>{t('Switch to {name}', { name: u.name })}</button>
       {/each}
       <button class="btn" data-focusable onclick={close}>No</button>
     </div>
-    <div class="hint"><kbd>{key('A')}</kbd> scegli · <kbd>{key('B')}</kbd> chiudi</div>
+    <div class="hint"><kbd>{key('A')}</kbd> {t('select ·')} <kbd>{key('B')}</kbd> {t('close')}</div>
   </section>
 </div>
 

@@ -29,7 +29,7 @@ def read_kv(buf, i=0):
 def loc(d, key):
     v = d.get(key, '')
     if isinstance(v, dict):
-        return v.get('italian') or v.get('english') or next(iter(v.values()), '')
+        return v.get(os.environ.get('STEAM_LANGUAGE', 'english')) or v.get('english') or next(iter(v.values()), '')
     return v
 
 def main():

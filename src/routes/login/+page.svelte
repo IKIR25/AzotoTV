@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { auth, loadPrefs, login, prefs, server } from '$lib/session.svelte';
@@ -37,10 +38,10 @@
   <form class="glass" onsubmit={submit}>
     <div class="logo"><Logo size={2.4} /></div>
     <label>Server<input data-focusable bind:value={base} autocomplete="off" /></label>
-    <label>Utente<input data-focusable bind:value={user} autocomplete="username" /></label>
+    <label>{t('User')}<input data-focusable bind:value={user} autocomplete="username" /></label>
     <label>Password<input data-focusable data-osk-submit type="password" bind:value={pass} autocomplete="current-password" /></label>
     {#if auth.error}<p class="err">{auth.error}</p>{/if}
-    <button class="btn primary" data-focusable disabled={busy}>{busy ? 'Accesso…' : 'Accedi'}</button>
+    <button class="btn primary" data-focusable disabled={busy}>{busy ? t('Signing in…') : t('Sign in')}</button>
   </form>
 </div>
 

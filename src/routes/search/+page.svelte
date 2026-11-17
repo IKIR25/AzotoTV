@@ -12,6 +12,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -44,10 +45,10 @@
         key: tileKey(r),
         src: tmdbImg(r.posterPath),
         title: sTitle(r),
-        sub: [sYear(r), r.mediaType === 'tv' ? 'Serie' : 'Film'].filter(Boolean).join(' · '),
+        sub: [sYear(r), r.mediaType === 'tv' ? t('Series') : t('Movie')].filter(Boolean).join(' · '),
         badge:
           arriving[tileKey(r)] != null
-            ? `In arrivo · ${Math.round(arriving[tileKey(r)] * 100)}%`
+            ? t('On its way · {a}%', { a: Math.round(arriving[tileKey(r)] * 100) })
             : statusLabel(r.mediaInfo),
         progress: arriving[tileKey(r)],
         open: () => goto(`/request/${r.mediaType}/${r.id}`),
@@ -68,7 +69,7 @@
     }
     busy = true;
     const mine = ++seq;
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const [l, s] = await Promise.allSettled([
         api.items({ search: query, types: 'Movie,Series', limit: 30 }),
         status?.enabled === false ? Promise.resolve(null) : seerr.search(query),
@@ -79,10 +80,10 @@
         s.status === 'fulfilled' && s.value
           ? s.value.results.filter((r) => r.mediaType !== 'person' && r.mediaInfo?.status !== MS.AVAILABLE)
           : [];
-      failed = s.status === 'rejected' ? `Seerr: ${s.reason}` : '';
+      failed = s.status === 'rejected' ? t('Seerr: {reason}', { reason: s.reason }) : '';
       busy = false;
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   });
 
   // How far the requested ones are, every 5 s (a few at most: the first 6)
@@ -133,34 +134,34 @@
       data-focusable
       data-key="search-input"
       data-osk="side"
-      placeholder="Cerca film e serie"
-      aria-label="Cerca"
+      placeholder={t('Search films and series')}
+      aria-label={t('Search')}
       autocomplete="off"
     />
   </div>
 
   <div class="results scroller" data-nav-peer={docked || undefined}>
     {#if lib.length}
-      <Row title="Nella libreria" list={docked}>
+      <Row title={t('In the library')} list={docked}>
         {#each lib as it (it.Id)}<Card list={docked} item={it} size={11} />{/each}
       </Row>
     {/if}
     {#if tiles.length}
-      <Row title="Da richiedere" list={docked}>
+      <Row title={t('To request')} list={docked}>
         {#each tiles as t (t.key)}<Card list={docked} tile={t} size={11} />{/each}
       </Row>
     {/if}
     <p class="note">
       {#if q.trim().length < MIN}
-        Scrivi almeno {MIN} lettere.
+        {t('Type at least {MIN} letters.', { MIN })}
       {:else if busy}
-        Cerco…
+        {t('Searching…')}
       {:else if !lib.length && !tiles.length}
-        Nessun risultato per “{q.trim()}”.
+        {t('No results for “{a}”.', { a: q.trim() })}
       {/if}
       {#if failed}<br />{failed}{/if}
-      {#if status && !status.enabled}<br />Seerr non è disponibile: cerco solo nella libreria.
-      {:else if status && !status.user}<br />Il tuo utente non è collegato a Seerr: puoi cercare ma non richiedere.{/if}
+      {#if status && !status.enabled}<br />{t('Seerr isn\'t available: searching the library only.')}
+      {:else if status && !status.user}<br />{t('Your user isn\'t linked to Seerr: you can search but not request.')}{/if}
     </p>
   </div>
 </div>

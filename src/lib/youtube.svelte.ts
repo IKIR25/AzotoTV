@@ -23,6 +23,7 @@ import type { Pin } from './pins.svelte';
 import { player } from './player.svelte';
 import { showToast } from './stage.svelte';
 import { buildFeed, SHOWN_DAYS, type Shelf } from './ytfeed';
+import { t } from '$lib/i18n';
 
 export interface Video {
   id: string;
@@ -202,10 +203,10 @@ export const isNope = (id: string) => me.nope.some((n) => n.v.id === id);
 export function toggleSub(ch: Channel) {
   if (isSubscribed(ch.id)) {
     me.subs = me.subs.filter((c) => c.id !== ch.id);
-    showToast(`Iscrizione a ${ch.name} annullata`);
+    showToast(t('Unsubscribed from {name}', { name: ch.name }));
   } else {
     me.subs = [{ ...ch }, ...me.subs];
-    showToast(`Iscritto a ${ch.name}`);
+    showToast(t('Subscribed to {name}', { name: ch.name }));
   }
   save();
   feed.at = 0; // the subscriptions row changes
@@ -220,10 +221,10 @@ export function toggleLike(v: Video) {
 export function toggleNope(v: Video) {
   if (isNope(v.id)) {
     me.nope = me.nope.filter((n) => n.v.id !== v.id);
-    showToast('Di nuovo tra i consigliati');
+    showToast(t('Back among the recommendations'));
   } else {
     me.nope = [{ v: { ...v }, at: Date.now() }, ...me.nope].slice(0, 200);
-    showToast(v.channel ? `Non te lo consiglierò più, e meno video di ${v.channel}` : 'Non te lo consiglierò più');
+    showToast(v.channel ? t('I won\'t recommend it again, and fewer videos from {channel}', { channel: v.channel }) : t('I won\'t recommend it again'));
     // gone at once from what's on screen, before the feed is rebuilt
     feed.recommended = feed.recommended.filter((x) => x.id !== v.id);
     feed.more = feed.more.map((m) => ({ ...m, videos: m.videos.filter((x) => x.id !== v.id) }));
@@ -273,10 +274,10 @@ function pruneShown() {
 export function toggleLater(v: Video) {
   if (isLater(v.id)) {
     me.later = me.later.filter((x) => x.id !== v.id);
-    showToast('Tolto da Guarda più tardi');
+    showToast(t('Removed from Watch later'));
   } else {
     me.later = [...me.later, { ...v }];
-    showToast('Aggiunto a Guarda più tardi');
+    showToast(t('Added to Watch later'));
   }
   save();
 }
@@ -310,7 +311,7 @@ export function resetProfile() {
   me.shorts = { ...me.shorts, seen: [] };
   save();
   feed.at = 0;
-  showToast('YouTube ricomincia da zero');
+  showToast(t('YouTube starts from scratch'));
 }
 
 export const continueWatching = () => me.history.filter((w) => !finished(w) && w.pos > 20).map((w) => w.v);
@@ -364,7 +365,7 @@ export async function watch(v: Video, opts: { fromStart?: boolean } = {}) {
 /** A Short, if any are left for today; it counts as soon as it starts. */
 export async function playShort(v: Video) {
   if (player.active) return;
-  if (shortsLeft() <= 0) return showToast('Per oggi niente più Shorts');
+  if (shortsLeft() <= 0) return showToast(t('No more Shorts for today'));
   const day = today();
   me.shorts = {
     day,
@@ -389,7 +390,7 @@ async function start_(v: Video, start: number, retry = false) {
   } catch (e) {
     player.active = false;
     current = null;
-    showToast(`Riproduzione non riuscita: ${e}`);
+    showToast(t('Couldn\'t play: {e}', { e }));
   }
 }
 
@@ -408,7 +409,7 @@ export function initYoutube() {
     current = null;
     // YouTube now and then refuses a stream link it just handed out: try once more
     if (e.payload.reason === 'error' && e.payload.position_ticks / 1e7 <= started.at + 1 && !started.retried) {
-      showToast('Riprovo…');
+      showToast(t('Trying again…'));
       return void start_(v, started.at, true);
     }
     if (v.short) return; // Shorts stay out of the history (and so out of the recommendations)
@@ -519,7 +520,7 @@ async function loadAccount(user: string, force = false) {
     if (String(e) === 'revoked') {
       // removed from the Google account's side: the profile is back to AzotoTV's own feed
       Object.assign(account, noAccount);
-      showToast("L'account Google non dà più accesso: ricollegalo da YouTube › Account", 6000);
+      showToast(t('The Google account no longer gives access: link it again from YouTube › Account'), 6000);
     } else {
       account.error = String(e);
     }
@@ -575,15 +576,15 @@ export function when(v: Video): string {
   if (!v.ts) return '';
   const d = Math.max(0, Date.now() / 1000 - v.ts);
   const n = (x: number) => Math.floor(x);
-  if (d < 3600) return `${Math.max(1, n(d / 60))} min fa`;
-  if (d < 86400) return n(d / 3600) === 1 ? '1 ora fa' : `${n(d / 3600)} ore fa`;
-  if (d < 86400 * 30) return n(d / 86400) === 1 ? '1 giorno fa' : `${n(d / 86400)} giorni fa`;
-  if (d < 86400 * 365) return n(d / 86400 / 30) === 1 ? '1 mese fa' : `${n(d / 86400 / 30)} mesi fa`;
-  return n(d / 86400 / 365) === 1 ? '1 anno fa' : `${n(d / 86400 / 365)} anni fa`;
+  if (d < 3600) return t('{a} min ago', { a: Math.max(1, n(d / 60)) });
+  if (d < 86400) return n(d / 3600) === 1 ? t('1 hour ago') : t('{a} hours ago', { a: n(d / 3600) });
+  if (d < 86400 * 30) return n(d / 86400) === 1 ? t('1 day ago') : t('{a} days ago', { a: n(d / 86400) });
+  if (d < 86400 * 365) return n(d / 86400 / 30) === 1 ? t('1 month ago') : t('{a} months ago', { a: n(d / 86400 / 30) });
+  return n(d / 86400 / 365) === 1 ? t('1 year ago') : t('{a} years ago', { a: n(d / 86400 / 365) });
 }
 
-/** "1,2 Mln di visualizzazioni" → "1,2 Mln" */
-export const shortViews = (s: string) => s.replace(/ di visualizzazioni| visualizzazioni/, '').trim();
+/** "1.2M views" → "1.2M", "1,2 Mln di visualizzazioni" → "1,2 Mln" */
+export const shortViews = (s: string) => s.replace(/ di visualizzazioni| visualizzazioni| views?/, '').trim();
 
 // ---- cards ----
 

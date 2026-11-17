@@ -2,6 +2,7 @@
 // them straight away), then the rest in a random order, shuffled once per profile.
 import { artUrl, byRecent, heroUrl, lastPlayed, launch, library, loadGames, playtime, type Game } from '../games.svelte';
 import type { App, Slide } from './types';
+import { t } from '$lib/i18n';
 
 const MAX_RECENT = 3;
 
@@ -22,25 +23,25 @@ function slide(g: Game, recent: boolean): Slide {
     key: `${recent ? 'r' : 'g'}:${g.id}`,
     title: g.name,
     art: artUrl(g, 'logo'),
-    kicker: recent && p ? { text: `Continua a giocare · ${lastPlayed(p.last)}` } : undefined,
-    meta: recent && p ? [`Giocato ${playtime(p.seconds)}`, ...meta(g)] : meta(g),
+    kicker: recent && p ? { text: t('Keep playing · {lastPlayed}', { lastPlayed: lastPlayed(p.last) }) } : undefined,
+    meta: recent && p ? [t('Played {playtime}', { playtime: playtime(p.seconds) }), ...meta(g)] : meta(g),
     overview: g.description,
     backdrop: heroUrl(g),
     // games with chapters carry on with the one played last, Minecraft in the last world
     action:
       p?.chapter != null && g.chapters[p.chapter]
-        ? `Gioca · ${g.chapters[p.chapter].name}`
+        ? t('Play · {a}|game', { a: g.chapters[p.chapter].name })
         : world
-          ? `Gioca · ${world.name}`
-          : 'Gioca',
+          ? t('Play · {name}|game', { name: world.name })
+          : t('Play|game'),
     open: () => launch(g.id, p?.chapter ?? null, world),
   };
 }
 
 export const giochiApp: App = {
   key: 'giochi',
-  name: 'Giochi',
-  description: 'Giochi per PC, telefono, Switch, 3DS, Wii, N64, NES e sala giochi, con i salvataggi del tuo profilo.',
+  name: t('Games'),
+  description: t('Games for PC, phone, Switch, 3DS, Wii, N64, NES and the arcade, with your profile\'s saves.'),
   route: '/giochi',
   color: 'linear-gradient(135deg, #b4ec51 0%, #3fcf6e 50%, #0f9b6c 100%)',
   icon: `<path d="M15 15h18a9 9 0 0 1 8.7 11.3l-2 7.7a5 5 0 0 1-8.6 2.1L27.5 32h-7l-3.6 4.1a5 5 0 0 1-8.6-2.1l-2-7.7A9 9 0 0 1 15 15z" />

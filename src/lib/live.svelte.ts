@@ -10,6 +10,7 @@ import { player } from './player.svelte';
 import { stopMusic } from './music.svelte';
 import { showToast } from './stage.svelte';
 import { saver } from './idle.svelte';
+import { locale, t } from '$lib/i18n';
 
 export const live = $state({
   channels: [] as Item[],
@@ -46,7 +47,7 @@ export function nowNext(ch: Item, t = live.clock): { now?: Item; next: Item[] } 
 }
 
 export const hhmm = (d?: string) =>
-  new Date(ms(d)).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  new Date(ms(d)).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
 /** How far into the programme we are, 0..1. */
 export function onAir(p: Item, t = live.clock) {
@@ -65,7 +66,7 @@ function osd(ch: Item) {
   const sub = [`${ch.ChannelNumber ?? ''} · ${ch.Name}`, now?.EpisodeTitle].filter(Boolean).join(' · ');
   return {
     title: now?.Name ?? ch.Name,
-    subtitle: now ? sub : `${ch.ChannelNumber ?? ''} · In diretta`,
+    subtitle: now ? sub : t('{a} · Live', { a: ch.ChannelNumber ?? '' }),
     extra: {
       live: true,
       start: now ? Math.floor(ms(now.StartDate) / 1000) : null,
@@ -98,7 +99,7 @@ export async function watch(ch: Item) {
     player.active = false;
     player.now = null;
     watching = null;
-    showToast(`Canale non disponibile: ${e}`);
+    showToast(t('Channel not available: {e}', { e }));
   }
 }
 
@@ -125,7 +126,7 @@ export function initLive() {
   const goto = listen<string>('player-goto', async ({ payload: id }) => {
     await loadLive().catch(() => {});
     const ch = live.channels.find((c) => c.Id === id);
-    if (!ch) return showToast('Canale non disponibile');
+    if (!ch) return showToast(t('Channel not available'));
     if (watching) return void (watching.Id !== ch.Id && (await switchTo(ch)));
     await invoke('player_stop').catch(() => {});
     for (let i = 0; i < 50 && player.active; i++) await new Promise((r) => setTimeout(r, 100));

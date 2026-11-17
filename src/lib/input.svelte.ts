@@ -3,6 +3,7 @@
 // On-screen hints name the buttons of the one in use.
 import { listen } from '@tauri-apps/api/event';
 import { showToast } from './stage.svelte';
+import { t } from '$lib/i18n';
 
 export type PadStyle = 'xbox' | 'pad' | 'nintendo' | 'playstation';
 export const input = $state<{ remote: boolean; style: PadStyle }>({ remote: false, style: 'pad' });
@@ -13,7 +14,7 @@ listen<string>('controller-battery', (e) => showToast(e.payload, 5000)).catch(()
 
 export type Btn = 'A' | 'B' | 'X' | 'Y' | 'LB' | 'RB' | 'LT' | 'RT' | 'START' | 'SELECT' | 'HOME';
 
-const REMOTE: Partial<Record<Btn, string>> = { A: 'OK', B: 'Indietro', LB: 'CH−', RB: 'CH+' };
+const REMOTE: Partial<Record<Btn, string>> = { A: 'OK', B: t('Back'), LB: 'CH−', RB: 'CH+' };
 const NAMES: Record<PadStyle, Partial<Record<Btn, string>>> = {
   pad: {},
   xbox: { SELECT: 'BACK', HOME: 'Xbox' },

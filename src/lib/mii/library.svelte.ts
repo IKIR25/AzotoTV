@@ -13,6 +13,7 @@ import { listen } from '@tauri-apps/api/event';
 import { showToast } from '../stage.svelte';
 import { b64, decode, freshNxId, nxId, rvlId, toNx, toRvl, unb64, type Look, type Mii } from './miijs';
 import { toCharInfo } from './tomodachi';
+import { t, tn } from '$lib/i18n';
 
 export type RelKind = 'parent' | 'partner' | 'sibling' | 'friend';
 
@@ -445,7 +446,7 @@ export async function linkKnownTomodachi() {
     if (!p || p.links.some((l) => l.id === t.id)) continue;
     if (await linkTomodachi(p, t)) done.push(displayName(p));
   }
-  if (done.length) showToast(`Da Tomodachi Life: nome e compleanno di ${done.join(', ')}`, 4000);
+  if (done.length) showToast(t('From Tomodachi Life: name and birthday of {a}', { a: done.join(', ') }), 4000);
 }
 
 /** The Tomodachi Life Miis no person is linked to yet. */
@@ -467,7 +468,7 @@ const g = (p: PersonEntry, male: string, female: string) => (isFemale(p) ? femal
 
 /** Who's older: the stored flag, else unknown. */
 function siblingLabel(other: PersonEntry, olderIsOther: boolean | undefined) {
-  const base = g(other, 'Fratello', 'Sorella');
+  const base = g(other, t('Brother'), t('Sister'));
   if (olderIsOther === undefined) return base;
   return `${base} ${olderIsOther ? 'maggiore' : 'minore'}`;
 }
@@ -509,26 +510,26 @@ export function kinOf(me: PersonEntry): Kin[] {
     if (p.id !== me.id && !out.has(p.id)) out.set(p.id, { person: p, label, inferred });
   };
 
-  for (const p of parentsOf(me)) add(p, g(p, 'Papà', 'Mamma'), false);
-  for (const c of childrenOf(me)) add(c, g(c, 'Figlio', 'Figlia'), false);
+  for (const p of parentsOf(me)) add(p, g(p, t('Dad'), t('Mom')), false);
+  for (const c of childrenOf(me)) add(c, g(c, t('Son'), t('Daughter')), false);
   for (const { p, r } of linked(me)) {
-    if (r.kind === 'partner') add(p, r.married ? g(p, 'Marito', 'Moglie') : g(p, 'Fidanzato', 'Fidanzata'), false);
-    if (r.kind === 'friend') add(p, r.best ? g(p, 'Migliore amico', 'Migliore amica') : g(p, 'Amico', 'Amica'), false);
+    if (r.kind === 'partner') add(p, r.married ? g(p, t('Husband'), t('Wife')) : g(p, t('Boyfriend'), t('Girlfriend')), false);
+    if (r.kind === 'friend') add(p, r.best ? g(p, t('Best friend|m'), t('Best friend|f')) : g(p, t('Friend|m'), t('Friend|f')), false);
   }
   for (const s of siblingsOf(me)) add(s.p, siblingLabel(s.p, s.olderIsOther), s.inferred);
   // a parent's partner who isn't a parent yet
-  for (const p of parentsOf(me)) for (const k of linked(p)) if (k.r.kind === 'partner') add(k.p, g(k.p, 'Papà', 'Mamma'), true);
+  for (const p of parentsOf(me)) for (const k of linked(p)) if (k.r.kind === 'partner') add(k.p, g(k.p, t('Dad'), t('Mom')), true);
   for (const p of parentsOf(me)) {
-    for (const gp of parentsOf(p)) add(gp, g(gp, 'Nonno', 'Nonna'), true);
+    for (const gp of parentsOf(p)) add(gp, g(gp, t('Grandpa'), t('Grandma')), true);
     for (const u of siblingsOf(p)) {
-      add(u.p, g(u.p, 'Zio', 'Zia'), true);
-      for (const c of childrenOf(u.p)) add(c, g(c, 'Cugino', 'Cugina'), true);
+      add(u.p, g(u.p, t('Uncle'), t('Aunt')), true);
+      for (const c of childrenOf(u.p)) add(c, g(c, t('Cousin|m'), t('Cousin|f')), true);
     }
   }
   // a partner's children
-  for (const k of linked(me)) if (k.r.kind === 'partner') for (const c of childrenOf(k.p)) add(c, g(c, 'Figlio', 'Figlia'), true);
-  for (const c of childrenOf(me)) for (const gc of childrenOf(c)) add(gc, 'Nipote', true);
-  for (const s of siblingsOf(me)) for (const n of childrenOf(s.p)) add(n, 'Nipote', true);
+  for (const k of linked(me)) if (k.r.kind === 'partner') for (const c of childrenOf(k.p)) add(c, g(c, t('Son'), t('Daughter')), true);
+  for (const c of childrenOf(me)) for (const gc of childrenOf(c)) add(gc, t('Grandchild'), true);
+  for (const s of siblingsOf(me)) for (const n of childrenOf(s.p)) add(n, t('Grandchild'), true);
   return [...out.values()];
 }
 
@@ -574,15 +575,15 @@ export async function setTie(me: PersonEntry, other: PersonEntry, tie: Tie | nul
 /** "Mamma", "Fratello maggiore"…: what `other` would be, by their gender. */
 export function tieLabel(other: PersonEntry, tie: Tie): string {
   const [m, f] = {
-    parent: ['Papà', 'Mamma'],
-    child: ['Figlio', 'Figlia'],
-    older: ['Fratello maggiore', 'Sorella maggiore'],
-    younger: ['Fratello minore', 'Sorella minore'],
-    sibling: ['Fratello', 'Sorella'],
-    spouse: ['Marito', 'Moglie'],
-    partner: ['Fidanzato', 'Fidanzata'],
-    best: ['Migliore amico', 'Migliore amica'],
-    friend: ['Amico', 'Amica'],
+    parent: [t('Dad'), t('Mom')],
+    child: [t('Son'), t('Daughter')],
+    older: [t('Older brother'), t('Older sister')],
+    younger: [t('Younger brother'), t('Younger sister')],
+    sibling: [t('Brother'), t('Sister')],
+    spouse: [t('Husband'), t('Wife')],
+    partner: [t('Boyfriend'), t('Girlfriend')],
+    best: [t('Best friend|m'), t('Best friend|f')],
+    friend: [t('Friend|m'), t('Friend|f')],
   }[tie];
   return g(other, m, f);
 }
@@ -670,6 +671,6 @@ async function doMerge() {
     }
     await invoke('mii_inbox_done', { names: [db.name] });
   }
-  const said = [added && (added === 1 ? '1 nuovo' : `${added} nuovi`), changed && (changed === 1 ? '1 modificato' : `${changed} modificati`)];
-  if (added || changed) showToast(`Mii dai giochi: ${said.filter(Boolean).join(', ')}`);
+  const said = [added && tn(added, '{n} new|one Mii', '{n} new|Miis'), changed && tn(changed, '{n} changed|one Mii', '{n} changed|Miis')];
+  if (added || changed) showToast(t('Miis from the games: {a}', { a: said.filter(Boolean).join(', ') }));
 }

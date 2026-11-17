@@ -64,9 +64,10 @@ pub fn prepare(kind: Kind, user: &str, user_name: &str, id: &str) -> Result<(), 
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let name: String = user_name.chars().filter(|c| !c.is_control()).collect();
     let ini = format!(
-        "[user::general]\naccount_name={}\naccount_steamid={}\nlanguage=italian\n",
-        if name.trim().is_empty() { "Giocatore" } else { name.trim() },
-        steam_id(user)
+        "[user::general]\naccount_name={}\naccount_steamid={}\nlanguage={}\n",
+        if name.trim().is_empty() { t!("Player") } else { name.trim().to_string() },
+        steam_id(user),
+        crate::locale::steam_language()
     );
     std::fs::write(dir.join("configs.user.ini"), ini).map_err(|e| e.to_string())
 }

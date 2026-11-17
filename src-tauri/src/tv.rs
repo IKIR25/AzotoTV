@@ -225,8 +225,8 @@ impl Tv {
                 time: 0,
                 kind: "tv".into(),
                 kicker: "TV".into(),
-                title: "La TV non prende più i comandi di AzotoTV".into(),
-                body: "Spegni e l'accensione automatica non vanno: START › Collega la TV".into(),
+                title: t!("The TV no longer takes AzotoTV's commands"),
+                body: t!("Turn off and automatic turning on don't work: START › Connect the TV"),
                 image: None,
                 logo: false,
                 item_id: None,
@@ -336,7 +336,7 @@ impl Tv {
             .body(body)
             .send()
             .await
-            .map_err(|_| "TV non raggiungibile")?;
+            .map_err(|_| t!("Can't reach the TV"))?;
         if !r.status().is_success() {
             return Err(format!("TV: {action} HTTP {}", r.status()));
         }
@@ -769,12 +769,12 @@ pub fn tv_unpaired(tv: tauri::State<'_, Arc<Tv>>) -> bool {
 pub async fn tv_pair_start(tv: tauri::State<'_, Arc<Tv>>) -> Result<(), String> {
     let tv = tv.inner().clone();
     if !tv.enabled() {
-        return Err("Nessuna TV configurata".into());
+        return Err(t!("No TV set up"));
     }
     tv.pair_cancel().await;
     let p = tv.pair_begin().await.map_err(|e| {
         eprintln!("[tv] pairing: {e}");
-        "La TV non risponde: accendila con il suo telecomando e riprova".to_string()
+        t!("The TV isn't answering: turn it on with its remote and try again")
     })?;
     let id = p.id;
     *tv.pairing.lock().await = Some(p);
@@ -796,10 +796,10 @@ pub async fn tv_pair_start(tv: tauri::State<'_, Arc<Tv>>) -> Result<(), String> 
 #[tauri::command]
 pub async fn tv_pair_pin(pin: String, tv: tauri::State<'_, Arc<Tv>>) -> Result<(), String> {
     let tv = tv.inner().clone();
-    let p = tv.pairing.lock().await.take().ok_or("Il codice è scaduto")?;
+    let p = tv.pairing.lock().await.take().ok_or_else(|| t!("The code has expired"))?;
     tv.pair_pin(p, &pin).await.map_err(|e| {
         eprintln!("[tv] pairing: {e}");
-        if e.starts_with("PIN refused") { "Codice sbagliato" } else { "La TV non ha risposto" }.to_string()
+        if e.starts_with("PIN refused") { t!("Wrong code") } else { t!("The TV didn't answer") }
     })?;
     eprintln!("[tv] paired again from the UI");
     Ok(())

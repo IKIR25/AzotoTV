@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onDestroy, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -305,7 +306,7 @@
   }
 
   // the phone may be this page's touch screen while it's open
-  touchScreen.name = 'Editor dei Mii';
+  touchScreen.name = t('Mii editor');
   onDestroy(() => {
     touchScreen.name = '';
     invoke('phone_screen_stop').catch(() => {});
@@ -326,7 +327,7 @@
       const bytes = encode(look);
       if (editing) {
         await saveLook(editing, await decode(bytes));
-        showToast('Mii salvato');
+        showToast(t('Mii saved'));
       } else {
         freshNxId(bytes); // a Mii of its own, even when it started as a copy
         const m = await decode(bytes);
@@ -336,12 +337,12 @@
           start = JSON.stringify(look);
           return void goto(`/mii/${p.id}`, { replaceState: true });
         }
-        showToast(person ? `Nuova versione di ${look.meta.name}` : 'Mii creato');
+        showToast(person ? t('New version of {name}', { name: look.meta.name }) : t('Mii created'));
       }
       start = JSON.stringify(look);
       history.back();
     } catch (e) {
-      showToast(`Non salvato: ${e}`);
+      showToast(t('Not saved: {e}', { e }));
     } finally {
       saving = false;
     }
@@ -352,11 +353,11 @@
   let sheet = $state<Sheet | null>(null);
   function askLeave() {
     sheet = {
-      title: 'Salvare le modifiche?',
+      title: t('Save the changes?'),
       options: [
-        { key: 1, main: 'Salva' },
-        { key: 2, main: 'Esci senza salvare' },
-        { key: 3, main: 'Continua a modificare' },
+        { key: 1, main: t('Save') },
+        { key: 2, main: t('Exit without saving') },
+        { key: 3, main: t('Keep editing') },
       ],
       onpick: async (k) => {
         sheet = null;
@@ -387,7 +388,7 @@
     goTab(0);
   });
 
-  const title = $derived(editing ? 'Modifica Mii' : person ? 'Nuova versione' : 'Nuovo Mii');
+  const title = $derived(editing ? t('Edit Mii') : person ? t('New version') : t('New Mii'));
 </script>
 
 {#if look}
@@ -397,11 +398,11 @@
       <div class="live" bind:this={box} use:drag={turnBy}></div>
       {#if wiiLoses.length}
         <div class="wii" title={wiiLoses.join(', ')}>
-          <strong>Su Wii è un po' diverso</strong>
-          <span>{wiiLoses.slice(0, 3).join(' · ')}{wiiLoses.length > 3 ? ` e altro (${wiiLoses.length})` : ''}</span>
+          <strong>{t('On Wii it looks a little different')}</strong>
+          <span>{wiiLoses.slice(0, 3).join(' · ')}{wiiLoses.length > 3 ? t(' and more ({length})', { length: wiiLoses.length }) : ''}</span>
         </div>
       {/if}
-      <p class="hint">Levetta destra (o un dito) per girarlo</p>
+      <p class="hint">{t('Right stick (or a finger) to turn it')}</p>
     </aside>
 
     <section class="side">
@@ -419,7 +420,7 @@
       <div class="panel scroller">
         {#if current.key === 'profile'}
           <label class="name">
-            Nome nei giochi
+            {t('Name in games')}
             <input
               value={look.meta.name}
               maxlength="10"
@@ -435,7 +436,7 @@
           <section class="field">
             <h2>
               {f.label}
-              {#if f.kind === 'slider' && notOnWii[f.path]}<em>Solo Switch</em>{/if}
+              {#if f.kind === 'slider' && notOnWii[f.path]}<em>{t('Switch only')}</em>{/if}
             </h2>
             {#if f.kind === 'parts'}
               <div class="parts" class:zoom={f.zoom} style="--cols: {f.grid[0].length}">
@@ -464,7 +465,7 @@
                     style="--c: {c}"
                     data-focusable
                     data-key="ed-{f.path}-{v}"
-                    aria-label="Colore {v + 1}"
+                    aria-label={t('Color {a}', { a: v + 1 })}
                     onclick={() => set(f.path, v)}
                   ></button>
                 {/each}
@@ -490,10 +491,10 @@
 
         <div class="actions">
           <button class="btn primary" data-focusable data-key="ed-save" disabled={saving} onclick={save}>
-            {saving ? 'Salvo…' : editing ? 'Salva' : 'Crea'}
+            {saving ? t('Saving…') : editing ? t('Save') : t('Create')}
           </button>
-          <button class="btn" data-focusable data-key="ed-leave" onclick={leave}>Esci</button>
-          <span class="tip">o {key('B')}{dirty ? ' (ti chiedo se salvare)' : ''}</span>
+          <button class="btn" data-focusable data-key="ed-leave" onclick={leave}>{t('Exit')}</button>
+          <span class="tip">o {key('B')}{dirty ? t(' (I\'ll ask whether to save)') : ''}</span>
         </div>
       </div>
     </section>

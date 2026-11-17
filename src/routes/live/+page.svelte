@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { page } from '$app/state';
   import { img, type Item } from '$lib/jf';
@@ -70,12 +71,12 @@
   });
 </script>
 
-<header class="head">Diretta TV <span class="dot">●</span></header>
+<header class="head">{t('Live TV')} <span class="dot">●</span></header>
 
 {#if failed}
-  <p class="msg">Impossibile caricare i canali: {failed}</p>
+  <p class="msg">{t('Couldn\'t load the channels: {failed}', { failed })}</p>
 {:else if ready && !live.channels.length}
-  <p class="msg">Nessun canale disponibile.</p>
+  <p class="msg">{t('No channels available.')}</p>
 {:else}
   <div class="live">
     <section class="list">
@@ -95,7 +96,7 @@
             <span class="logo">{#if logo(ch, 8)}<img src={logo(ch, 8)} alt="" loading="lazy" />{/if}</span>
             <span class="txt">
               <b>{n.now?.Name ?? ch.Name}</b>
-              <small>{ch.Name}{n.now ? ` · fino alle ${hhmm(n.now.EndDate)}` : ''}</small>
+              <small>{ch.Name}{n.now ? t(' · until {time}', { time: hhmm(n.now.EndDate) }) : ''}</small>
               {#if n.now}<i class="bar"><em style="transform:scaleX({onAir(n.now)})"></em></i>{/if}
             </span>
           </button>
@@ -112,38 +113,38 @@
             <img class="lg" src={logo(cur, 16)} alt="" />
           {/if}
         </div>
-        <p class="chan">{cur.ChannelNumber} · {cur.Name} <span class="dot">● In diretta</span></p>
+        <p class="chan">{cur.ChannelNumber} · {cur.Name} <span class="dot">{t('● Live')}</span></p>
         {#if info.now}
           <h1>{info.now.Name}</h1>
           {#if info.now.EpisodeTitle}<p class="ep">{info.now.EpisodeTitle}</p>{/if}
           <p class="slot">
-            {hhmm(info.now.StartDate)} – {hhmm(info.now.EndDate)} · ancora {left(info.now)} min
+            {t('{hhmm} – {hhmm2} · {left} min left', { hhmm: hhmm(info.now.StartDate), hhmm2: hhmm(info.now.EndDate), left: left(info.now) })}
           </p>
           <i class="bar big"><em style="transform:scaleX({onAir(info.now)})"></em></i>
           {#if info.now.Overview}<p class="ov">{info.now.Overview}</p>{/if}
         {:else}
           <h1>{cur.Name}</h1>
-          <p class="slot">Guida non disponibile per questo canale</p>
+          <p class="slot">{t('No guide for this channel')}</p>
         {/if}
         {#if info.next.length}
-          <h2>A seguire</h2>
+          <h2>{t('Up next')}</h2>
           <ul class="next">
             {#each info.next.slice(0, 5) as p (p.Id)}
               <li>
                 <button class="prog" data-focusable use:jump={['left', curChannel]} onclick={() => remind(cur, p)}>
                   <time>{hhmm(p.StartDate)}</time><span>{p.Name}</span>
                   {#if hasReminder(p.Id)}
-                    <svg class="bell" viewBox="0 0 24 24" aria-label="promemoria"
+                    <svg class="bell" viewBox="0 0 24 24" aria-label={t('reminder')}
                       ><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg
                     >
                   {/if}
-                  <em class="act">{key('A')} {hasReminder(p.Id) ? 'togli promemoria' : 'ricordamelo'}</em>
+                  <em class="act">{key('A')} {hasReminder(p.Id) ? t('remove reminder') : t('remind me')}</em>
                 </button>
               </li>
             {/each}
           </ul>
         {/if}
-        <p class="hint">{key('A')} guarda · ▶ promemoria · nel player ▲ ▼ cambiano canale</p>
+        <p class="hint">{t('{a} watch · ▶ reminder · in the player ▲ ▼ change channel', { a: key('A') })}</p>
       </section>
     {/if}
   </div>

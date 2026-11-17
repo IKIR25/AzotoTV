@@ -90,8 +90,8 @@ fn describe(dev: &RawDevice) -> (&'static str, String) {
     let name = dev.name().unwrap_or("Controller").trim().to_string();
     match (id.vendor(), id.product()) {
         (0x057e, 0x2008) => ("joycons", "Joy-Con".into()),
-        (0x057e, 0x2006) => ("joycon-l", "Joy-Con sinistro".into()),
-        (0x057e, 0x2007) => ("joycon-r", "Joy-Con destro".into()),
+        (0x057e, 0x2006) => ("joycon-l", t!("Left Joy-Con")),
+        (0x057e, 0x2007) => ("joycon-r", t!("Right Joy-Con")),
         (0x057e, 0x2009) => ("procon", "Pro Controller".into()),
         id if id == azotopad::EXTERNAL_PAD_ID => ("phone", name),
         (0x045e, _) => ("xbox", name),
@@ -233,7 +233,7 @@ pub fn watch_batteries(app: AppHandle) {
                 let alarm = if charging { 0 } else { battery_alarm(pct) };
                 let before = warned.get(&id).copied().unwrap_or(0);
                 if alarm > before {
-                    let body = if alarm == 2 { "Si spegnerà a breve: mettilo in carica" } else { "Mettilo in carica appena puoi" };
+                    let body = if alarm == 2 { &t!("It will turn off soon: charge it") } else { "Mettilo in carica appena puoi" };
                     eprintln!("[controllers] {name}: battery {pct}%");
                     let shown = crate::overlay::show(
                         &app,
@@ -246,7 +246,7 @@ pub fn watch_batteries(app: AppHandle) {
                         },
                     );
                     if !shown {
-                        let _ = app.emit("controller-battery", format!("{name}: batteria scarica. {body}"));
+                        let _ = app.emit("controller-battery", t!("{name}: battery low. {body}", name = name, body = body));
                     }
                 }
                 let charged = charging || pct >= 50;
@@ -428,7 +428,7 @@ fn pair_step(scan: &mut Scanner, tries: &mut Tries, news: &Mutex<Vec<String>>) {
                 // paired on an earlier day, but now in pairing mode (e.g. it
                 // was on the Switch meanwhile and lost our key): pair from
                 // scratch, once (RSSI stays on for everything this scan saw)
-                say(format!("{name}: di nuovo in associazione"));
+                say(t!("{name}: pairing again", name = name));
                 scan.send(&format!("remove {mac}"));
                 tries.redone.push(mac.clone());
             } else {
@@ -436,7 +436,7 @@ fn pair_step(scan: &mut Scanner, tries: &mut Tries, news: &Mutex<Vec<String>>) {
                 scan.send(&format!("connect {mac}"));
             }
         } else if in_sight {
-            say(format!("{name}: associazione…"));
+            say(t!("{name}: pairing…", name = name));
             scan.send(&format!("pair {mac}"));
         } else {
             continue;
@@ -446,7 +446,7 @@ fn pair_step(scan: &mut Scanner, tries: &mut Tries, news: &Mutex<Vec<String>>) {
     for (mac, name) in &connected {
         if tries.last.remove(mac).is_some() {
             scan.send(&format!("trust {mac}"));
-            say(format!("{name}: collegato"));
+            say(t!("{name}: connected", name = name));
         }
     }
 }

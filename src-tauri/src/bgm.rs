@@ -59,7 +59,7 @@ fn send(c: Cmd) {
 
 pub fn play(track: &str) -> Result<(), String> {
     if !TRACKS.iter().any(|t| t.0 == track) {
-        return Err(format!("brano sconosciuto: {track}"));
+        return Err(format!("unknown track: {track}"));
     }
     send(Cmd::Play(track.to_string()));
     Ok(())

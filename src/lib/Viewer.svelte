@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { key } from './input.svelte';
   import { onMount, untrack } from 'svelte';
   import { modal } from './stage.svelte';
@@ -183,15 +184,15 @@
   {#if cur && details}
     <div class="info">
       <div class="txt">
-        <strong>{fullDate(cur.taken) || 'Data sconosciuta'}{#if isWall}<em class="wall">Sfondo</em>{/if}</strong>
+        <strong>{fullDate(cur.taken) || t('Unknown date')}{#if isWall}<em class="wall">{t('Wallpaper')}</em>{/if}</strong>
         {#if cur.place || cur.caption}<span>{[cur.caption, cur.place].filter(Boolean).join(' · ')}</span>{/if}
       </div>
       <div class="hint">
-        <span>{i + 1} di {assets.length}</span>
-        <span><kbd>◀</kbd><kbd>▶</kbd> sfoglia</span>
-        <span><kbd>{key('A')}</kbd> {cur.video ? 'guarda il video' : 'nascondi'}</span>
-        {#if !cur.video}<span><kbd>{key('A')}</kbd> tieni premuto: {isWall ? 'togli lo sfondo' : 'usa come sfondo'}</span>{/if}
-        <span><kbd>{key('B')}</kbd> chiudi</span>
+        <span>{t('{a} of {length}', { a: i + 1, length: assets.length })}</span>
+        <span><kbd>◀</kbd><kbd>▶</kbd> {t('browse')}</span>
+        <span><kbd>{key('A')}</kbd> {cur.video ? t('watch the video') : t('hide')}</span>
+        {#if !cur.video}<span><kbd>{key('A')}</kbd> {isWall ? t('hold: remove the wallpaper') : t('hold: use as wallpaper')}</span>{/if}
+        <span><kbd>{key('B')}</kbd> {t('close')}</span>
       </div>
     </div>
   {:else if cur && running}

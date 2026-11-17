@@ -113,8 +113,8 @@ pub fn enabled(user: &str, game: &str, specs: &[ModSpec]) -> Vec<String> {
 /// Switch mod `id` of `game` on or off for this profile; returns the ids now on.
 pub fn set(user: &str, game: &str, specs: &[ModSpec], id: &str, on: bool) -> Result<Vec<String>, String> {
     match specs.iter().find(|s| s.id == id) {
-        None => return Err(format!("mod sconosciuta: {id}")),
-        Some(s) if s.always => return Err(format!("{} è sempre attiva", s.name)),
+        None => return Err(format!("unknown mod: {id}")),
+        Some(s) if s.always => return Err(t!("{a} is always on", a = s.name)),
         _ => {}
     }
     let mut all = read_state(user);
@@ -179,8 +179,8 @@ pub fn apply(game_dir: &Path, specs: &[ModSpec], loader: &[Place], on: &[String]
     let mut place = Vec::new();
     for (stored, active, want) in &wanted {
         match (exists(stored), exists(active), want) {
-            (true, true, _) => return Err(format!("mod: {} è sia in {} che in {}", file_name(stored), stored.display(), active.display())),
-            (false, false, _) => return Err(format!("mod: file mancante: {}", stored.display())),
+            (true, true, _) => return Err(t!("mod: {a} is in both {b} and {c}", a = file_name(stored), b = stored.display(), c = active.display())),
+            (false, false, _) => return Err(format!("mod: missing file: {}", stored.display())),
             (true, false, true) => place.push((stored, active)),
             (false, true, false) => leave.push((active, stored)),
             _ => {}

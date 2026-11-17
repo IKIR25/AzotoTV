@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -101,27 +102,27 @@
         {#if v.views}<span>{v.views}</span>{/if}
         {#if info?.date}<span>{info.date}</span>{:else if v.published}<span>{v.published}</span>{/if}
         {#if length}<span>{duration(length)}</span>{/if}
-        {#if v.live}<span class="pill">In diretta</span>{/if}
+        {#if v.live}<span class="pill">{t('Live')}</span>{/if}
       </div>
       <div class="actions">
         <button class="btn primary" data-focusable data-key="play" data-scroll-top onclick={() => watch(v!)}>
-          ▶ {resume ? `Riprendi da ${fmt(resume)}` : 'Riproduci'}
+          ▶ {resume ? t('Resume from {fmt}', { fmt: fmt(resume) }) : t('Play')}
         </button>
         {#if resume}
           <button class="btn icon" data-focusable data-key="restart" data-scroll-top onclick={() => watch(v!, { fromStart: true })}>
-            ↺ Dall'inizio
+            {t('↺ From the start')}
           </button>
         {/if}
         {#if info}
           <button class="btn icon" class:on={isSubscribed(info.owner.id)} data-focusable data-key="sub" data-scroll-top onclick={() => toggleSub(info!.owner)}>
-            {isSubscribed(info.owner.id) ? '✓ Iscritto' : '＋ Iscriviti'}
+            {isSubscribed(info.owner.id) ? t('✓ Subscribed') : t('＋ Subscribe')}
           </button>
         {/if}
         <button class="btn icon" class:on={isLiked(v.id)} data-focusable data-key="like" data-scroll-top onclick={() => toggleLike({ ...v!, length })}>
-          {isLiked(v.id) ? '♥ Ti piace' : '♡ Mi piace'}
+          {isLiked(v.id) ? t('♥ Liked') : t('♡ Like')}
         </button>
         <button class="btn icon" class:on={isLater(v.id)} data-focusable data-key="later" data-scroll-top onclick={() => toggleLater({ ...v!, length })}>
-          {isLater(v.id) ? '✓ Più tardi' : '◷ Guarda più tardi'}
+          {isLater(v.id) ? t('✓ Later') : t('◷ Watch later')}
         </button>
         <button
           class="btn icon"
@@ -131,7 +132,7 @@
           data-scroll-top
           onclick={() => toggleNope({ ...v!, length, channel: info?.owner.name || v!.channel, channel_id: info?.owner.id || v!.channel_id })}
         >
-          {isNope(v.id) ? '✓ Non mi interessa' : '⊘ Non mi interessa'}
+          {isNope(v.id) ? t('✓ Not interested') : t('⊘ Not interested')}
         </button>
         <PinButton pin={videoPin({ ...v, channel: info?.owner.name || v.channel })} />
       </div>
@@ -140,26 +141,26 @@
           ><span>{info.description}</span></button
         >
       {/if}
-      {#if failed}<p class="msg">YouTube non risponde: {failed}</p>{/if}
+      {#if failed}<p class="msg">{t('YouTube isn\'t answering: {failed}', { failed })}</p>{/if}
     </section>
     {#if info?.related.length}
-      <Row title="Altri video">
+      <Row title={t('More videos')}>
         {#each info.related as r (r.id)}<Card wide size={22} tile={videoTile(r, 'rel')} />{/each}
       </Row>
     {/if}
     {#if comments.length}
-      <h2>Commenti{#if count}<span class="n">{count}</span>{/if}</h2>
+      <h2>{t('Comments')}{#if count}<span class="n">{count}</span>{/if}</h2>
       <div class="comments">
         {#each comments as c (c.id)}
           <button class="cm glass" class:open={open[c.id]} data-focusable data-key="cm-{c.id}" onclick={() => (open[c.id] = !open[c.id])}>
             {#if c.avatar}<img src={ytImage(c.avatar)} alt="" loading="lazy" />{:else}<span class="noav"></span>{/if}
             <span class="body">
-              <span class="who">{c.author}{#if c.creator}<span class="tag">Autore</span>{/if}<small>{c.published}</small></span>
+              <span class="who">{c.author}{#if c.creator}<span class="tag">{t('Author')}</span>{/if}<small>{c.published}</small></span>
               <span class="txt">{c.text}</span>
               {#if c.likes || c.replies}
                 <span class="stats">
                   {#if c.likes}<span>👍 {c.likes}</span>{/if}
-                  {#if c.replies}<span>{c.replies === '1' ? '1 risposta' : `${c.replies} risposte`}</span>{/if}
+                  {#if c.replies}<span>{c.replies === '1' ? t('1 reply') : `${c.replies} risposte`}</span>{/if}
                 </span>
               {/if}
             </span>
@@ -167,14 +168,14 @@
         {/each}
         {#if more}
           <button class="btn more" data-focusable data-key="more-comments" onclick={loadMore}>
-            {loadingMore ? 'Carico…' : 'Altri commenti'}
+            {loadingMore ? t('Loading…') : t('More comments')}
           </button>
         {/if}
       </div>
     {/if}
     <div class="end"></div>
   {:else if failed}
-    <p class="msg top">Video non disponibile.</p>
+    <p class="msg top">{t('Video not available.')}</p>
   {/if}
 </div>
 

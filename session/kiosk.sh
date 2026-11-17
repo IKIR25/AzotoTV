@@ -5,9 +5,12 @@
 # does a crash loop, so the TV falls back to the Plasma desktop either way.
 cd "$(dirname "$(readlink -f "$0")")"
 dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP
-# game streaming (stream.rs): its unit wants graphical-session.target, which this
-# session never reaches. Config: session/sunshine.conf, sunshine-apps.json.
-systemctl --user start app-dev.lizardbyte.app.Sunshine.service
+# game streaming (stream.rs), where Sunshine is installed: its unit wants
+# graphical-session.target, which this session never reaches. Config:
+# examples/sunshine.conf, examples/sunshine-apps.json.
+for unit in app-dev.lizardbyte.app.Sunshine.service sunshine.service; do
+  systemctl --user start "$unit" 2>/dev/null && break
+done
 
 export AZOTOTV_FULLSCREEN=1
 fails=0

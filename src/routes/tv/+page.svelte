@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { api, backdropUrl, episodeLabel, runtime, type Item } from '$lib/jf';
@@ -43,9 +44,9 @@
         api.favorites().catch(() => ({ Items: [] as Item[], TotalRecordCount: 0 })),
       ]);
       const out: R[] = [];
-      if (resume.Items.length) out.push({ key: 'resume', title: 'Continua a guardare', items: resume.Items, wide: true });
-      if (next.Items.length) out.push({ key: 'next', title: 'Prossimo episodio', items: next.Items, wide: true });
-      if (favs.Items.length) out.push({ key: 'favs', title: 'Preferiti', items: favs.Items });
+      if (resume.Items.length) out.push({ key: 'resume', title: t('Continue watching'), items: resume.Items, wide: true });
+      if (next.Items.length) out.push({ key: 'next', title: t('Next episode'), items: next.Items, wide: true });
+      if (favs.Items.length) out.push({ key: 'favs', title: t('Favorites'), items: favs.Items });
 
       const latest = await Promise.all(
         views.Items.map((v) =>
@@ -60,7 +61,7 @@
         if (latest[i].length)
           out.push({
             key: v.Id,
-            title: v.CollectionType === 'boxsets' ? v.Name : `${v.Name} · aggiunti di recente`,
+            title: v.CollectionType === 'boxsets' ? v.Name : t('{Name} · recently added', { Name: v.Name }),
             items: latest[i],
           });
       });
@@ -96,9 +97,9 @@
 
   <div class="rows scroller" data-snap="shelf">
     {#if failed}
-      <p class="err">Impossibile caricare: {failed}</p>
+      <p class="err">{t('Couldn\'t load: {failed}', { failed })}</p>
     {:else if ready && !rows.length}
-      <p class="err">La libreria è vuota.</p>
+      <p class="err">{t('The library is empty.')}</p>
     {/if}
     {#each rows as row (row.key)}
       <Row title={row.title}>

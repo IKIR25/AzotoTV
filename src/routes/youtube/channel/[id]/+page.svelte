@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { refresh, stage } from '$lib/stage.svelte';
@@ -39,11 +40,11 @@
         <h1>{ch.channel.name}</h1>
         <div class="meta">
           {#if ch.channel.subs}<span>{ch.channel.subs}</span>{/if}
-          <span>{ch.videos.length ? 'Ultimi video' : 'Nessun video'}</span>
+          <span>{ch.videos.length ? t('Latest videos') : t('No videos')}</span>
         </div>
       </div>
       <button class="btn primary" class:on={isSubscribed(id)} data-focusable data-key="sub" data-scroll-top onclick={() => toggleSub(ch!.channel)}>
-        {isSubscribed(id) ? '✓ Iscritto' : '＋ Iscriviti'}
+        {isSubscribed(id) ? t('✓ Subscribed') : t('＋ Subscribe')}
       </button>
       <PinButton pin={channelPin(ch.channel)} />
     </header>
@@ -52,7 +53,7 @@
     </div>
     <div class="end"></div>
   {:else if failed}
-    <p class="msg">Canale non disponibile.</p>
+    <p class="msg">{t('Channel not available.')}</p>
   {/if}
 </div>
 

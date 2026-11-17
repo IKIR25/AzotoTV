@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { stage } from '$lib/stage.svelte';
@@ -57,7 +58,7 @@
     const out: { key: string; label: string; items: { a: Asset; i: number }[] }[] = [];
     list.forEach((a, i) => {
       const key = a.taken.slice(0, byMonth ? 7 : 4);
-      if (out.at(-1)?.key !== key) out.push({ key, label: !key ? 'Senza data' : byMonth ? monthName(key) : key, items: [] });
+      if (out.at(-1)?.key !== key) out.push({ key, label: !key ? t('No date') : byMonth ? monthName(key) : key, items: [] });
       out.at(-1)!.items.push({ a, i });
     });
     return out;
@@ -104,7 +105,7 @@
       <div class="meta">
         <span>{list.length && !more ? counts(list) : albumCount(album)}</span>
         {#if span(album)}<span>{span(album)}</span>{/if}
-        {#if album.owner}<span>Condiviso da {album.owner}</span>{/if}
+        {#if album.owner}<span>{t('Shared by {owner}', { owner: album.owner })}</span>{/if}
       </div>
       {#if album.description}<p class="desc">{album.description}</p>{/if}
     {/if}
@@ -112,12 +113,12 @@
       <div class="row">
         <button class="btn primary" data-focusable data-key="show" data-scroll-top onclick={startShow}>
           <svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" /></svg>
-          Presentazione
+          {t('Slideshow')}
         </button>
         {#if album}
           <PinButton pin={albumPin(album)} />
           <button class="btn icon" data-focusable data-key="saver" data-scroll-top onclick={() => toggleSaverAlbum(album)}>
-            {saverAlbums().includes(album.id) ? '✓ Nel salvaschermo' : '＋ Salvaschermo'}
+            {saverAlbums().includes(album.id) ? t('✓ In the screensaver') : t('＋ Screensaver')}
           </button>
         {/if}
       </div>
@@ -125,7 +126,7 @@
   </header>
 
   {#if failed}
-    <p class="msg">Album non disponibile.</p>
+    <p class="msg">{t('Album not available.')}</p>
   {/if}
   <div class="groups" data-remember>
     {#each groups as g (g.key)}
@@ -146,7 +147,7 @@
 </div>
 
 {#if view}
-  <Viewer assets={list} start={view.start} show={view.show} title={album?.name ?? 'Galleria'} more={loadMore} onclose={closeView} />
+  <Viewer assets={list} start={view.start} show={view.show} title={album?.name ?? t('Gallery')} more={loadMore} onclose={closeView} />
 {/if}
 
 <style>

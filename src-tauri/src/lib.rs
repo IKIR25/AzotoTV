@@ -1,3 +1,6 @@
+// first: its `t!` is for every module after it
+#[macro_use]
+mod locale;
 mod arr;
 mod azahar;
 mod controllers;
@@ -42,6 +45,7 @@ mod songs;
 mod sound;
 mod steamemu;
 mod stream;
+mod system;
 mod tv;
 mod youtube;
 mod ytaccount;
@@ -478,7 +482,7 @@ fn ui_sound(name: String) {
 #[tauri::command]
 async fn system_reboot() -> Result<(), String> {
     if std::env::var_os("AZOTOTV_FULLSCREEN").is_none() {
-        return Err("disponibile solo sulla TV".into());
+        return Err(t!("only available on the TV"));
     }
     let out = tauri::async_runtime::spawn_blocking(|| std::process::Command::new("systemctl").arg("reboot").output())
         .await
@@ -515,6 +519,18 @@ fn dev_credentials() -> Option<(String, String, String)> {
         std::env::var("AZOTOTV_JF_USER").ok()?,
         std::env::var("AZOTOTV_JF_PASS").ok()?,
     ))
+}
+
+/// The interface's language and region (locale.rs).
+#[tauri::command]
+fn locale_info() -> Value {
+    locale::info()
+}
+
+/// A new language; the interface reloads itself after.
+#[tauri::command]
+fn set_language(lang: String) -> Result<(), String> {
+    locale::set_lang(&lang)
 }
 
 /// True when the app runs with AZOTOTV_DEBUG set (extra tracing).
@@ -772,6 +788,11 @@ pub fn azahar_check(player: &str, name: &str, game: &str, split: bool) {
     }
 }
 
+/// `azototv --system`: what system.rs found on this machine.
+pub fn system_check() {
+    system::print();
+}
+
 pub fn arr_check(n: usize) {
     let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("runtime");
     rt.block_on(async {
@@ -814,6 +835,8 @@ pub fn run() {
     let im_proto = im.clone();
 
     let app = tauri::Builder::default()
+        // the language, there before the interface's first line runs (src/lib/i18n.ts)
+        .append_invoke_initialization_script(format!("window.__AZOTOTV__ = {};", locale::info()))
         .manage(jf)
         .manage(se)
         .manage(Arc::new(downloads::Downloads::new()))
@@ -991,6 +1014,8 @@ pub fn run() {
             profile_set_pin,
             profile_check_pin,
             profile_set_tg_alerts,
+            locale_info,
+            set_language,
             notify_feed,
             notify_seen,
             notify_clear,

@@ -25,6 +25,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { cardImage, episodeLabel, progress, type Item } from './jf';
   import { playTracks } from './music.svelte';
@@ -71,7 +72,7 @@
     const it = item!;
     if (it.Type === 'Episode') return `${episodeLabel(it)} · ${it.Name}`;
     if (it.Type === 'Audio') return it.AlbumArtist ?? '';
-    if (it.Type === 'Playlist') return it.ChildCount ? `${it.ChildCount} brani` : 'Playlist';
+    if (it.Type === 'Playlist') return it.ChildCount ? t('{ChildCount} songs', { ChildCount: it.ChildCount }) : 'Playlist';
     return it.ProductionYear?.toString() ?? '';
   });
 

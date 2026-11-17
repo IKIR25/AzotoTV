@@ -39,7 +39,7 @@ import java.util.ArrayList;
  * AzotoTV on an Android phone: finds AzotoTV on the home network and shows the
  * page it serves there (src-tauri/phone, plain http: fine inside an app, unlike
  * a home-screen web app). On top of the page: links and photos shared from
- * other apps ("Manda alla TV", into a Galleria album), the volume keys set the
+ * other apps ("Send to the TV", into a Gallery album), the volume keys set the
  * TV's volume while the remote is on screen, vibration on presses.
  */
 public class MainActivity extends Activity {
@@ -152,7 +152,7 @@ public class MainActivity extends Activity {
 
     private void find() {
         final int mine = ++attempt;
-        web.loadDataWithBaseURL(null, page("Cerco la TV…", "", false), "text/html", "utf-8", null);
+        web.loadDataWithBaseURL(null, page(getString(R.string.looking), "", false), "text/html", "utf-8", null);
         // the address typed the first time (START › Collega un telefono shows it)
         final String saved = prefs.getString("server", null);
         if (saved == null) {
@@ -198,13 +198,13 @@ public class MainActivity extends Activity {
         server = null;
         String addr = prefs.getString("server", null);
         String html = addr == null
-                ? page("Collega la TV", "Il telefono dev'essere sulla Wi-Fi di casa, e AzotoTV acceso.", true)
-                : page("La TV non risponde", "Il telefono dev'essere sulla Wi-Fi di casa, e AzotoTV acceso.", true);
+                ? page(getString(R.string.connect_tv), getString(R.string.same_wifi), true)
+                : page(getString(R.string.no_answer), getString(R.string.same_wifi), true);
         web.loadDataWithBaseURL(null, html.replace("%ADDR%", addr == null ? "" : addr), "text/html", "utf-8", null);
     }
 
     /** The app's own little page (looking for the TV, or not found). */
-    private static String page(String title, String text, boolean form) {
+    private String page(String title, String text, boolean form) {
         return "<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'>"
                 + "<style>body{margin:0;min-height:100vh;display:flex;flex-direction:column;justify-content:center;gap:16px;"
                 + "padding:24px;box-sizing:border-box;background:#07080f;color:#f4f5fa;font:16px system-ui,sans-serif}"
@@ -213,9 +213,9 @@ public class MainActivity extends Activity {
                 + "button{font:inherit;font-weight:600;border:0;border-radius:24px;min-height:48px;background:#f4f5fa;color:#10121c}"
                 + ".logo{letter-spacing:.24em;font-weight:300}.logo span{color:#e8202e;font-weight:600}.logo b{color:#7c8cff}</style></head><body>"
                 + "<div class=logo><span>AZOTO</span><b>TV</b></div><h1>" + title + "</h1><p>" + text + "</p>"
-                + (form ? "<p>Indirizzo della TV (START › Collega un telefono):</p>"
+                + (form ? "<p>" + getString(R.string.address) + "</p>"
                 + "<input id=a value='%ADDR%' placeholder='192.168.1.10' inputmode=url autocapitalize=off>"
-                + "<button onclick='AzotoApp.retry(document.getElementById(\"a\").value)'>Riprova</button>" : "")
+                + "<button onclick='AzotoApp.retry(document.getElementById(\"a\").value)'>" + getString(R.string.retry) + "</button>" : "")
                 + "</body></html>";
     }
 

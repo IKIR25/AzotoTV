@@ -2,6 +2,7 @@
 // API key, acts as the Seerr user linked to the Jellyfin user, and only allows
 // catalogue + request endpoints. Artwork comes from TMDB via `tmdb://`.
 import { invoke } from '@tauri-apps/api/core';
+import { t } from '$lib/i18n';
 
 export interface SeerrStatus {
   enabled: boolean;
@@ -82,13 +83,13 @@ export const sYear = (it: SItem) => (it.releaseDate ?? it.firstAirDate ?? '').sl
 export function statusLabel(mi: MediaInfo | null | undefined): string {
   switch (mi?.status) {
     case MS.AVAILABLE:
-      return 'Disponibile';
+      return t('Available');
     case MS.PARTIAL:
-      return 'In parte disponibile';
+      return t('Partly available');
     case MS.PROCESSING:
-      return 'In arrivo';
+      return t('On its way');
     case MS.PENDING:
-      return 'Richiesto';
+      return t('Requested');
     default:
       return '';
   }

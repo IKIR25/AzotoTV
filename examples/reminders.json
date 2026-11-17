@@ -1,0 +1,5 @@
+[
+  {"channel": "Rai 1", "programme": "Tg1", "times": ["13:30", "20:00"]},
+  {"channel": "Rai 2", "programme": "Tg2", "times": ["13:00", "20:30"]},
+  {"channel": "Rai 3", "programme": "Tg3", "times": ["14:20", "19:00"]}
+]

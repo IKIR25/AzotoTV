@@ -6,11 +6,12 @@
 //! uses it (transient user unit `azototv-screen`, its files in
 //! `sunshine-screen/` of AzotoTV's data). The main one (stream.rs) can't do
 //! it: it streams the laptop panel, and during a game on the TV the panel is
-//! off (games.rs `set_panel`). So this one copies the screen the game is on:
-//! - on the TV: the TV's output, scanned out by the NVIDIA, encoded there
-//!   (NVENC; KMS numbering on the NVIDIA only, where the TV is 0);
-//! - while a PC plays it through Moonlight (stream.rs `active`): the panel,
-//!   as the main Sunshine does (Intel, VAAPI).
+//! off (games.rs `set_panel`). So this one copies the screen the game is on,
+//! encoding on the GPU that drives it (system.rs: NVENC on an NVIDIA, VAAPI
+//! otherwise; KMS numbers the screens of that GPU alone):
+//! - on the TV: the TV's output;
+//! - while a PC plays it through Moonlight (stream.rs `active`), on a machine
+//!   with a built-in screen: that panel, as the main Sunshine does.
 //!
 //! No sound (`stream_audio = disabled`, and the session plays it on the host):
 //! the phone is only a screen. Its ports are the main ones + 1000 (HTTPS
@@ -40,9 +41,6 @@ const UNIT: &str = "azototv-screen";
 /// What AzotoTV calls itself in this Sunshine's state.
 const NAME: &str = "AzotoTV";
 
-const INTEL: &str = "/dev/dri/by-path/pci-0000:00:02.0-render";
-const NVIDIA: &str = "/dev/dri/by-path/pci-0000:01:00.0-render";
-
 /// The screen the running instance sends (None: not running).
 static TARGET: Mutex<Option<Target>> = Mutex::new(None);
 
@@ -63,14 +61,14 @@ pub fn second_screen() -> bool {
 enum Target {
     /// the TV's output (KWin's name)
     Tv(String),
-    Panel,
+    /// the built-in screen (KWin's name)
+    Panel(String),
 }
 
 impl Target {
     fn output(&self) -> &str {
         match self {
-            Target::Tv(name) => name,
-            Target::Panel => crate::stream::PANEL,
+            Target::Tv(name) | Target::Panel(name) => name,
         }
     }
 }
@@ -79,17 +77,17 @@ fn dir() -> PathBuf {
     crate::games::data_dir().join("sunshine-screen")
 }
 
-fn config(target: &Target) -> String {
+fn config(gpu: Option<&crate::system::Gpu>) -> String {
     let d = dir();
     let d = d.display();
-    let (encoder, adapter) = match target {
-        Target::Tv(_) => ("nvenc", NVIDIA),
-        Target::Panel => ("vaapi", INTEL),
+    // an unknown GPU: Sunshine picks the screen and the encoder itself
+    let gpu = match gpu {
+        Some(g) => format!("output_name = {}\nencoder = {}\nadapter_name = {}\n", g.index, g.encoder(), g.render.display()),
+        None => String::new(),
     };
     format!(
         "# written by AzotoTV (phonescreen.rs) at every start\n\
-         sunshine_name = AzotoTV schermo\n\
-         locale = it\n\
+         sunshine_name = AzotoTV screen\n\
          port = {PORT}\n\
          origin_web_ui_allowed = pc\n\
          file_state = {d}/sunshine_state.json\n\
@@ -102,9 +100,7 @@ fn config(target: &Target) -> String {
          keyboard = disabled\n\
          controller = disabled\n\
          capture = kms\n\
-         output_name = 0\n\
-         encoder = {encoder}\n\
-         adapter_name = {adapter}\n"
+         {gpu}"
     )
 }
 
@@ -114,7 +110,7 @@ fn write_files(target: &Target) -> Result<(), String> {
     let d = dir();
     fs::create_dir_all(&d).map_err(|e| e.to_string())?;
     let err = |e: std::io::Error| format!("{}: {e}", d.display());
-    fs::write(d.join("sunshine.conf"), config(target)).map_err(err)?;
+    fs::write(d.join("sunshine.conf"), config(crate::system::gpu_of(target.output()).as_ref())).map_err(err)?;
     // Sunshine aborts on an app list without "env"
     fs::write(d.join("apps.json"), r#"{"env":{},"apps":[{"name":"AzotoTV"}]}"#).map_err(err)?;
     let (cert, _) = crate::phonestream::identity()?;
@@ -173,15 +169,17 @@ fn ensure_running(target: &Target) -> Result<(), String> {
         }
     }
     systemctl(&["stop", UNIT]);
-    Err("Il secondo Sunshine non è partito".into())
+    Err(t!("The second Sunshine didn't start"))
 }
 
 /// The screen the game is on now.
 fn target() -> Result<Target, String> {
     if crate::stream::active() || SECOND_SCREEN.load(std::sync::atomic::Ordering::Relaxed) {
-        return Ok(Target::Panel);
+        if let Some(panel) = crate::stream::panel() {
+            return Ok(Target::Panel(panel.to_string()));
+        }
     }
-    crate::stream::tv_output().map(Target::Tv).ok_or_else(|| "La TV è spenta".into())
+    crate::stream::tv_output().map(Target::Tv).ok_or_else(|| t!("The TV is off"))
 }
 
 /// A stream of the game's screen for the phone at `host`.
@@ -265,11 +263,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn tv_is_sent_by_the_nvidia() {
-        let c = config(&Target::Tv("HDMI-A-1".into()));
-        assert!(c.contains("encoder = nvenc\n") && c.contains(NVIDIA) && c.contains("port = 48989\n") && c.contains("stream_audio = disabled\n"));
-        let p = config(&Target::Panel);
-        assert!(p.contains("encoder = vaapi\n") && p.contains(INTEL));
-        assert_eq!(Target::Panel.output(), "eDP-1");
+    fn each_screen_is_sent_by_its_gpu() {
+        let gpu = |vendor, render: &str, index| crate::system::Gpu { render: render.into(), vendor, pci: None, index };
+        let c = config(Some(&gpu(0x10de, "/dev/dri/renderD129", 0)));
+        assert!(c.contains("encoder = nvenc\n") && c.contains("adapter_name = /dev/dri/renderD129\n") && c.contains("output_name = 0\n"));
+        assert!(c.contains("port = 48989\n") && c.contains("stream_audio = disabled\n"));
+        let p = config(Some(&gpu(0x8086, "/dev/dri/renderD128", 1)));
+        assert!(p.contains("encoder = vaapi\n") && p.contains("output_name = 1\n"));
+        let unknown = config(None);
+        assert!(unknown.ends_with("capture = kms\n") && !unknown.contains("encoder"));
+        assert_eq!(Target::Panel("eDP-1".into()).output(), "eDP-1");
     }
 }

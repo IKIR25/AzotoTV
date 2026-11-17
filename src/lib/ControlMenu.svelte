@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { lang, languages, setLanguage, t } from '$lib/i18n';
   import { key } from './input.svelte';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
@@ -37,7 +38,7 @@
     try {
       await invoke('system_reboot');
     } catch (e) {
-      showToast(`Impossibile: ${e}`, 4000);
+      showToast(t('Couldn\'t: {e}', { e }), 4000);
     }
   }
 
@@ -51,11 +52,13 @@
   }
 
   const actions = [
-    { key: 'desktop', label: 'Esci al desktop', armed: 'Premi di nuovo per uscire', run: () => invoke('system_exit') },
-    { key: 'reboot', label: 'Riavvia', armed: 'Premi di nuovo per riavviare', run: reboot },
-    { key: 'poweroff', label: 'Spegni', sub: 'La TV si spegne, il server resta acceso', run: standby },
+    { key: 'desktop', label: t('Exit to the desktop'), armed: t('Press again to exit'), run: () => invoke('system_exit') },
+    { key: 'reboot', label: t('Restart'), armed: t('Press again to restart'), run: reboot },
+    { key: 'poweroff', label: t('Turn off'), sub: t('The TV turns off, the server stays on'), run: standby },
   ];
 
+  // pressing Language moves to the next one
+  const nextLanguage = languages[(languages.findIndex((l) => l.id === lang) + 1) % languages.length];
   const tg = onAirNow();
   let tgBtn = $state<HTMLElement>();
   let first: HTMLElement;
@@ -86,7 +89,7 @@
       <span class="ico" aria-hidden="true">
         <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12.5" rx="2" /><path d="M8.5 2.5l3.5 3.5 3.5-3.5M8 21.5h8" /></svg>
       </span>
-      <span class="txt">Guarda il {tg.title}<small>{tg.kicker}</small></span>
+      <span class="txt">{t('Watch {title}', { title: tg.title })}<small>{tg.kicker}</small></span>
     </button>
 
     <div class="sep"></div>
@@ -108,7 +111,7 @@
           onerror={() => (avatarImg = false)}
         />{/if}</span
     >
-    <span class="txt">{auth.name}<small>Cambia profilo</small></span>
+    <span class="txt">{auth.name}<small>{t('Switch profile')}</small></span>
   </button>
 
   <button
@@ -122,7 +125,7 @@
     <span class="ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg>
     </span>
-    <span class="txt">Notifiche</span>
+    <span class="txt">{t('Notifications')}</span>
     {#if notes.unread}<span class="count">{notes.unread}</span>{/if}
   </button>
 
@@ -137,7 +140,7 @@
     <span class="ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
     </span>
-    <span class="txt">Collega un telefono<small>Telecomando, foto e video dal telefono</small></span>
+    <span class="txt">{t('Connect a phone')}<small>{t('Remote, photos and videos from the phone')}</small></span>
   </button>
 
   <button
@@ -155,7 +158,7 @@
         /></svg
       >
     </span>
-    <span class="txt">Controller<small>Chi è collegato, collega Joy-Con e altri controller</small></span>
+    <span class="txt">Controller<small>{t('Who is connected, pair Joy-Cons and other controllers')}</small></span>
   </button>
 
   {#if tvLink.unpaired}
@@ -170,7 +173,7 @@
       <span class="ico" aria-hidden="true">
         <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12.5" rx="2" /><path d="M8 20.5h8M12 8.5v3.5M12 14.5v.01" /></svg>
       </span>
-      <span class="txt">Collega la TV<small>La TV non prende più Spegni e l'accensione</small></span>
+      <span class="txt">{t('Connect the TV')}<small>{t('The TV no longer obeys Turn off and turning on')}</small></span>
     </button>
   {/if}
 
@@ -189,20 +192,30 @@
           />{/if}</svg
       >
     </span>
-    <span class="txt">Suoni dell'interfaccia</span>
-    <span class="state">{sounds.on ? 'Sì' : 'No'}</span>
+    <span class="txt">{t('Interface sounds')}</span>
+    <span class="state">{sounds.on ? t('Yes') : 'No'}</span>
   </button>
 
+  {#if prefs.auto_reminders}
   <button
     class="opt"
     data-focusable
-    onclick={() => setTgAlerts(!prefs.tg_alerts).catch((e) => showToast(`Impossibile: ${e}`, 4000))}
+    onclick={() => setTgAlerts(!prefs.tg_alerts).catch((e) => showToast(t('Couldn\'t: {e}', { e }), 4000))}
   >
     <span class="ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12.5" rx="2" /><path d="M8.5 2.5l3.5 3.5 3.5-3.5M8 21.5h8" /></svg>
     </span>
-    <span class="txt">Avvisi dei Tg</span>
-    <span class="state">{prefs.tg_alerts ? 'Sì' : 'No'}</span>
+    <span class="txt">{t('Programme alerts')}</span>
+    <span class="state">{prefs.tg_alerts ? t('Yes') : 'No'}</span>
+  </button>
+  {/if}
+
+  <button class="opt" data-focusable onclick={() => setLanguage(nextLanguage.id).catch((e) => showToast(t('Couldn\'t: {e}', { e }), 4000))}>
+    <span class="ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>
+    </span>
+    <span class="txt">{t('Language')}</span>
+    <span class="state">{languages.find((l) => l.id === lang)?.name ?? lang}</span>
   </button>
 
   <button
@@ -216,8 +229,8 @@
     <span class="ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2" /><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" /></svg>
     </span>
-    <span class="txt">PIN del profilo</span>
-    <span class="state">{prefs.pin ? 'Sì' : 'No'}</span>
+    <span class="txt">{t('Profile PIN')}</span>
+    <span class="state">{prefs.pin ? t('Yes') : 'No'}</span>
   </button>
 
   <div class="sep"></div>
@@ -237,7 +250,7 @@
     </button>
   {/each}
 
-  <div class="hint"><kbd>{key('A')}</kbd> scegli · <kbd>{key('B')}</kbd> chiudi</div>
+  <div class="hint"><kbd>{key('A')}</kbd> {t('select ·')} <kbd>{key('B')}</kbd> {t('close')}</div>
 </aside>
 
 <style>

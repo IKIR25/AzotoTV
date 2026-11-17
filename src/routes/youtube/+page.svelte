@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -54,7 +55,7 @@
   const shorts = $derived(shortsPool().filter((v) => !me.shorts.seen.includes(v.id)).slice(0, left));
   const firstTime = $derived(!me.history.length && !me.subs.length && !linked);
   let photoOk = $state(true);
-  const limitLabel = (n: number) => (n ? `${n} al giorno` : 'Nessuno');
+  const limitLabel = (n: number) => (n ? t('{n} a day', { n }) : t('None'));
 
   async function closeSheet() {
     sheet = false;
@@ -69,15 +70,15 @@
     <div class="row">
       <button class="btn primary" data-focusable data-key="search" data-scroll-top onclick={() => goto('/youtube/search')}>
         <svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" /></svg>
-        Cerca
+        {t('Search')}
       </button>
       <button class="btn chip acc" data-focusable data-key="account" data-scroll-top onclick={() => goto('/youtube/account')}>
         {#if linked && account.info}
           {#if account.info.photo && photoOk}<img src={ytImage(account.info.photo)} alt="" onerror={() => (photoOk = false)} />{/if}
-          {account.info.name || 'Account Google'}
+          {account.info.name || t('Google account')}
         {:else}
           <svg viewBox="0 0 24 24"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z" /></svg>
-          Accedi con Google
+          {t('Sign in with Google')}
         {/if}
       </button>
       {#if admin}
@@ -88,7 +89,7 @@
       {/if}
       {#if !firstTime || me.later.length || me.liked.length}
         <button class="btn chip" class:warn={confirmReset} data-focusable data-key="reset" data-scroll-top onclick={reset}>
-          {confirmReset ? 'Premi di nuovo: cancella iscrizioni, cronologia, Mi piace e Più tardi' : '↺ Ricomincia da zero'}
+          {confirmReset ? t('Press again: erases subscriptions, history, likes and Watch later') : t('↺ Start from scratch')}
         </button>
       {/if}
     </div>
@@ -96,43 +97,43 @@
 
   <div class="rows">
     {#if firstTime}
-      <p class="msg">Cerca un canale che ti piace e iscriviti: i consigli imparano da quello che guardi su questo profilo.</p>
+      <p class="msg">{t('Search for a channel you like and subscribe: the recommendations learn from what you watch on this profile.')}</p>
     {/if}
     {#if cont.length}
-      <Row title="Continua a guardare">
+      <Row title={t('Continue watching')}>
         {#each cont as v (v.id)}<Card wide size={22} tile={videoTile(v, 'c')} />{/each}
       </Row>
     {/if}
     {#if linked}
       {#if account.error && !account.home.length}
-        <p class="msg small">L'account Google non risponde ({account.error}): intanto i consigli di AzotoTV.</p>
+        <p class="msg small">{t('The Google account isn\'t answering ({error}): AzotoTV\'s recommendations meanwhile.', { error: account.error })}</p>
       {:else if account.loading && !account.home.length}
-        <p class="msg">Carico la home del tuo account…</p>
+        <p class="msg">{t('Loading your account\'s home…')}</p>
       {/if}
       {#each account.home.slice(0, 1) as s, i (`a${i}`)}
-        <Row title={s.title || 'Consigliati per te'}>
+        <Row title={s.title || t('Recommended for you')}>
           {#each s.videos as v (v.id)}<Card wide size={22} tile={videoTile(v, `a${i}`)} />{/each}
         </Row>
       {/each}
     {/if}
     {#if subsRow.length}
-      <Row title="Nuovi dalle iscrizioni">
+      <Row title={t('New from your subscriptions')}>
         {#each subsRow as v (v.id)}<Card wide size={22} tile={videoTile(v, 's')} />{/each}
       </Row>
     {/if}
     {#if linked}
       {#each account.home.slice(1) as s, i (`a${i + 1}`)}
-        <Row title={s.title || 'Altri per te'}>
+        <Row title={s.title || t('More for you')}>
           {#each s.videos as v (v.id)}<Card wide size={22} tile={videoTile(v, `a${i + 1}`)} />{/each}
         </Row>
       {/each}
       {#if feed.recommended.length}
-        <Row title="Scelti da AzotoTV">
+        <Row title={t('Picked by AzotoTV')}>
           {#each feed.recommended as v (v.id)}<Card wide size={22} tile={recTile(v, 'r')} />{/each}
         </Row>
       {/if}
     {:else if feed.recommended.length}
-      <Row title={firstTime ? 'Da scoprire questa settimana' : 'Consigliati per te'}>
+      <Row title={firstTime ? t('To discover this week') : t('Recommended for you')}>
         {#each feed.recommended as v (v.id)}<Card wide size={22} tile={recTile(v, 'r')} />{/each}
       </Row>
       {#each feed.more as m, i (`${i}:${m.title}`)}
@@ -141,27 +142,27 @@
         </Row>
       {/each}
     {:else if feed.loading}
-      <p class="msg">Carico i video…</p>
+      <p class="msg">{t('Loading the videos…')}</p>
     {:else if feed.user === auth.id && !subsRow.length}
-      <p class="msg">YouTube non risponde. Riprova tra poco.</p>
+      <p class="msg">{t('YouTube isn\'t answering. Try again in a moment.')}</p>
     {/if}
     {#if me.later.length}
-      <Row title="Guarda più tardi">
+      <Row title={t('Watch later')}>
         {#each me.later as v (v.id)}<Card wide size={22} tile={videoTile(v, 'l')} />{/each}
       </Row>
     {/if}
     {#if me.subs.length}
-      <Row title="Iscrizioni">
+      <Row title={t('Subscriptions')}>
         {#each me.subs as c (c.id)}<Card size={11} tile={channelTile(c, 'ch')} />{/each}
       </Row>
     {/if}
     {#if shortsLimit.n > 0}
       {#if shorts.length}
-        <Row title={left === 1 ? 'Shorts · ne resta 1 per oggi' : `Shorts · ne restano ${left} per oggi`}>
+        <Row title={left === 1 ? t('Shorts · 1 left for today') : t('Shorts · {left} left for today', { left })}>
           {#each shorts as v (v.id)}<Card size={12} tile={shortTile(v, 'sh')} />{/each}
         </Row>
       {:else if !left}
-        <p class="msg small">Shorts finiti per oggi: tornano domani.</p>
+        <p class="msg small">{t('No Shorts left for today: they come back tomorrow.')}</p>
       {/if}
     {/if}
     <div class="end"></div>
@@ -170,7 +171,7 @@
 
 {#if sheet}
   <Picker
-    title="Shorts al giorno per profilo"
+    title={t('Shorts a day per profile')}
     options={SHORTS_CHOICES.map((n) => ({ key: n, main: limitLabel(n), sub: n === SHORTS_DEFAULT ? 'predefinito' : undefined }))}
     value={shortsLimit.n}
     onpick={(n) => {

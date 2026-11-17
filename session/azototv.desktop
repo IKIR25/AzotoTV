@@ -1,9 +1,11 @@
-# Installed with the user's home in place of @HOME@:
-#   sed "s|@HOME@|$HOME|g" azototv.desktop | sudo tee /usr/share/wayland-sessions/azototv.desktop
+# The login session that boots straight into AzotoTV. `install.sh --session`
+# puts it in /usr/share/wayland-sessions/ with the user's home in place of
+# @HOME@ and Plasma's D-Bus session starter in place of @DBUS_RUN@.
 [Desktop Entry]
 Type=Application
 Name=AzotoTV
-Comment=AzotoTV a schermo intero, senza desktop
-Exec=/usr/lib/plasma-dbus-run-session-if-needed @HOME@/azototv/session.sh
+Comment=AzotoTV full screen, with no desktop
+Comment[it]=AzotoTV a schermo intero, senza desktop
+Exec=@DBUS_RUN@ @HOME@/azototv/session.sh
 TryExec=@HOME@/azototv/session.sh
 DesktopNames=KDE

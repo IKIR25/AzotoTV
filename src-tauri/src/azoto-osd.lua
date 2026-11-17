@@ -45,15 +45,21 @@ local remote_ui = false
 
 local function now() return mp.get_time() end
 
+-- Text in the interface's language: AzotoTV writes this file with `T`, the
+-- dictionary from the English text here to that language, at its top (player.rs).
+local T = AZOTO_T or {}
+local function tr(s) return T[s] or s end
+local function trf(s, name, value) return (tr(s):gsub('{' .. name .. '}', function() return tostring(value) end)) end
+
 local LANG = {
-  ita = 'Italiano', it = 'Italiano', eng = 'Inglese', en = 'Inglese',
-  fre = 'Francese', fra = 'Francese', fr = 'Francese', ger = 'Tedesco', deu = 'Tedesco', de = 'Tedesco',
-  spa = 'Spagnolo', es = 'Spagnolo', por = 'Portoghese', pt = 'Portoghese', jpn = 'Giapponese', ja = 'Giapponese',
-  kor = 'Coreano', ko = 'Coreano', chi = 'Cinese', zho = 'Cinese', zh = 'Cinese', rus = 'Russo', ru = 'Russo',
-  ara = 'Arabo', hin = 'Hindi', tur = 'Turco', pol = 'Polacco', dut = 'Olandese', nld = 'Olandese',
-  swe = 'Svedese', nor = 'Norvegese', dan = 'Danese', fin = 'Finlandese', gre = 'Greco', ell = 'Greco',
-  cze = 'Ceco', ces = 'Ceco', bul = 'Bulgaro', est = 'Estone', hun = 'Ungherese', rum = 'Rumeno', ron = 'Rumeno',
-  heb = 'Ebraico', tha = 'Thai', vie = 'Vietnamese', ukr = 'Ucraino', und = 'Sconosciuta',
+  ita = tr('Italian'), it = tr('Italian'), eng = tr('English'), en = tr('English'),
+  fre = tr('French'), fra = tr('French'), fr = tr('French'), ger = tr('German'), deu = tr('German'), de = tr('German'),
+  spa = tr('Spanish'), es = tr('Spanish'), por = tr('Portuguese'), pt = tr('Portuguese'), jpn = tr('Japanese'), ja = tr('Japanese'),
+  kor = tr('Korean'), ko = tr('Korean'), chi = tr('Chinese'), zho = tr('Chinese'), zh = tr('Chinese'), rus = tr('Russian'), ru = tr('Russian'),
+  ara = tr('Arabic'), hin = tr('Hindi'), tur = tr('Turkish'), pol = tr('Polish'), dut = tr('Dutch'), nld = tr('Dutch'),
+  swe = tr('Swedish'), nor = tr('Norwegian'), dan = tr('Danish'), fin = tr('Finnish'), gre = tr('Greek'), ell = tr('Greek'),
+  cze = tr('Czech'), ces = tr('Czech'), bul = tr('Bulgarian'), est = tr('Estonian'), hun = tr('Hungarian'), rum = tr('Romanian'), ron = tr('Romanian'),
+  heb = tr('Hebrew'), tha = tr('Thai'), vie = tr('Vietnamese'), ukr = tr('Ukrainian'), und = tr('Unknown'),
 }
 local CODEC = {
   eac3 = 'E-AC3', ac3 = 'AC3', dts = 'DTS', truehd = 'TrueHD', aac = 'AAC', flac = 'FLAC',
@@ -125,13 +131,13 @@ local function channels_label(n)
   if not n then return nil end
   if n == 1 then return 'Mono' elseif n == 2 then return 'Stereo' end
   if n == 6 then return '5.1' elseif n == 8 then return '7.1' end
-  return n .. ' canali'
+  return trf('{n} channels', 'n', n)
 end
 
 local function track_label(t)
   local lang = t.lang and (LANG[t.lang:lower()] or t.lang:upper()) or nil
   local parts = {}
-  parts[#parts + 1] = lang or (t.title and t.title ~= '' and t.title) or ('Traccia ' .. t.id)
+  parts[#parts + 1] = lang or (t.title and t.title ~= '' and t.title) or trf('Track {n}', 'n', t.id)
   if lang and t.title and t.title ~= '' and t.title:lower() ~= (t.lang or ''):lower() then
     parts[#parts + 1] = t.title
   end
@@ -140,7 +146,7 @@ local function track_label(t)
     local ch = channels_label(t['demux-channel-count'])
     if c and ch then parts[#parts + 1] = c .. ' ' .. ch elseif c then parts[#parts + 1] = c end
   elseif t.forced then
-    parts[#parts + 1] = 'Forzati'
+    parts[#parts + 1] = tr('Forced')
   end
   return table.concat(parts, ' · ')
 end
@@ -172,7 +178,7 @@ end
 
 -- ---- segments / prompts --------------------------------------------------------
 
-local PROMPT_LABEL = { Intro = 'Salta intro', Recap = 'Salta riepilogo', Outro = 'Salta titoli' }
+local PROMPT_LABEL = { Intro = tr('Skip intro'), Recap = tr('Skip recap'), Outro = tr('Skip credits') }
 
 -- returns { id=, label=, target= (seconds) | nil, to_end=bool, channel= } or nil
 local function active_prompt()
@@ -187,13 +193,13 @@ local function active_prompt()
     local id = 'seg' .. i
     if not prompt_dismissed[id] and pos >= s.s - 0.5 and pos < s.e - 1.0 and (pos - s.s) < 12 then
       if s.type == 'Outro' and info.next then
-        return { id = id, label = 'Prossimo episodio', sub = info.next, to_end = true }
+        return { id = id, label = tr('Next episode'), sub = info.next, to_end = true }
       end
-      return { id = id, label = PROMPT_LABEL[s.type] or 'Salta', target = s.e }
+      return { id = id, label = PROMPT_LABEL[s.type] or tr('Skip'), target = s.e }
     end
   end
   if info.next and dur and dur > 60 and (dur - pos) <= 25 and not prompt_dismissed['next'] then
-    return { id = 'next', label = 'Prossimo episodio', sub = info.next, to_end = true }
+    return { id = 'next', label = tr('Next episode'), sub = info.next, to_end = true }
   end
   return nil
 end
@@ -206,17 +212,17 @@ local function badge(lines, x, y, letter)
 end
 
 local function legend(lines, y)
-  local play = paused and 'Riproduci' or 'Pausa'
+  local play = paused and tr('Play') or tr('Pause')
   local items, right
   if remote_ui and info.live then
-    items = { { 'OK', play }, { '◀', 'Audio' }, { '▶', 'Sottotitoli' }, { '↩', 'Esci' } }
-    right = '▲ ▼  Canale'
+    items = { { 'OK', play }, { '◀', 'Audio' }, { '▶', tr('Subtitles') }, { '↩', tr('Exit') } }
+    right = '▲ ▼  ' .. tr('Channel')
   elseif remote_ui then
-    items = { { 'OK', play }, { '▼', 'Audio' }, { '▲', 'Sottotitoli' }, { '↩', 'Esci' } }
+    items = { { 'OK', play }, { '▼', 'Audio' }, { '▲', tr('Subtitles') }, { '↩', tr('Exit') } }
     right = '◀ ▶  ±10 s'
   else
-    items = { { 'A', play }, { 'X', 'Audio' }, { 'Y', 'Sottotitoli' }, { 'B', 'Esci' } }
-    right = info.live and '▲ ▼  Canale     ◀ ▶  Volume' or '◀ ▶  ±10 s     ▲ ▼  Volume'
+    items = { { 'A', play }, { 'X', 'Audio' }, { 'Y', tr('Subtitles') }, { 'B', tr('Exit') } }
+    right = info.live and ('▲ ▼  ' .. tr('Channel') .. '     ◀ ▶  Volume') or '◀ ▶  ±10 s     ▲ ▼  Volume'
   end
   local x = 96
   for _, it in ipairs(items) do
@@ -260,8 +266,8 @@ local function draw_bar(lines)
       lines[#lines + 1] = text(96, H - 118, os.date('%H:%M', start), 32, C.white, 7)
       lines[#lines + 1] = text(W - 96, H - 118, os.date('%H:%M', stop), 32, C.muted, 9)
     end
-    local mid = 'In diretta'
-    if info.upnext and info.upnext ~= '' then mid = mid .. '   ·   Poi ' .. info.upnext end
+    local mid = tr('Live')
+    if info.upnext and info.upnext ~= '' then mid = mid .. '   ·   ' .. trf('Then {a}', 'a', info.upnext) end
     lines[#lines + 1] = text(math.floor(W / 2), H - 114, mid, 27, C.dim, 8)
     legend(lines, H - 52)
     return
@@ -285,7 +291,7 @@ local function draw_bar(lines)
     lines[#lines + 1] = text(W - 96, H - 118, fmt_time(dur), 32, C.muted, 9)
     local speed = mp.get_property_number('speed') or 1
     local ends = os.time() + math.floor((dur - pos) / speed)
-    lines[#lines + 1] = text(math.floor(W / 2), H - 114, 'Termina alle ' .. os.date('%H:%M', ends), 27, C.dim, 8)
+    lines[#lines + 1] = text(math.floor(W / 2), H - 114, trf('Ends at {time}', 'time', os.date('%H:%M', ends)), 27, C.dim, 8)
   end
 
   legend(lines, H - 52)
@@ -320,7 +326,7 @@ local function draw_menu(lines)
 
   lines[#lines + 1] = shape(rect(0, 0, W, H), C.black, 0x90) -- dim the video
   lines[#lines + 1] = shape(rrect(x, y, pw, ph, 36), C.panel, 0x14)
-  lines[#lines + 1] = text(x + 44, y + 48, menu.kind == 'audio' and 'Audio' or 'Sottotitoli', 42, C.white, 4,
+  lines[#lines + 1] = text(x + 44, y + 48, menu.kind == 'audio' and 'Audio' or tr('Subtitles'), 42, C.white, 4,
     { bold = true })
   lines[#lines + 1] = text(x + pw - 44, y + 52, string.format('%d / %d', menu.cur, #menu.items), 26, C.dim, 6)
 
@@ -341,8 +347,8 @@ local function draw_menu(lines)
   if menu.top + VISIBLE - 1 < #menu.items then
     lines[#lines + 1] = text(x + math.floor(pw / 2), y + head + n * row + 4, '▼', 22, C.dim, 5)
   end
-  local foot = remote_ui and 'OK seleziona    ↩ chiudi    ▲ ▼ scorri' or 'A seleziona    B chiudi    ▲ ▼ scorri'
-  lines[#lines + 1] = text(x + math.floor(pw / 2), y + ph - 34, foot .. '    ◀ ▶ audio / sottotitoli', 26, C.dim, 5)
+  local foot = remote_ui and tr('OK select    ↩ close    ▲ ▼ scroll') or tr('A select    B close    ▲ ▼ scroll')
+  lines[#lines + 1] = text(x + math.floor(pw / 2), y + ph - 34, foot .. tr('    ◀ ▶ audio / subtitles'), 26, C.dim, 5)
 end
 
 local function draw_prompt(lines, p, raised)
@@ -360,7 +366,7 @@ end
 
 local function draw_loading(lines)
   lines[#lines + 1] = shape(rrect(math.floor(W / 2) - 150, math.floor(H / 2) - 36, 300, 72, 36), C.panel, 0x30)
-  lines[#lines + 1] = text(math.floor(W / 2), math.floor(H / 2), 'Caricamento…', 32, C.white, 5)
+  lines[#lines + 1] = text(math.floor(W / 2), math.floor(H / 2), tr('Loading…'), 32, C.white, 5)
 end
 
 local sub_pos = nil

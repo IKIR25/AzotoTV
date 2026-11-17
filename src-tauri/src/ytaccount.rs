@@ -33,7 +33,7 @@ use crate::youtube::{avatar_url, dedup, find_all, last_thumb, parse_length, text
 /// codes only to YouTube on TV's own client, so that is the one to put there
 /// (it is not in the repo). No file: no Google sign-in.
 fn client() -> Result<(String, String), String> {
-    let missing = || "Accesso con Google non configurato (youtube.json)".to_string();
+    let missing = || t!("Google sign-in isn't set up (youtube.json)");
     let t = fs::read_to_string(crate::jellyfin::config_dir().join("youtube.json")).map_err(|_| missing())?;
     let v: Value = serde_json::from_str(&t).map_err(|e| format!("youtube.json: {e}"))?;
     match (v["clientId"].as_str(), v["clientSecret"].as_str()) {
@@ -157,7 +157,7 @@ impl Account {
     }
 
     async fn post(&self, url: &str, body: Value) -> Result<Value, String> {
-        let resp = self.client.post(url).json(&body).send().await.map_err(|e| format!("Google non raggiungibile: {e}"))?;
+        let resp = self.client.post(url).json(&body).send().await.map_err(|e| t!("Can't reach Google: {e}", e = e))?;
         let status = resp.status();
         let v: Value = resp.json().await.unwrap_or(Value::Null);
         // the OAuth answers carry their own error codes, with a 4xx
@@ -175,7 +175,7 @@ impl Account {
     /// life) for the person to approve it; the end comes as event `yt-account`.
     pub async fn start(self: &Arc<Self>, app: AppHandle, user: String) -> Result<Code, String> {
         if !crate::profile::has_pin(&user) {
-            return Err("Per collegare un account Google serve un PIN su questo profilo".into());
+            return Err(t!("Linking a Google account needs a PIN on this profile"));
         }
         let (client_id, _) = client()?;
         let device_id = format!("{:032x}", crate::jellyfin::fnv1a(&format!("azototv-{user}")));
@@ -183,7 +183,7 @@ impl Account {
             .post(&format!("{OAUTH}/device/code"), json!({ "client_id": client_id, "scope": SCOPES, "device_id": device_id, "device_model": "ytlr::" }))
             .await?;
         let (Some(device_code), Some(code)) = (r["device_code"].as_str(), r["user_code"].as_str()) else {
-            return Err(format!("Google non dà un codice: {}", r["error"].as_str().unwrap_or("risposta strana")));
+            return Err(t!("Google gives no code: {a}", a = r["error"].as_str().unwrap_or("risposta strana")));
         };
         let url = r["verification_url"].as_str().unwrap_or("https://www.google.com/device").to_string();
         let expires_in = r["expires_in"].as_u64().unwrap_or(1800);
@@ -250,12 +250,12 @@ impl Account {
                     interval += 5;
                     continue;
                 }
-                Some("access_denied") => return Err("Accesso rifiutato sul telefono".into()),
-                Some("expired_token") => return Err("Codice scaduto".into()),
+                Some("access_denied") => return Err(t!("Access refused on the phone")),
+                Some("expired_token") => return Err(t!("Code expired")),
                 Some(e) => return Err(format!("Google: {e}")),
                 None => {}
             }
-            let Some(refresh) = r["refresh_token"].as_str() else { return Err("Google non ha dato l'accesso".into()) };
+            let Some(refresh) = r["refresh_token"].as_str() else { return Err(t!("Google didn't give access")) };
             let mut s = Stored {
                 refresh_token: refresh.into(),
                 access_token: r["access_token"].as_str().unwrap_or_default().into(),
@@ -268,7 +268,7 @@ impl Account {
             save(user, &s)?;
             return Ok(if s.name.is_empty() { "Account Google".into() } else { s.name });
         }
-        Err("Codice scaduto".into())
+        Err(t!("Code expired"))
     }
 
     /// Unlink: Google forgets the token too.
@@ -283,7 +283,7 @@ impl Account {
     /// A token Google no longer takes (removed from the Google account) unlinks.
     async fn token(&self, user: &str) -> Result<String, String> {
         let _one = self.refreshing.lock().await;
-        let mut s = load(user).ok_or("nessun account Google")?;
+        let mut s = load(user).ok_or_else(|| t!("no Google account"))?;
         if !s.access_token.is_empty() && now() + 60 < s.expires {
             return Ok(s.access_token);
         }
@@ -305,12 +305,12 @@ impl Account {
                 forget(user);
                 Err("revoked".into())
             }
-            (None, e) => Err(format!("Google: {}", e.unwrap_or("nessun token"))),
+            (None, e) => Err(format!("Google: {}", e.unwrap_or(&t!("no token")))),
         }
     }
 
     async fn call(&self, token: &str, endpoint: &str, mut body: Value) -> Result<Value, String> {
-        body["context"] = json!({ "client": { "clientName": "TVHTML5", "clientVersion": TV_VERSION, "hl": "it", "gl": "IT" } });
+        body["context"] = json!({ "client": { "clientName": "TVHTML5", "clientVersion": TV_VERSION, "hl": crate::locale::lang(), "gl": crate::locale::region() } });
         let resp = self
             .client
             .post(format!("https://www.youtube.com/youtubei/v1/{endpoint}?prettyPrint=false"))
@@ -319,7 +319,7 @@ impl Account {
             .json(&body)
             .send()
             .await
-            .map_err(|e| format!("YouTube non raggiungibile: {e}"))?;
+            .map_err(|e| t!("Can't reach YouTube: {e}", e = e))?;
         if !resp.status().is_success() {
             return Err(format!("YouTube HTTP {}", resp.status()));
         }
@@ -414,8 +414,13 @@ fn tile(x: &Value) -> Option<Video> {
         .unwrap_or_default();
     let channel = lines.first().and_then(|l| l.first()).cloned().unwrap_or_default();
     let stats = lines.get(1).cloned().unwrap_or_default();
-    let views = stats.iter().find(|s| s.contains("visualizz")).cloned().unwrap_or_default();
-    let published = stats.iter().find(|s| s.ends_with(" fa") || s.starts_with("Trasmesso")).cloned().unwrap_or_default();
+    // YouTube's wording, in English or Italian (locale.rs)
+    let views = stats.iter().find(|s| s.contains("view") || s.contains("visualizz")).cloned().unwrap_or_default();
+    let published = stats
+        .iter()
+        .find(|s| s.ends_with(" ago") || s.ends_with(" fa") || s.starts_with("Streamed") || s.starts_with("Trasmesso"))
+        .cloned()
+        .unwrap_or_default();
     let overlays = find_all(&x["header"], "thumbnailOverlayTimeStatusRenderer");
     let length = overlays.iter().map(|o| parse_length(&text(&o["text"]))).find(|l| *l > 0).unwrap_or(0);
     let live = overlays.iter().any(|o| o["style"].as_str() == Some("LIVE"));

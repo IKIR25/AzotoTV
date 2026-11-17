@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -64,7 +65,7 @@
         await api.renamePlaylist(list.Id, n);
         list = { ...list, Name: n };
       } catch (err) {
-        showToast(`Non riuscito: ${err}`, 4000);
+        showToast(t('Didn\'t work: {err}', { err }), 4000);
       }
     }
     await tick();
@@ -84,10 +85,10 @@
     confirmDelete = false;
     try {
       await api.deletePlaylist(id);
-      showToast(`Playlist «${list?.Name}» eliminata`);
+      showToast(t('Playlist “{Name}” deleted', { Name: list?.Name }));
       history.back();
     } catch (err) {
-      showToast(`Non riuscito: ${err}`, 4000);
+      showToast(t('Didn\'t work: {err}', { err }), 4000);
     }
   }
   $effect(() => () => clearTimeout(delTimer));
@@ -103,7 +104,7 @@
       const n = Math.min(i, items.length - 1);
       document.querySelector<HTMLElement>(n >= 0 ? `[data-key="r${n}"]` : '[data-key="add"]')?.focus({ preventScroll: true });
     } catch (err) {
-      showToast(`Non riuscito: ${err}`, 4000);
+      showToast(t('Didn\'t work: {err}', { err }), 4000);
     }
   }
 
@@ -122,30 +123,30 @@
         <p class="kind">Playlist</p>
         {#if renaming}
           <form onsubmit={rename}>
-            <input class="name" bind:this={nameInput} bind:value={newName} data-focusable data-osk-submit aria-label="Nome della playlist" autocomplete="off" />
+            <input class="name" bind:this={nameInput} bind:value={newName} data-focusable data-osk-submit aria-label={t('Name of the playlist')} autocomplete="off" />
           </form>
         {:else}
           <h1>{list.Name}</h1>
         {/if}
-        <p class="meta">{items.length ? `${items.length} brani · ${minutes(total)}` : 'Ancora vuota'}</p>
+        <p class="meta">{items.length ? t('{length} songs · {minutes}', { length: items.length, minutes: minutes(total) }) : t('Still empty')}</p>
         <div class="actions">
           <button class="btn primary" data-focusable data-key="play" data-scroll-top onclick={() => playTracks(items, 0)}>
-            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg> Riproduci
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg> {t('Play')}
           </button>
           <button class="btn" data-focusable data-key="shuffle" data-scroll-top onclick={() => playTracks(items, 0, { shuffle: true })}>
             <svg viewBox="0 0 24 24"
               ><path
                 d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04z"
               /></svg
-            > Casuale
+            > {t('Shuffle')}
           </button>
           {#if pin}<PinButton {pin} />{/if}
         </div>
         <div class="actions small">
-          <button class="btn" data-focusable data-key="add" data-scroll-top onclick={addSongs}>＋ Aggiungi brani</button>
-          <button class="btn" data-focusable data-key="rename" data-scroll-top onclick={startRename}>Rinomina</button>
+          <button class="btn" data-focusable data-key="add" data-scroll-top onclick={addSongs}>{t('＋ Add songs')}</button>
+          <button class="btn" data-focusable data-key="rename" data-scroll-top onclick={startRename}>{t('Rename')}</button>
           <button class="btn" class:warn={confirmDelete} data-focusable data-key="delete" data-scroll-top onclick={remove}>
-            {confirmDelete ? 'Premi di nuovo per eliminarla' : 'Elimina'}
+            {confirmDelete ? t('Press again to delete it') : t('Delete')}
           </button>
         </div>
       </div>
@@ -161,7 +162,7 @@
             <span class="dur">{clock((it.RunTimeTicks ?? 0) / 1e7)}</span>
           </button>
           {#if it.PlaylistItemId}
-            <button class="rm" data-focusable data-key={`r${i}`} aria-label="Togli dalla playlist" onclick={() => takeOut(it, i)}>✕</button>
+            <button class="rm" data-focusable data-key={`r${i}`} aria-label={t('Remove from the playlist')} onclick={() => takeOut(it, i)}>✕</button>
           {/if}
         </li>
       {/each}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English; other languages in res/values-<language>/strings.xml -->
+<resources>
+    <string name="send_to_tv">Send to the TV</string>
+    <string name="add_to_gallery">Add to Gallery</string>
+    <string name="looking">Looking for the TV…</string>
+    <string name="connect_tv">Connect the TV</string>
+    <string name="no_answer">The TV isn\'t answering</string>
+    <string name="same_wifi">The phone must be on the home Wi-Fi, and AzotoTV turned on.</string>
+    <string name="address">The TV\'s address (START › Connect a phone):</string>
+    <string name="retry">Try again</string>
+</resources>

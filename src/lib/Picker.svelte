@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { key } from './input.svelte';
   import { onMount } from 'svelte';
   import { modal } from './stage.svelte';
@@ -45,7 +46,7 @@
       </button>
     {/each}
   </div>
-  <div class="hint"><kbd>{key('A')}</kbd> scegli · <kbd>{key('B')}</kbd> chiudi</div>
+  <div class="hint"><kbd>{key('A')}</kbd> {t('select ·')} <kbd>{key('B')}</kbd> {t('close')}</div>
 </aside>
 
 <style>

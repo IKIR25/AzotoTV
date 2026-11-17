@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { locale, t } from '$lib/i18n';
   import '../app.css';
   import { onMount } from 'svelte';
   import { beforeNavigate, goto } from '$app/navigation';
@@ -77,7 +78,7 @@
       localStorage.removeItem('azoto.lite'); // the old "lite effects" toggle is gone
     } catch {}
     const tick = () =>
-      (clock = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
+      (clock = new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }));
     tick();
     const clockTimer = setInterval(tick, 10_000);
 
@@ -135,7 +136,7 @@
       if (!s || s.user_id !== auth.id) return;
       expiring = true;
       await signOut(auth.id);
-      showToast('Accesso scaduto: inserisci di nuovo la password', 4000);
+      showToast(t('Sign-in expired: enter the password again'), 4000);
       await goto('/profiles', { replaceState: true });
       expiring = false;
     };
@@ -316,7 +317,7 @@
   {#snippet corner()}
     <div class="right">
       {#if song && path !== '/music'}
-        <button class="mini" data-focusable data-scroll-top aria-label="In riproduzione" onclick={() => goto('/music')}>
+        <button class="mini" data-focusable data-scroll-top aria-label={t('Now playing')} onclick={() => goto('/music')}>
           {#if songCover(song, 4)}<img src={songCover(song, 4)} alt="" />{/if}
           <span class="eq" class:paused={music.paused}><i></i><i></i><i></i></span>
           <span class="t">{song.Name}</span>
@@ -333,7 +334,7 @@
             src={userImage(auth.id, 'current', 96)}
             alt=""
             onerror={() => (avatarImg = false)}
-          />{/if}{#if notes.unread}<i class="unread" aria-label="notifiche nuove"></i>{/if}</button
+          />{/if}{#if notes.unread}<i class="unread" aria-label={t('new notifications')}></i>{/if}</button
       >
     </div>
   {/snippet}
@@ -366,7 +367,7 @@
           aria-current={path === '/search' ? 'page' : undefined}
           data-focusable
           data-scroll-top
-          onclick={() => goto('/search')}>Cerca</button
+          onclick={() => goto('/search')}>{t('Search')}</button
         >
         <kbd>{key('RB')}</kbd>
       </nav>
@@ -393,7 +394,7 @@
     <Viewer
       assets={sent.assets}
       show={sent.assets.filter((a) => !a.video).length > 1}
-      title="Dal telefono"
+      title={t('From the phone')}
       onclose={() => (sent.assets = [])}
     />
   {/if}
@@ -407,8 +408,8 @@
     <div class="loading">
       {#if hero}<img class="hero" src={hero} alt="" />{/if}
       <div class="what">
-        {#if logo}<img class="logo" src={logo} alt={game.name} />{:else}<h1>{game.name || 'Gioco'}</h1>{/if}
-        <p>{game.name && logo ? `${game.name} · ` : ''}Avvio…</p>
+        {#if logo}<img class="logo" src={logo} alt={game.name} />{:else}<h1>{game.name || t('Game')}</h1>{/if}
+        <p>{game.name && logo ? `${game.name} · ` : ''}{t('Starting…')}</p>
       </div>
     </div>
   {/if}

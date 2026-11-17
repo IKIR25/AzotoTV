@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { invoke } from '@tauri-apps/api/core';
@@ -56,7 +57,7 @@
     }
     armed = false;
     await unlinkAccount().catch(() => {});
-    showToast('Account Google scollegato: restano i consigli di AzotoTV', 4000);
+    showToast(t('Google account unlinked: AzotoTV\'s recommendations remain'), 4000);
     goto('/youtube', { replaceState: true });
   }
 
@@ -68,7 +69,7 @@
         step = 'error';
         return focusFirst();
       }
-      showToast(`Account collegato: ${e.payload.text}`, 4000);
+      showToast(t('Account linked: {text}', { text: e.payload.text }), 4000);
       await accountLinked(user);
       goto('/youtube', { replaceState: true });
     });
@@ -91,29 +92,29 @@
 <div class="wrap">
   {#if step === 'code' || (step === 'error' && code)}
     <section class="panel glass">
-      <div class="qr" aria-label="Codice QR">
+      <div class="qr" aria-label={t('QR code')}>
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {#if code}{@html code.qr}{/if}
       </div>
       <div class="side">
-        <h1>Accedi con Google</h1>
-        <p class="lead">Così su {auth.name} vedi la home e le iscrizioni del tuo account YouTube.</p>
+        <h1>{t('Sign in with Google')}</h1>
+        <p class="lead">{t('So that on {name} you see your YouTube account\'s home and subscriptions.', { name: auth.name })}</p>
         <ol>
-          <li>Sul telefono inquadra il codice QR, oppure apri <b>{(code?.url ?? 'google.com/device').replace(/^https:\/\/(www\.)?/, '')}</b></li>
-          <li>Scrivi questo codice:</li>
+          <li>{t('On the phone, scan the QR code, or open')} <b>{(code?.url ?? 'google.com/device').replace(/^https:\/\/(www\.)?/, '')}</b></li>
+          <li>{t('Type this code:')}</li>
         </ol>
         <div class="code">{code?.code ?? '···-···-···'}</div>
-        <ol start="3"><li>Scegli il tuo account e tocca <b>Consenti</b>.</li></ol>
+        <ol start="3"><li>{t('Pick your account and tap')} <b>{t('Allow')}</b>.</li></ol>
         {#if step === 'error'}
           <p class="err">{error}</p>
           <div class="row">
-            <button class="btn primary" data-focusable onclick={start}>Nuovo codice</button>
-            <button class="btn" data-focusable onclick={() => history.back()}>Annulla</button>
+            <button class="btn primary" data-focusable onclick={start}>{t('New code')}</button>
+            <button class="btn" data-focusable onclick={() => history.back()}>{t('Cancel')}</button>
           </div>
         {:else}
-          <p class="small">{code ? 'In attesa del telefono…' : 'Chiedo un codice a Google…'}</p>
-          <p class="small">Nessuna password sulla TV. Mi piace, iscrizioni e cronologia di AzotoTV restano qui: non vanno su YouTube.</p>
-          <button class="btn" data-focusable onclick={() => history.back()}>Annulla</button>
+          <p class="small">{code ? t('Waiting for the phone…') : t('Asking Google for a code…')}</p>
+          <p class="small">{t('No password on the TV. AzotoTV\'s likes, subscriptions and history stay here: they don\'t go to YouTube.')}</p>
+          <button class="btn" data-focusable onclick={() => history.back()}>{t('Cancel')}</button>
         {/if}
       </div>
     </section>
@@ -127,31 +128,31 @@
               onerror={() => (photoOk = false)}
             />{/if}</span
         >
-        <h1>{info.name || 'Account Google'}</h1>
+        <h1>{info.name || t('Google account')}</h1>
         {#if info.handle}<p class="handle">{info.handle}</p>{/if}
-        <p>Collegato a {auth.name}: su YouTube vedi la home e le iscrizioni di questo account. Mi piace, iscrizioni e cronologia di AzotoTV restano qui.</p>
+        <p>{t('Linked to {name}: in YouTube you see this account\'s home and subscriptions. AzotoTV\'s likes, subscriptions and history stay here.', { name: auth.name })}</p>
         <div class="row">
           <button class="btn" class:warn={armed} data-focusable onblur={() => (armed = false)} onclick={unlink}>
-            {armed ? 'Premi di nuovo per scollegare' : 'Scollega account'}
+            {armed ? t('Press again to unlink') : t('Unlink account')}
           </button>
-          <button class="btn primary" data-focusable onclick={() => history.back()}>Fatto</button>
+          <button class="btn primary" data-focusable onclick={() => history.back()}>{t('Done')}</button>
         </div>
       {:else if step === 'nopin'}
         <span class="pic lock" aria-hidden="true">
           <svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2" /><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" /></svg>
         </span>
-        <h1>Prima un PIN</h1>
-        <p>Con un account Google collegato, {auth.name} deve avere un PIN: così nessun altro entra nel tuo account dalla TV.</p>
+        <h1>{t('First, a PIN')}</h1>
+        <p>{t('With a Google account linked, {name} must have a PIN: that way nobody else gets into your account from the TV.', { name: auth.name })}</p>
         <div class="row">
-          <button class="btn primary" data-focusable onclick={() => goto('/pin')}>Imposta il PIN</button>
-          <button class="btn" data-focusable onclick={() => history.back()}>Annulla</button>
+          <button class="btn primary" data-focusable onclick={() => goto('/pin')}>{t('Set the PIN')}</button>
+          <button class="btn" data-focusable onclick={() => history.back()}>{t('Cancel')}</button>
         </div>
       {:else}
-        <h1>Accedi con Google</h1>
+        <h1>{t('Sign in with Google')}</h1>
         <p class="err">{error}</p>
         <div class="row">
-          <button class="btn primary" data-focusable onclick={start}>Riprova</button>
-          <button class="btn" data-focusable onclick={() => history.back()}>Annulla</button>
+          <button class="btn primary" data-focusable onclick={start}>{t('Try again')}</button>
+          <button class="btn" data-focusable onclick={() => history.back()}>{t('Cancel')}</button>
         </div>
       {/if}
     </section>

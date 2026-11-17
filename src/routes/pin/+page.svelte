@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { auth, loadPrefs, prefs, setPin, userImage } from '$lib/session.svelte';
   import { showToast } from '$lib/stage.svelte';
@@ -25,12 +26,12 @@
       error = '';
       step = 'repeat';
     } else if (typed !== first) {
-      error = 'I due PIN non coincidono: scegline uno di nuovo';
+      error = t('The two PINs don\'t match: pick one again');
       step = 'new';
     } else {
       try {
         await setPin(typed);
-        showToast(`PIN impostato: servirà per entrare in ${auth.name}`, 3500);
+        showToast(t('PIN set: it will be needed to enter {name}', { name: auth.name }), 3500);
         return history.back();
       } catch (e) {
         error = String(e);
@@ -46,7 +47,7 @@
       showToast('PIN tolto: si entra senza', 3000);
       history.back();
     } catch (e) {
-      showToast(`Impossibile: ${e}`, 4000);
+      showToast(t('Couldn\'t: {e}', { e }), 4000);
     }
   }
 </script>
@@ -60,15 +61,15 @@
           onerror={() => (avatarImg = false)}
         />{/if}</span
     >
-    <h1>PIN di {auth.name}</h1>
+    <h1>{t('{name}\'s PIN', { name: auth.name })}</h1>
     {#if step === 'ready'}
-      <p>Il PIN viene chiesto quando scegli questo profilo in «Chi sta guardando?».</p>
+      <p>{t('The PIN is asked when you pick this profile in “Who is watching?”.')}</p>
       <div class="row">
-        <button class="btn primary" data-focusable onclick={() => (step = 'new')}>Cambia PIN</button>
-        <button class="btn" data-focusable onclick={remove}>Togli il PIN</button>
+        <button class="btn primary" data-focusable onclick={() => (step = 'new')}>{t('Change PIN')}</button>
+        <button class="btn" data-focusable onclick={remove}>{t('Remove the PIN')}</button>
       </div>
     {:else}
-      <p class:err={!!error}>{error || (step === 'new' ? 'Scegli un PIN di 4 cifre' : 'Scrivilo di nuovo')}</p>
+      <p class:err={!!error}>{error || (step === 'new' ? t('Pick a 4-digit PIN') : t('Type it again'))}</p>
       {#key step}<PinPad bind:value={pin} onfull={full} />{/key}
     {/if}
   </section>

@@ -215,12 +215,12 @@ impl Jf {
             .get(format!("{base}/System/Info/Public"))
             .send()
             .await
-            .map_err(|e| format!("server non raggiungibile: {e}"))?
+            .map_err(|e| t!("can't reach the server: {e}", e = e))?
             .error_for_status()
             .map_err(|e| e.to_string())?
             .json()
             .await
-            .map_err(|_| "non sembra un server Jellyfin".to_string())?;
+            .map_err(|_| t!("this doesn't look like a Jellyfin server"))?;
         let mut st = self.store.lock().unwrap();
         if st.base.as_deref() != Some(base.as_str()) {
             st.public.clear(); // another server's users
@@ -237,7 +237,7 @@ impl Jf {
             .timeout(Duration::from_secs(5))
             .send()
             .await
-            .map_err(|e| format!("server non raggiungibile: {e}"))?
+            .map_err(|e| t!("can't reach the server: {e}", e = e))?
             .error_for_status()
             .map_err(|e| e.to_string())?
             .json()
@@ -259,7 +259,7 @@ impl Jf {
     /// Users shown on the login screen of the server, marked if we hold a token.
     /// If the server doesn't answer, the list it gave last time.
     pub async fn profiles(&self) -> Result<Profiles, String> {
-        let base = self.server().ok_or("nessun server")?;
+        let base = self.server().ok_or_else(|| t!("no server"))?;
         let fetched = self.public_users(&base).await;
         let mut st = self.store.lock().unwrap();
         let offline = match fetched {
@@ -309,7 +309,7 @@ impl Jf {
             .iter()
             .find(|s| s.user_id == user_id)
             .cloned()
-            .ok_or("profilo non connesso")?;
+            .ok_or_else(|| t!("profile not signed in"))?;
         st.current = Some(user_id.to_string());
         self.save(&st);
         Ok(s)
@@ -354,12 +354,12 @@ impl Jf {
             .json(&serde_json::json!({ "Username": user, "Pw": pass }))
             .send()
             .await
-            .map_err(|e| format!("server non raggiungibile: {e}"))?;
+            .map_err(|e| t!("can't reach the server: {e}", e = e))?;
         if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
-            return Err("Password non corretta".into());
+            return Err(t!("Wrong password"));
         }
         if !resp.status().is_success() {
-            return Err(format!("accesso non riuscito ({})", resp.status()));
+            return Err(t!("sign-in failed ({a})", a = resp.status()));
         }
         let v: Value = resp.json().await.map_err(|e| e.to_string())?;
         let s = Session {
@@ -434,7 +434,7 @@ impl Jf {
     pub async fn image(&self, path_and_query: &str) -> Result<(Vec<u8>, String), String> {
         let (base, auth) = match self.session() {
             Some(s) => (s.base.clone(), self.auth_header(&s.device_id, Some(&s.token))),
-            None => (self.server().ok_or("nessun server")?, self.auth_header("", None)),
+            None => (self.server().ok_or_else(|| t!("no server"))?, self.auth_header("", None)),
         };
         let url = format!("{base}{path_and_query}");
         let req = self.client.get(&url).header("Authorization", auth);

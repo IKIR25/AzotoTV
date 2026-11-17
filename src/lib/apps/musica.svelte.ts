@@ -5,6 +5,7 @@ import { goto } from '$app/navigation';
 import { api, img, type Item } from '../jf';
 import { music, playTracks } from '../music.svelte';
 import type { App, Slide } from './types';
+import { t } from '$lib/i18n';
 
 const shelf = $state({
   view: null as Item | null,
@@ -26,12 +27,12 @@ function nowPlaying(): Slide | null {
     key: 'now',
     title: it.Name,
     cover: cover(it, 14),
-    kicker: { text: music.active && !music.paused ? 'In riproduzione' : 'In pausa' },
-    meta: [artist(it), it.Album ?? '', left > 0 ? `poi altri ${left} brani` : ''].filter(Boolean),
+    kicker: { text: music.active && !music.paused ? t('Now playing') : t('Paused') },
+    meta: [artist(it), it.Album ?? '', left > 0 ? t('then {left} more songs', { left }) : ''].filter(Boolean),
     progress: music.duration ? Math.min(1, music.shown / music.duration) : undefined,
     backdrop: cover(it, 40),
     ambient: true,
-    action: 'Apri',
+    action: t('Open'),
     open: () => goto('/music'),
   };
 }
@@ -39,17 +40,17 @@ function nowPlaying(): Slide | null {
 function listSlide(it: Item, kind: 'playlist' | 'album'): Slide {
   const meta =
     kind === 'playlist'
-      ? [it.ChildCount ? `${it.ChildCount} brani` : 'Playlist']
+      ? [it.ChildCount ? t('{ChildCount} songs', { ChildCount: it.ChildCount }) : 'Playlist']
       : [artist(it), it.ProductionYear ? String(it.ProductionYear) : ''].filter(Boolean);
   return {
     key: `${kind}:${it.Id}`,
     title: it.Name,
     cover: cover(it, 14),
-    kicker: { text: kind === 'playlist' ? 'Le tue playlist' : 'Aggiunti di recente' },
+    kicker: { text: kind === 'playlist' ? t('Your playlists') : t('Recently added') },
     meta,
     backdrop: cover(it, 40),
     ambient: true,
-    action: 'Riproduci',
+    action: t('Play'),
     open: async () => {
       const songs =
         kind === 'playlist'
@@ -64,12 +65,12 @@ function shuffleSlide(view: Item): Slide {
   const pic = shelf.songs.find((s) => s.ImageTags?.Primary);
   return {
     key: 'shuffle',
-    title: 'Tutta la musica in casuale',
+    title: t('All the music, shuffled'),
     kicker: { text: view.Name },
-    meta: shelf.count ? [`${shelf.count} brani`] : [],
+    meta: shelf.count ? [t('{count} songs', { count: shelf.count })] : [],
     backdrop: cover(pic, 40),
     ambient: true,
-    action: 'Riproduci',
+    action: t('Play'),
     open: async () => playTracks((await api.tracks(view.Id)).Items, 0, { shuffle: true }),
   };
 }
@@ -79,11 +80,11 @@ function songSlide(it: Item, i: number): Slide {
     key: `song:${it.Id}`,
     title: it.Name,
     cover: cover(it, 14),
-    kicker: { text: 'Brani aggiunti di recente' },
+    kicker: { text: t('Recently added songs') },
     meta: [artist(it)].filter(Boolean),
     backdrop: cover(it, 40),
     ambient: true,
-    action: 'Riproduci',
+    action: t('Play'),
     // the recent songs play on from this one
     open: () => playTracks(shelf.songs, i),
   };
@@ -91,8 +92,8 @@ function songSlide(it: Item, i: number): Slide {
 
 export const musicaApp: App = {
   key: 'music',
-  name: 'Musica',
-  description: 'La musica della libreria: playlist, album e brani.',
+  name: t('Music'),
+  description: t('The library\'s music: playlists, albums and songs.'),
   route: '/musica',
   color: 'linear-gradient(135deg, #19d3b0 0%, #1fa2ff 60%, #5b6cff 100%)',
   icon: `<path d="M19 34V12l18-4v22" />

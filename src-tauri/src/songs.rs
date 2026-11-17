@@ -181,7 +181,7 @@ impl Songs {
     /// Already in the library: only the playlists. Already queued: the playlists are added to its job.
     pub async fn download(&self, app: &AppHandle, song: Song, user: String, playlists: Vec<String>) -> Result<(), String> {
         if self.config.is_none() {
-            return Err("Scaricare è possibile solo sul server".into());
+            return Err(t!("Downloading only works on the server"));
         }
         if let Some(item) = self.library(false).await.get(&song.id).cloned() {
             for p in &playlists {
@@ -322,7 +322,7 @@ impl Songs {
             .map_err(|e| format!("yt-dlp: {e}"))?;
         if !out.status.success() {
             let err = String::from_utf8_lossy(&out.stderr);
-            return Err(err.lines().rfind(|l| !l.trim().is_empty()).unwrap_or("download non riuscito").to_string());
+            return Err(err.lines().rfind(|l| !l.trim().is_empty()).unwrap_or(&t!("download failed")).to_string());
         }
         let path = String::from_utf8_lossy(&out.stdout).lines().last().unwrap_or_default().trim().to_string();
         self.set(&job.song.id, JobState::Adding, String::new());
@@ -349,7 +349,7 @@ impl Songs {
                 self.rescan(&path).await;
             }
             if start.elapsed() > SCAN_WAIT {
-                return Err("scaricato, ma Jellyfin non lo vede ancora".into());
+                return Err(t!("downloaded, but Jellyfin doesn't see it yet"));
             }
         };
         // the latest playlists asked for while it downloaded count too

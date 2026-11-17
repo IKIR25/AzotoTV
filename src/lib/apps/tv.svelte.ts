@@ -4,6 +4,7 @@ import { goto } from '$app/navigation';
 import { api, backdropUrl, episodeLabel, img, logoUrl, progress, runtime, type Item } from '../jf';
 import { play } from '../player.svelte';
 import type { App, Slide } from './types';
+import { t } from '$lib/i18n';
 
 const shelf = $state({
   user: '',
@@ -17,7 +18,7 @@ const MAX_GOING = 8;
 
 function filmMeta(it: Item): string[] {
   const meta: string[] = [];
-  if (it.Type === 'Series') meta.push('Serie TV');
+  if (it.Type === 'Series') meta.push(t('TV series'));
   if (it.ProductionYear) meta.push(String(it.ProductionYear));
   if (it.Type === 'Movie' && runtime(it)) meta.push(runtime(it));
   if (it.Genres?.length) meta.push(it.Genres.slice(0, 2).join(', '));
@@ -34,7 +35,7 @@ function filmSlide(it: Item): Slide {
     pill: it.OfficialRating,
     overview: it.Overview,
     backdrop: backdropUrl(it),
-    action: 'Apri',
+    action: t('Open'),
     open: () => goto(`/item/${it.Id}`),
   };
 }
@@ -45,7 +46,7 @@ function goingSlide({ it, resume }: { it: Item; resume: boolean }): Slide {
   const meta = ep ? [`${episodeLabel(it)} · ${it.Name}`] : filmMeta(it).slice(0, 2);
   if (pct && it.RunTimeTicks) {
     const left = Math.max(1, Math.round(((1 - pct) * it.RunTimeTicks) / 600_000_000));
-    meta.push(`ancora ${left} min`);
+    meta.push(t('{left} min left', { left }));
   }
   return {
     key: `go:${it.Id}`,
@@ -54,12 +55,12 @@ function goingSlide({ it, resume }: { it: Item; resume: boolean }): Slide {
       ep && it.ParentLogoItemId && it.ParentLogoImageTag
         ? img(it.ParentLogoItemId, 'Logo', 36, it.ParentLogoImageTag)
         : logoUrl(it, 36),
-    kicker: { text: resume ? 'Continua a guardare' : 'Prossimo episodio' },
+    kicker: { text: resume ? t('Continue watching') : t('Next episode') },
     meta,
     progress: pct || undefined,
     overview: it.Overview,
     backdrop: backdropUrl(it),
-    action: resume ? 'Riprendi' : 'Guarda',
+    action: resume ? t('Resume') : t('Watch'),
     open: () => play(it),
   };
 }
@@ -67,7 +68,7 @@ function goingSlide({ it, resume }: { it: Item; resume: boolean }): Slide {
 export const tvApp: App = {
   key: 'tv',
   name: 'TV',
-  description: 'Film e serie TV della libreria, con Continua a guardare.',
+  description: t('The library\'s films and TV series, with Continue watching.'),
   route: '/tv',
   color: 'linear-gradient(135deg, #5b6cff 0%, #9b5cff 55%, #ff4fa3 100%)',
   icon: `<rect x="5" y="9" width="38" height="25" rx="4.5" />

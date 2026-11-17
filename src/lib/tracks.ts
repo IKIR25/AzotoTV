@@ -2,6 +2,7 @@
 // memory (by language, so it carries over to the next episodes) and the
 // mapping from Jellyfin stream indexes to mpv track ids.
 import type { Item, MediaStream } from './jf';
+import { t } from '$lib/i18n';
 
 /** Jellyfin stream indexes; sub -1 = off. */
 export interface Choice {
@@ -10,18 +11,18 @@ export interface Choice {
 }
 
 const LANGS: Record<string, string> = {
-  ita: 'Italiano', it: 'Italiano', eng: 'Inglese', en: 'Inglese', spa: 'Spagnolo', es: 'Spagnolo',
-  fra: 'Francese', fre: 'Francese', fr: 'Francese', deu: 'Tedesco', ger: 'Tedesco', de: 'Tedesco',
-  jpn: 'Giapponese', ja: 'Giapponese', por: 'Portoghese', pt: 'Portoghese', rus: 'Russo', ru: 'Russo',
-  zho: 'Cinese', chi: 'Cinese', zh: 'Cinese', kor: 'Coreano', ko: 'Coreano', nld: 'Olandese', dut: 'Olandese',
-  pol: 'Polacco', tur: 'Turco', ara: 'Arabo', hin: 'Hindi', swe: 'Svedese', nor: 'Norvegese', nob: 'Norvegese',
-  dan: 'Danese', fin: 'Finlandese', ell: 'Greco', gre: 'Greco', ces: 'Ceco', cze: 'Ceco', hun: 'Ungherese',
-  ron: 'Rumeno', rum: 'Rumeno', ukr: 'Ucraino', heb: 'Ebraico', tha: 'Thailandese', vie: 'Vietnamita',
-  ind: 'Indonesiano', bul: 'Bulgaro', hrv: 'Croato', srp: 'Serbo', slv: 'Sloveno', slk: 'Slovacco',
-  est: 'Estone', lav: 'Lettone', lit: 'Lituano', isl: 'Islandese', cat: 'Catalano', msa: 'Malese',
+  ita: t('Italian'), it: t('Italian'), eng: t('English'), en: t('English'), spa: t('Spanish'), es: t('Spanish'),
+  fra: t('French'), fre: t('French'), fr: t('French'), deu: t('German'), ger: t('German'), de: t('German'),
+  jpn: t('Japanese'), ja: t('Japanese'), por: t('Portuguese'), pt: t('Portuguese'), rus: t('Russian'), ru: t('Russian'),
+  zho: t('Chinese'), chi: t('Chinese'), zh: t('Chinese'), kor: t('Korean'), ko: t('Korean'), nld: t('Dutch'), dut: t('Dutch'),
+  pol: t('Polish'), tur: t('Turkish'), ara: t('Arabic'), hin: 'Hindi', swe: t('Swedish'), nor: t('Norwegian'), nob: t('Norwegian'),
+  dan: t('Danish'), fin: t('Finnish'), ell: t('Greek'), gre: t('Greek'), ces: t('Czech'), cze: t('Czech'), hun: t('Hungarian'),
+  ron: t('Romanian'), rum: t('Romanian'), ukr: t('Ukrainian'), heb: t('Hebrew'), tha: t('Thai'), vie: t('Vietnamese'),
+  ind: t('Indonesian'), bul: t('Bulgarian'), hrv: t('Croatian'), srp: t('Serbian'), slv: t('Slovenian'), slk: t('Slovak'),
+  est: t('Estonian'), lav: t('Latvian'), lit: t('Lithuanian'), isl: t('Icelandic'), cat: t('Catalan'), msa: t('Malay'),
 };
 const lang = (code?: string) =>
-  !code || code === 'und' ? 'Sconosciuta' : (LANGS[code.toLowerCase()] ?? code.toUpperCase());
+  !code || code === 'und' ? t('Unknown') : (LANGS[code.toLowerCase()] ?? code.toUpperCase());
 
 const CODECS: Record<string, string> = {
   eac3: 'Dolby Digital+', ac3: 'Dolby Digital', truehd: 'Dolby TrueHD', dts: 'DTS', aac: 'AAC',
@@ -52,11 +53,11 @@ export function audioLabel(s: MediaStream) {
 export function subLabel(s: MediaStream) {
   const tags = [
     s.IsForced ? 'forzati' : '',
-    s.IsHearingImpaired || /sdh/i.test(s.Title ?? '') ? 'per non udenti' : '',
+    s.IsHearingImpaired || /sdh/i.test(s.Title ?? '') ? t('for the hard of hearing') : '',
   ].filter(Boolean);
   return {
     main: lang(s.Language) + (tags.length ? ` (${tags.join(', ')})` : ''),
-    sub: [extra(s), s.IsExternal ? 'file esterno' : '', (s.Codec ?? '').toUpperCase()].filter(Boolean).join(' · '),
+    sub: [extra(s), s.IsExternal ? t('external file') : '', (s.Codec ?? '').toUpperCase()].filter(Boolean).join(' · '),
   };
 }
 

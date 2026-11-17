@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from '$lib/i18n';
   import { tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -116,14 +117,14 @@
 
   async function ask() {
     if (!d || sending) return;
-    if (type === 'tv' && !picked.length) return showToast('Scegli almeno una stagione');
+    if (type === 'tv' && !picked.length) return showToast(t('Pick at least one season'));
     sending = true;
     try {
       await seerr.request(type, id, type === 'tv' ? picked : undefined);
-      showToast('Richiesta inviata');
+      showToast(t('Request sent'));
       d = await seerr.details(type, id);
     } catch (e) {
-      showToast(`Richiesta non riuscita: ${e}`, 4000);
+      showToast(t('Request failed: {e}', { e }), 4000);
     }
     sending = false;
   }
@@ -131,16 +132,16 @@
 
 <div class="scroller">
   {#if failed}
-    <p class="note">Impossibile caricare: {failed}</p>
+    <p class="note">{t('Couldn\'t load: {failed}', { failed })}</p>
   {:else if d}
     <section class="info">
       <h1>{sTitle(d)}</h1>
       {#if d.tagline}<div class="sub">{d.tagline}</div>{/if}
       <div class="meta">
         {#if sYear(d)}<span>{sYear(d)}</span>{/if}
-        <span>{type === 'tv' ? 'Serie' : 'Film'}</span>
+        <span>{type === 'tv' ? t('Series') : t('Movie')}</span>
         {#if runtime}<span>{runtime}</span>{/if}
-        {#if type === 'tv' && seasons.length}<span>{seasons.length} stagioni</span>{/if}
+        {#if type === 'tv' && seasons.length}<span>{t('{length} seasons', { length: seasons.length })}</span>{/if}
         {#if d.voteAverage}<span>★ {d.voteAverage.toFixed(1)}</span>{/if}
         {#if d.genres?.length}<span>{d.genres.slice(0, 3).map((g) => g.name).join(' · ')}</span>{/if}
         {#if statusLabel(d.mediaInfo)}<span class="pill">{statusLabel(d.mediaInfo)}</span>{/if}
@@ -150,7 +151,7 @@
       {#if prog && !(type === 'movie' && ready)}
         <DownloadBar p={prog} />
       {:else if st === MS.PENDING && !prog}
-        <div class="hint wait">Richiesta inviata: aspetta che venga approvata.</div>
+        <div class="hint wait">{t('Request sent: wait for it to be approved.')}</div>
       {/if}
 
       {#if type === 'tv' && seasons.length}
@@ -158,7 +159,7 @@
           {#each seasons as s (s.seasonNumber)}
             {@const ss = seasonStatus(s.seasonNumber)}
             {#if ss >= MS.PENDING || !status?.can_request}
-              <span class="chip done">Stagione {s.seasonNumber}{ss >= MS.PENDING ? ` · ${statusLabel({ status: ss })}` : ''}</span>
+              <span class="chip done">{t('Season {n}', { n: s.seasonNumber })}{ss >= MS.PENDING ? ` · ${statusLabel({ status: ss })}` : ''}</span>
             {:else}
               <button
                 class="chip"
@@ -166,7 +167,7 @@
                 data-focusable
                 data-key={`season-${s.seasonNumber}`}
                 onclick={() => toggle(s.seasonNumber)}
-                >{picked.includes(s.seasonNumber) ? '✓' : '○'} Stagione {s.seasonNumber}</button
+                >{t('{a} Season {seasonNumber}', { a: picked.includes(s.seasonNumber) ? '✓' : '○', seasonNumber: s.seasonNumber })}</button
               >
             {/if}
           {/each}
@@ -176,20 +177,22 @@
       <div class="actions">
         {#if jfId && (st >= MS.PARTIAL || ready)}
           <button class="btn primary" data-focusable data-key="open" onclick={() => goto(`/item/${jfId}`)}>
-            {type === 'movie' && st < MS.AVAILABLE ? '▶ È arrivato: guardalo' : '▶ Apri nella libreria'}
+            {type === 'movie' && st < MS.AVAILABLE ? t('▶ It\'s here: watch it') : t('▶ Open in the library')}
           </button>
         {/if}
         {#if canAsk}
           <button class="btn primary" data-focusable data-key="ask" onclick={ask}>
             {sending
-              ? 'Invio…'
+              ? t('Sending…')
               : type === 'tv'
-                ? `＋ Richiedi ${picked.length === requestable.length ? 'tutte le stagioni' : `${picked.length} ${picked.length === 1 ? 'stagione' : 'stagioni'}`}`
-                : '＋ Richiedi'}
+                ? picked.length === requestable.length
+                  ? t('＋ Request every season')
+                  : tn(picked.length, '＋ Request {n} season', '＋ Request {n} seasons')
+                : t('＋ Request')}
           </button>
         {:else if status && !status.can_request && st < MS.PENDING}
           <span class="hint">
-            {status.user ? 'Il tuo utente Seerr non può fare richieste.' : 'Il tuo utente non è collegato a Seerr.'}
+            {status.user ? t('Your Seerr user can\'t make requests.') : t('Your user isn\'t linked to Seerr.')}
           </span>
         {/if}
       </div>

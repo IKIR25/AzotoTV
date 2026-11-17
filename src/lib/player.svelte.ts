@@ -6,6 +6,7 @@ import { api, episodeLabel, invalidate, type Item } from './jf';
 import { refresh, showToast } from './stage.svelte';
 import { auth } from './session.svelte';
 import { initialChoice, toPlayer, type Choice } from './tracks';
+import { t } from '$lib/i18n';
 
 /** `now`: what plays, for the phones' "Continua qui" (a film / episode, or a live channel). */
 export const player = $state({ active: false, now: null as null | { id: string; name: string; live: boolean } });
@@ -41,7 +42,7 @@ export async function play(
     const resolved = await resolve(it);
     if (!resolved) {
       player.active = false;
-      return showToast('Niente da riprodurre');
+      return showToast(t('Nothing to play'));
     }
     // stream list (only single-item fetches have it) for the audio/subtitle choice
     const target = resolved.MediaStreams ? resolved : await api.item(resolved.Id).catch(() => resolved);
@@ -80,7 +81,7 @@ export async function play(
     player.active = false;
     player.now = null;
     current = null;
-    showToast(`Riproduzione non riuscita: ${e}`);
+    showToast(t('Couldn\'t play: {e}', { e }));
   }
 }
 
@@ -93,11 +94,11 @@ export function initPlayer() {
     current = null;
     invalidate();
     refresh.n++;
-    if (e.payload.reason === 'error') return showToast('Errore di riproduzione');
+    if (e.payload.reason === 'error') return showToast(t('Playback error'));
     if (e.payload.reason === 'eof' && finished?.Type === 'Episode' && finished.SeriesId) {
       const next = (await api.nextUpFor(finished.SeriesId)).Items.find((x) => x.Id !== finished.Id);
       if (next) {
-        showToast(`Prossimo episodio: ${next.Name}`);
+        showToast(t('Next episode: {Name}', { Name: next.Name }));
         await play(next);
       }
     }

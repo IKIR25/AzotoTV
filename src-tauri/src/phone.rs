@@ -102,7 +102,7 @@ impl Device {
         match n.as_slice() {
             [] => String::new(),
             [one] => one.to_string(),
-            [rest @ .., last] => format!("{} e {last}", rest.join(", ")),
+            [rest @ .., last] => t!("{names} and {last}", names = rest.join(", "), last = last),
         }
     }
 
@@ -223,7 +223,7 @@ impl Phone {
                     d["users"] = if id.is_empty() { json!([]) } else { json!([{ "id": id, "name": name }]) };
                 }
                 if d["label"].as_str().is_none_or(str::is_empty) {
-                    d["label"] = json!("Telefono");
+                    d["label"] = json!(t!("Phone"));
                 }
                 serde_json::from_value::<Device>(d).ok()
             })
@@ -297,19 +297,19 @@ impl Phone {
 
     /// A phone typed `code`: paired with the profile that showed it. A phone
     /// that is already paired (`token`) gets that profile too.
-    fn pair(&self, code: &str, token: &str, label: &str) -> Result<Device, &'static str> {
+    fn pair(&self, code: &str, token: &str, label: &str) -> Result<Device, String> {
         let user = {
             let mut p = self.pairing.lock().unwrap();
             let Some(cur) = p.as_mut().filter(|c| Instant::now() < c.until) else {
-                return Err("Apri «Collega un telefono» sulla TV");
+                return Err(t!("Open “Connect a phone” on the TV"));
             };
             if code.trim() != cur.code {
                 cur.tries += 1;
                 if cur.tries >= PAIR_TRIES {
                     *p = None;
-                    return Err("Troppi tentativi: apri di nuovo «Collega un telefono» sulla TV");
+                    return Err(t!("Too many tries: open “Connect a phone” on the TV again"));
                 }
-                return Err("Codice sbagliato");
+                return Err(t!("Wrong code"));
             }
             p.take().unwrap().user
         };
@@ -334,7 +334,7 @@ impl Phone {
                 let d = Device {
                     id: random_hex(4),
                     token: random_hex(24),
-                    label: if label.is_empty() { "Telefono".into() } else { label },
+                    label: if label.is_empty() { t!("Phone") } else { label },
                     users: vec![user],
                     paired: now(),
                 };
@@ -350,7 +350,7 @@ impl Phone {
     /// after `LOGIN_TRIES` wrong ones the profile is closed to phones for `LOGIN_WAIT`.
     fn login(&self, user: Account, pin: &str, token: &str, label: &str) -> Result<Device, String> {
         if !crate::profile::has_pin(&user.id) {
-            return Err("Questo profilo non ha un PIN: mettilo dalla TV (START › PIN del profilo)".into());
+            return Err(t!("This profile has no PIN: set one from the TV (START › Profile PIN)"));
         }
         {
             let mut logins = self.logins.lock().unwrap();
@@ -359,7 +359,7 @@ impl Phone {
                     logins.remove(&user.id);
                 } else if n >= LOGIN_TRIES {
                     let mins = (LOGIN_WAIT - at.elapsed()).as_secs().div_ceil(60);
-                    return Err(format!("Troppi tentativi: riprova tra {mins} minuti"));
+                    return Err(t!("Too many tries: try again in {mins} minutes", mins = mins));
                 }
             }
         }
@@ -373,9 +373,9 @@ impl Phone {
             e.1 = Instant::now();
             if e.0 >= LOGIN_TRIES {
                 eprintln!("[phone] {} wrong PINs for {} from a phone: closed to phones for a while", e.0, user.name);
-                return Err(format!("PIN sbagliato. Troppi tentativi: riprova tra {} minuti", LOGIN_WAIT.as_secs() / 60));
+                return Err(t!("Wrong PIN. Too many tries: try again in {a} minutes", a = LOGIN_WAIT.as_secs() / 60));
             }
-            Err("PIN sbagliato".into())
+            Err(t!("Wrong PIN"))
         }
     }
 
@@ -507,9 +507,9 @@ impl Phone {
         }
         let on = self.state.borrow()["user_name"].as_str().unwrap_or("").to_string();
         let toast = crate::overlay::Toast {
-            kicker: "Telefono".into(),
-            title: format!("Questo telefono è collegato a {}", dev.names()),
-            body: if on.is_empty() { String::new() } else { format!("Sulla TV c'è il profilo di {on}") },
+            kicker: t!("Phone"),
+            title: t!("This phone is connected to {a}", a = dev.names()),
+            body: if on.is_empty() { String::new() } else { t!("{on}'s profile is on the TV", on = on) },
             image: None,
             logo: false,
         };
@@ -530,6 +530,7 @@ impl Phone {
         let router = Router::new()
             .route("/", get(page))
             .route("/manifest.webmanifest", get(manifest))
+            .route("/i18n.js", get(i18n))
             .route("/{file}", get(static_file))
             .route("/api/hello", get(hello))
             .route("/api/pair", post(pair))
@@ -669,7 +670,7 @@ fn fail(code: StatusCode, msg: &str) -> Response {
 /// (images and the WebSocket can't send headers).
 fn auth(ctx: &Ctx, headers: &HeaderMap, q: &HashMap<String, String>) -> Result<Device, Response> {
     let token = headers.get("x-azoto-key").and_then(|v| v.to_str().ok()).or(q.get("k").map(String::as_str)).unwrap_or("");
-    ctx.phone.device(token).ok_or_else(|| fail(StatusCode::UNAUTHORIZED, "Telefono non collegato"))
+    ctx.phone.device(token).ok_or_else(|| fail(StatusCode::UNAUTHORIZED, &t!("Phone not connected")))
 }
 
 /// The web app's files: built in, or from AZOTOTV_PHONE_DIR while working on them.
@@ -743,6 +744,12 @@ async fn manifest(State(ctx): State<Ctx>, Query(q): Params) -> Response {
     ([(header::CONTENT_TYPE, "application/manifest+json")], m.to_string()).into_response()
 }
 
+/// The page's language and its dictionary (phone/app.js `tr`).
+async fn i18n() -> Response {
+    let js = format!("window.I18N = {{ lang: {:?}, dict: {} }};", crate::locale::lang(), crate::locale::dictionary_json());
+    ([(header::CONTENT_TYPE, "text/javascript; charset=utf-8"), (header::CACHE_CONTROL, "no-cache")], js).into_response()
+}
+
 /// For the Android app looking for the TV on the network; `server` tells the
 /// iPhone app it's the same AzotoTV it signed into.
 async fn hello(State(ctx): State<Ctx>) -> Json<Value> {
@@ -767,7 +774,7 @@ async fn pair(State(ctx): State<Ctx>, headers: HeaderMap, Json(r): Json<PairReq>
             let _ = ctx.app.emit("phone-paired", d.who());
             Json(json!({ "token": d.token, "label": d.label, "users": d.users })).into_response()
         }
-        Err(msg) => fail(StatusCode::FORBIDDEN, msg),
+        Err(msg) => fail(StatusCode::FORBIDDEN, &msg),
     }
 }
 
@@ -791,9 +798,9 @@ async fn send(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Params, Json
         Ok(d) => d,
         Err(r) => return r,
     };
-    let Some(url) = first_link(&r.url) else { return fail(StatusCode::BAD_REQUEST, "Non è un link") };
+    let Some(url) = first_link(&r.url) else { return fail(StatusCode::BAD_REQUEST, &t!("Not a link")) };
     if ctx.app.state::<Arc<Games>>().running().is_some() {
-        return fail(StatusCode::CONFLICT, "Sulla TV c'è un gioco aperto");
+        return fail(StatusCode::CONFLICT, &t!("A game is open on the TV"));
     }
     let mut ev = match youtube_id(&url) {
         Some(id) => json!({ "kind": "youtube", "id": id }),
@@ -816,7 +823,7 @@ async fn albums(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Params) ->
     }
     let im = ctx.app.state::<Arc<Immich>>().inner().clone();
     if !im.can_upload() {
-        return fail(StatusCode::SERVICE_UNAVAILABLE, "Aggiunta di foto non configurata sulla TV");
+        return fail(StatusCode::SERVICE_UNAVAILABLE, &t!("Adding photos isn't set up on the TV"));
     }
     match im.all_albums(true).await {
         Ok(list) => Json(list).into_response(),
@@ -835,7 +842,7 @@ async fn new_album(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Params,
     }
     let name = r.name.trim();
     if name.is_empty() || name.chars().count() > 80 {
-        return fail(StatusCode::BAD_REQUEST, "Nome dell'album non valido");
+        return fail(StatusCode::BAD_REQUEST, &t!("Not a valid album name"));
     }
     let im = ctx.app.state::<Arc<Immich>>().inner().clone();
     match im.create_album(name).await {
@@ -864,11 +871,11 @@ async fn upload(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Params, bo
     }
     let im = ctx.app.state::<Arc<Immich>>().inner().clone();
     if !im.can_upload() {
-        return fail(StatusCode::SERVICE_UNAVAILABLE, "Aggiunta di foto non configurata sulla TV");
+        return fail(StatusCode::SERVICE_UNAVAILABLE, &t!("Adding photos isn't set up on the TV"));
     }
     let mime = headers.get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).unwrap_or("application/octet-stream").to_string();
     if !(mime.starts_with("image/") || mime.starts_with("video/")) {
-        return fail(StatusCode::UNSUPPORTED_MEDIA_TYPE, "Solo foto e video");
+        return fail(StatusCode::UNSUPPORTED_MEDIA_TYPE, &t!("Only photos and videos"));
     }
     // only the file name, never a path
     let name: String = q.get("name").map(|n| n.rsplit(['/', '\\']).next().unwrap_or("").to_string()).unwrap_or_default();
@@ -919,11 +926,11 @@ async fn show(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Params, Json
         Err(r) => return r,
     };
     if ctx.app.state::<Arc<Games>>().running().is_some() {
-        return fail(StatusCode::CONFLICT, "Sulla TV c'è un gioco aperto");
+        return fail(StatusCode::CONFLICT, &t!("A game is open on the TV"));
     }
     let ids: Vec<String> = r.ids.into_iter().take(200).collect();
     if ids.is_empty() && r.album.is_none() {
-        return fail(StatusCode::BAD_REQUEST, "Niente da mostrare");
+        return fail(StatusCode::BAD_REQUEST, &t!("Nothing to show"));
     }
     let im = ctx.app.state::<Arc<Immich>>().inner().clone();
     let assets = if ids.is_empty() { vec![] } else { im.assets_by_id(&ids).await };
@@ -1016,7 +1023,7 @@ async fn app_login(State(ctx): State<Ctx>, headers: HeaderMap, Json(r): Json<Log
         Ok(p) => p.profiles,
         Err(e) => return fail(StatusCode::BAD_GATEWAY, &e),
     };
-    let Some(p) = profiles.into_iter().find(|p| p.id == r.user) else { return fail(StatusCode::NOT_FOUND, "Profilo non trovato") };
+    let Some(p) = profiles.into_iter().find(|p| p.id == r.user) else { return fail(StatusCode::NOT_FOUND, &t!("Profile not found")) };
     let user = Account { id: p.id, name: p.name };
     let phone = ctx.phone.clone();
     let res = tauri::async_runtime::spawn_blocking(move || phone.login(user, &r.pin, &token, &r.device)).await;
@@ -1055,7 +1062,7 @@ async fn app_home(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Params) 
     };
     let user = q.get("user").map(String::as_str).unwrap_or("");
     if !d.has(user) {
-        return fail(StatusCode::FORBIDDEN, "Profilo non collegato a questo telefono");
+        return fail(StatusCode::FORBIDDEN, &t!("Profile not connected to this phone"));
     }
     Json(json!({ "apps": ctx.phone.apps_of(user), "users": d.users })).into_response()
 }
@@ -1110,18 +1117,18 @@ async fn app_play(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Params, 
         Err(r) => return r,
     };
     if !d.has(&r.user) {
-        return fail(StatusCode::FORBIDDEN, "Profilo non collegato a questo telefono");
+        return fail(StatusCode::FORBIDDEN, &t!("Profile not connected to this phone"));
     }
     let games = tauri::async_runtime::spawn_blocking(crate::games::phone_games).await.unwrap_or_default();
     if !games.iter().any(|g| g.id == id && g.stream) {
-        return fail(StatusCode::NOT_FOUND, "Questo gioco non si può giocare sul telefono");
+        return fail(StatusCode::NOT_FOUND, &t!("This game can't be played on the phone"));
     }
     if let Some(g) = ctx.app.state::<Arc<Games>>().running() {
         let name = games.iter().find(|x| x.id == g).map(|x| x.name.clone()).unwrap_or(g);
-        return fail(StatusCode::CONFLICT, &format!("Sulla TV c'è già {name}"));
+        return fail(StatusCode::CONFLICT, &t!("{name} is already on the TV", name = name));
     }
     if ctx.app.state::<Arc<Player>>().active() {
-        return fail(StatusCode::CONFLICT, "Sulla TV si sta guardando qualcosa");
+        return fail(StatusCode::CONFLICT, &t!("Something is being watched on the TV"));
     }
     // the address the phone reached us at: the stream goes the same way
     let host = headers
@@ -1152,7 +1159,7 @@ async fn app_play_go(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Param
         Err(r) => return r,
     };
     let Some(user) = d.users.iter().find(|u| u.id == r.user).cloned() else {
-        return fail(StatusCode::FORBIDDEN, "Profilo non collegato a questo telefono");
+        return fail(StatusCode::FORBIDDEN, &t!("Profile not connected to this phone"));
     };
     // stream.rs reads Sunshine's log once a second
     for _ in 0..80 {
@@ -1162,7 +1169,7 @@ async fn app_play_go(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Param
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
     if !crate::stream::active() {
-        return fail(StatusCode::CONFLICT, "Lo stream non è partito");
+        return fail(StatusCode::CONFLICT, &t!("The stream didn't start"));
     }
     let name = crate::games::phone_games().into_iter().find(|g| g.id == id).map(|g| g.name).unwrap_or_else(|| id.clone());
     let (app, games, game) = (ctx.app.clone(), ctx.app.state::<Arc<Games>>().inner().clone(), id.clone());
@@ -1199,7 +1206,7 @@ async fn app_screen(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Params
     // a Switch game, or a page of the TV made for touch (the Mii editor)
     let games = ctx.app.state::<Arc<Games>>();
     let Some(id) = games.screen_game().or_else(|| games.running().is_none().then(|| ctx.phone.touch_page()).flatten()) else {
-        return fail(StatusCode::CONFLICT, "Sulla TV non c'è un gioco Switch");
+        return fail(StatusCode::CONFLICT, &t!("There is no Switch game on the TV"));
     };
     let host = headers
         .get(header::HOST)
@@ -1263,9 +1270,9 @@ async fn app_jf(
     headers: HeaderMap,
     body: axum::body::Bytes,
 ) -> Response {
-    let Some(d) = ctx.phone.device(&k) else { return fail(StatusCode::UNAUTHORIZED, "Telefono non collegato") };
+    let Some(d) = ctx.phone.device(&k) else { return fail(StatusCode::UNAUTHORIZED, &t!("Phone not connected")) };
     if !d.has(&user) {
-        return fail(StatusCode::FORBIDDEN, "Profilo non collegato a questo telefono");
+        return fail(StatusCode::FORBIDDEN, &t!("Profile not connected to this phone"));
     }
     let jf = ctx.app.state::<Arc<crate::jellyfin::Jf>>().inner().clone();
     crate::phonejf::proxy(&jf, &d.id, &d.label, &user, method, &rest, uri.query(), &headers, body.to_vec()).await
@@ -1294,13 +1301,13 @@ async fn app_tv_watch(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Para
         Err(r) => return r,
     };
     let Some(user) = d.users.iter().find(|u| u.id == r.user).cloned() else {
-        return fail(StatusCode::FORBIDDEN, "Profilo non collegato a questo telefono");
+        return fail(StatusCode::FORBIDDEN, &t!("Profile not connected to this phone"));
     };
     if ctx.app.state::<Arc<Games>>().running().is_some() {
-        return fail(StatusCode::CONFLICT, "Sulla TV c'è un gioco aperto");
+        return fail(StatusCode::CONFLICT, &t!("A game is open on the TV"));
     }
     if r.item.is_none() && r.channel.is_none() {
-        return fail(StatusCode::BAD_REQUEST, "Niente da guardare");
+        return fail(StatusCode::BAD_REQUEST, &t!("Nothing to watch"));
     }
     let _ = ctx.app.emit(
         "phone-watch",
@@ -1322,10 +1329,10 @@ async fn app_tv_take(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Param
         Err(r) => return r,
     };
     if !d.has(&r.user) {
-        return fail(StatusCode::FORBIDDEN, "Profilo non collegato a questo telefono");
+        return fail(StatusCode::FORBIDDEN, &t!("Profile not connected to this phone"));
     }
     if ctx.phone.state.borrow()["user"].as_str() != Some(r.user.as_str()) {
-        return fail(StatusCode::CONFLICT, "Sulla TV c'è un altro profilo");
+        return fail(StatusCode::CONFLICT, &t!("Another profile is on the TV"));
     }
     let player = ctx.app.state::<Arc<Player>>().inner().clone();
     let out = if let Some((item, ticks)) = player.now() {
@@ -1333,7 +1340,7 @@ async fn app_tv_take(State(ctx): State<Ctx>, headers: HeaderMap, Query(q): Param
     } else if let Some(ch) = player.channel() {
         json!({ "channel": ch })
     } else {
-        return fail(StatusCode::NOT_FOUND, "Sulla TV non c'è niente da continuare");
+        return fail(StatusCode::NOT_FOUND, &t!("There is nothing to continue on the TV"));
     };
     // mpv quits and reports where it stopped (the phone's resume point too)
     player.shutdown().await;
@@ -1346,7 +1353,7 @@ fn phone_user(ctx: &Ctx, headers: &HeaderMap, q: &HashMap<String, String>) -> Re
     let d = auth(ctx, headers, q)?;
     let user = q.get("user").cloned().unwrap_or_default();
     if !d.has(&user) {
-        return Err(fail(StatusCode::FORBIDDEN, "Profilo non collegato a questo telefono"));
+        return Err(fail(StatusCode::FORBIDDEN, &t!("Profile not connected to this phone")));
     }
     Ok(user)
 }
@@ -1481,9 +1488,9 @@ impl Drop for PhonePad {
 fn pad_name(dev: &Device) -> String {
     let names = dev.names();
     let mut name = match (names.is_empty(), dev.label.is_empty()) {
-        (false, _) => format!("Telefono di {names}"),
+        (false, _) => t!("{names}'s phone", names = names),
         (true, false) => dev.label.clone(),
-        (true, true) => "Telefono".into(),
+        (true, true) => t!("Phone"),
     };
     while name.len() > 79 {
         name.pop();
@@ -1669,7 +1676,7 @@ async fn session(ctx: Ctx, token: String, socket: WebSocket) {
                         pad = Some(PhonePad { pad: p, tell });
                     }
                     Err(e) => {
-                        let _ = direct.send(json!({ "t": "player", "error": format!("Controller non disponibile: {e}") }));
+                        let _ = direct.send(json!({ "t": "player", "error": t!("Controller not available: {e}", e = e) }));
                     }
                 }
             }
@@ -1793,8 +1800,8 @@ mod tests {
         assert!(!allowed(&d, &json!({ "user": "paolo", "picker": false })));
         assert!(allowed(&d, &json!({ "user": "", "picker": true })));
         assert!(!allowed(&d, &json!({ "user": "", "picker": false })));
-        assert_eq!(d.names(), "Ada e Luca");
-        assert_eq!(dev(&[("a", "A"), ("b", "B"), ("c", "C")]).names(), "A, B e C");
+        assert_eq!(d.names(), "Ada and Luca");
+        assert_eq!(dev(&[("a", "A"), ("b", "B"), ("c", "C")]).names(), "A, B and C");
         // the keyboard's text only reaches phones that may type into it
         let s = json!({ "user": "paolo", "picker": false, "text": { "value": "segreto" } });
         assert!(!view(&d, &s).contains("segreto"));

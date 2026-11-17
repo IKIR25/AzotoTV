@@ -4,11 +4,12 @@ import { goto } from '$app/navigation';
 import { displayName, kinOf, lib, loadMiis, mainOf } from '../mii/library.svelte';
 import { face } from '../mii/pics.svelte';
 import type { App, Slide } from './types';
+import { t } from '$lib/i18n';
 
 export const miiApp: App = {
   key: 'mii',
   name: 'Mii',
-  description: 'I tuoi Mii: creali una volta e li ritrovi su Wii e Switch, con nomi veri e parentele.',
+  description: t('Your Miis: make them once and find them on Wii and Switch, with real names and family ties.'),
   route: '/mii',
   color: 'linear-gradient(135deg, #8fdcec 0%, #3aa6c9 55%, #2a7fb0 100%)',
   // a Mii's head and shoulders
@@ -20,11 +21,11 @@ export const miiApp: App = {
         {
           key: 'empty',
           title: 'Mii',
-          kicker: { text: 'I tuoi Mii' },
+          kicker: { text: t('Your Miis') },
           meta: [],
-          overview: 'Aggiungi i Mii che hai già su Switch e Wii, poi ritrovali in tutti i giochi.',
+          overview: t('Add the Miis you already have on Switch and Wii, then find them in every game.'),
           backdrop: null,
-          action: 'Apri',
+          action: t('Open'),
           open: () => goto('/mii'),
         },
       ];
@@ -36,11 +37,11 @@ export const miiApp: App = {
         return {
           key: p.id,
           title: displayName(p),
-          kicker: { text: p.names.nickname ? `Mii · ${p.names.nickname}` : 'Mii' },
+          kicker: { text: p.names.nickname ? t('Mii · {nickname}', { nickname: p.names.nickname }) : 'Mii' },
           cover: m ? face(m.nx) : null,
           meta: [full !== displayName(p) && full, ...kin.map((k) => `${k.label}: ${displayName(k.person)}`)].filter(Boolean) as string[],
           backdrop: null,
-          action: 'Apri',
+          action: t('Open'),
           open: () => goto(`/mii/${p.id}`),
         };
       },

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { onMount, tick } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
@@ -84,11 +85,11 @@
   });
 
   const KIND: Record<Pad['kind'], string> = {
-    joycons: 'Joy-Con in coppia',
-    'joycon-l': 'Joy-Con da solo',
-    'joycon-r': 'Joy-Con da solo',
+    joycons: t('Joy-Con pair'),
+    'joycon-l': t('Single Joy-Con'),
+    'joycon-r': t('Single Joy-Con'),
     procon: 'Nintendo',
-    phone: 'Telefono',
+    phone: t('Phone'),
     xbox: 'Xbox',
     playstation: 'PlayStation',
     pad: 'Controller',
@@ -119,7 +120,7 @@
 <div class="wrap">
   <header>
     <h1>Controller</h1>
-    {#if g}<p class="game">{title} · fino a {g.players} giocatori</p>{/if}
+    {#if g}<p class="game">{t('{title} · up to {players} players', { title, players: g.players })}</p>{/if}
   </header>
 
   <div class="slots">
@@ -130,53 +131,51 @@
           <span class="ico">{@render icon(p.kind)}</span>
           <span class="name">{p.name}</span>
           <span class="sub">
-            {#if p.asleep}Spenti: premi un tasto{:else}{KIND[p.kind]}{/if}
+            {#if p.asleep}{t('Off: press a button')}{:else}{KIND[p.kind]}{/if}
           </span>
           {#if p.battery !== null && !p.asleep}
             <span class="batt" class:low={p.battery <= 25} title="{p.battery}%">
               {#each [1, 2, 3, 4] as b (b)}<i class:on={b <= bars(p.battery)}></i>{/each}
-              {#if p.charging}<small>in carica</small>{/if}
+              {#if p.charging}<small>{t('charging')}</small>{/if}
             </span>
           {/if}
         {:else}
           <span class="ico plus"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg></span>
-          <span class="name">Libero</span>
+          <span class="name">{t('Free')}</span>
         {/if}
       </div>
     {/each}
   </div>
 
   {#if extra.length}
-    <p class="extra">Collegati in più (giocano con il giocatore 4): {extra.map((p) => p.name).join(', ')}</p>
+    <p class="extra">{t('Extra ones connected (they play with player 4): {a}', { a: extra.map((p) => p.name).join(', ') })}</p>
   {/if}
 
   <div class="help glass">
     {#if info && info.waiting > 0}
       <p class="joy">
-        <b>{info.waiting === 1 ? 'Un Joy-Con aspetta' : `${info.waiting} Joy-Con aspettano`}:</b> premi <b>L</b> e <b>R</b> insieme (uno su ogni
-        Joy-Con) per usarli come un solo controller, oppure <b>SL</b> e <b>SR</b> su un Joy-Con per usarlo da solo, in orizzontale.
+        <b>{info.waiting === 1 ? t('A Joy-Con is waiting') : t('{waiting} Joy-Cons are waiting', { waiting: info.waiting })}:</b> {t('press')} <b>L</b> e <b>R</b> {t('together (one on each Joy-Con) to use them as one controller, or')} <b>SL</b> e <b>SR</b> {t('on a Joy-Con to use it alone, held sideways.')}
       </p>
     {/if}
     {#if info?.bluetooth.scanning}
       <p>
-        <span class="dot"></span>Per collegare un controller Bluetooth nuovo tieni premuto il suo tasto di associazione (sui Joy-Con
-        quello piccolo sul lato, finché le luci scorrono).
+        <span class="dot"></span>{t('To connect a new Bluetooth controller, hold its pairing button (on Joy-Cons the small one on the side, until the lights run).')}
       </p>
     {:else if info && (info.bluetooth.state === 'off' || info.bluetooth.state === 'none')}
-      <p>Bluetooth non disponibile: si possono usare i controller col cavo e i telefoni.</p>
+      <p>{t('Bluetooth isn\'t available: wired controllers and phones still work.')}</p>
     {/if}
-    <p>Dal telefono: app AzotoTV › Usa come controller.</p>
+    <p>{t('From the phone: AzotoTV app › Use as a controller.')}</p>
     {#if news}<p class="news">{news}</p>{/if}
   </div>
 
   <div class="actions">
     {#if pending}
-      <button class="btn primary" data-focusable onclick={play}>Gioca</button>
-      <button class="btn" data-focusable onclick={() => history.back()}>Annulla</button>
+      <button class="btn primary" data-focusable onclick={play}>{t('Play|game')}</button>
+      <button class="btn" data-focusable onclick={() => history.back()}>{t('Cancel')}</button>
     {:else}
-      <button class="btn primary" data-focusable onclick={() => history.back()}>Fatto</button>
+      <button class="btn primary" data-focusable onclick={() => history.back()}>{t('Done')}</button>
     {/if}
-    <span class="hint">Premi un tasto su un controller per vedere qual è · {key('B')} per tornare indietro</span>
+    <span class="hint">{t('Press a button on a controller to see which one it is · {a} to go back', { a: key('B') })}</span>
   </div>
 </div>
 
