@@ -36,6 +36,7 @@
   import Screensaver from '$lib/Screensaver.svelte';
   import Splash from '$lib/Splash.svelte';
   import { uiSound } from '$lib/sounds.svelte';
+  import { applyProfileTheme } from '$lib/themes/index.svelte';
   import { key } from '$lib/input.svelte';
 
   let { children } = $props();
@@ -51,7 +52,7 @@
   const APP_ROOTS = ['/tv', '/live', '/musica', '/giochi', '/youtube', '/store', '/galleria', '/mii'];
   const bare = $derived(
     path === '/' || path === '/live' || path.startsWith('/musica') || path === '/music' || path.startsWith('/tracks/') ||
-      path.startsWith('/giochi') || path.startsWith('/game/') || path.startsWith('/youtube') || path === '/store' || path.startsWith('/galleria') || path.startsWith('/mii') || path === '/pin' || path === '/tvpair' || path === '/controllers' || path.startsWith('/services'),
+      path.startsWith('/giochi') || path.startsWith('/game/') || path.startsWith('/youtube') || path === '/store' || path.startsWith('/galleria') || path.startsWith('/mii') || path === '/pin' || path === '/theme' || path === '/tvpair' || path === '/controllers' || path.startsWith('/services'),
   );
 
   function back() {
@@ -221,6 +222,9 @@
   // ...or the profile's wallpaper (a photo picked in the Galleria), still
   // and dimmed so the page stays legible; a photo that isn't wide enough to
   // fill the screen shows whole over a blurred copy of itself
+  // the signed-in profile's theme (START › Theme); Azoto on the profile screen
+  applyProfileTheme();
+  $effect(applyProfileTheme);
   const wall = $derived(auth.state === 'in' && !onLogin ? wallpaper() : null);
   const wallWhole = $derived(!!wall && (!wall.width || !wall.height || wall.width / wall.height < 1.2));
   let wallOk = $state(true);
@@ -426,23 +430,19 @@
      busy and its fans loud on every page without a film backdrop. */
   .bg {
     position: absolute; inset: 0;
-    background:
-      radial-gradient(35rem circle at 55rem 100%, #19d3b0, transparent),
-      radial-gradient(35rem circle at calc(100% - 15rem) 45rem, #ff4fa3, transparent),
-      radial-gradient(35rem circle at 20rem 15rem, #5b6cff, transparent),
-      #07080f;
+    background: var(--wall);
   }
 
   /* ---- wallpaper ---- */
-  .wall { position: absolute; inset: 0; overflow: hidden; background: #07080f; }
+  .wall { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
   .wall img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .wall img.whole { object-fit: contain; }
   .wall img.blur { filter: blur(4rem) brightness(0.6); transform: scale(1.2); }
   .wall::after {
     content: ''; position: absolute; inset: 0;
     background:
-      linear-gradient(180deg, rgba(7, 8, 15, 0.45) 0%, rgba(7, 8, 15, 0.2) 40%, rgba(7, 8, 15, 0.7) 100%),
-      rgba(7, 8, 15, 0.4);
+      linear-gradient(180deg, rgb(var(--bg-rgb) / 0.45) 0%, rgb(var(--bg-rgb) / 0.2) 40%, rgb(var(--bg-rgb) / 0.7) 100%),
+      rgb(var(--bg-rgb) / 0.4);
   }
 
   /* ---- top bar ---- */
@@ -456,7 +456,7 @@
   .topbar h1 { font-size: 2.6rem; font-weight: 800; letter-spacing: 0.04em; color: var(--accent); }
   .topbar .right { margin-left: auto; }
   /* no glass behind it any more: keep it readable over a bright film backdrop */
-  .topbar h1, .topbar .tab:not(:focus), .topbar kbd, .topbar .clock { text-shadow: 0 0.1rem 0.25rem rgba(0, 0, 0, 0.7), 0 0 1rem rgba(0, 0, 0, 0.6); }
+  .topbar h1, .topbar .tab:not(:focus), .topbar kbd, .topbar .clock { text-shadow: 0 0.1rem 0.25rem rgb(var(--shadow-rgb) / 0.7), 0 0 1rem rgb(var(--shadow-rgb) / 0.6); }
   /* the Mii app is white */
   .corner.light { --muted: rgba(40, 46, 58, 0.6); }
   .corner { position: absolute; z-index: 10; top: 3rem; right: 6rem; height: 5.6rem; display: flex; align-items: center; }
@@ -465,37 +465,37 @@
     font-size: 1.6rem; padding: 0.9rem 2.2rem; border-radius: 2rem; color: var(--muted);
     transition: background 0.15s, color 0.15s;
   }
-  .tab.on { color: var(--text); background: rgba(255, 255, 255, 0.14); }
-  .tab:focus { background: rgba(255, 255, 255, 0.92); color: #10121c; }
+  .tab.on { color: var(--text); background: rgb(var(--fg-rgb) / 0.14); }
+  .tab:focus { background: rgb(var(--fg-rgb) / 0.92); color: var(--focus-text); }
   nav kbd {
     font: inherit; font-size: 1.1rem; font-weight: 600; color: var(--muted); padding: 0.2rem 0.6rem;
-    border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.5rem; margin: 0 0.6rem;
+    border: 1px solid rgb(var(--fg-rgb) / 0.3); border-radius: 0.5rem; margin: 0 0.6rem;
   }
   /* focus scale of the avatar is frame-driven: startLift in tween.ts */
   .right { display: flex; align-items: center; gap: 1.4rem; }
   .clock { font-size: 1.5rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .avatar {
     width: 3.8rem; height: 3.8rem; border-radius: 50%; font-weight: 700; font-size: 1.6rem;
-    background: linear-gradient(135deg, #ff4fa3, #7c8cff);
+    background: var(--avatar-grad);
   }
-  .avatar:focus { box-shadow: 0 0 0 0.3rem #fff; }
+  .avatar:focus { box-shadow: 0 0 0 0.3rem var(--ring); }
   /* not overflow: hidden, the unread dot sits on the edge */
   .avatar { position: relative; }
   .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
   .unread {
     position: absolute; top: -0.1rem; right: -0.1rem; width: 1.1rem; height: 1.1rem; border-radius: 50%;
-    background: var(--azoto); box-shadow: 0 0 0 0.2rem #07080f;
+    background: var(--azoto); box-shadow: 0 0 0 0.2rem var(--bg);
   }
 
   /* ---- mini player ---- */
   .mini {
     display: flex; align-items: center; gap: 0.9rem; height: 3.8rem; max-width: 22rem;
-    padding: 0 1.4rem 0 0.4rem; border-radius: 1.9rem; background: rgba(255, 255, 255, 0.1);
+    padding: 0 1.4rem 0 0.4rem; border-radius: 1.9rem; background: rgb(var(--fg-rgb) / 0.1);
     font-size: 1.25rem; transition: background 0.15s, color 0.15s;
   }
   .mini img { width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover; }
   .mini .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mini:focus { background: rgba(255, 255, 255, 0.92); color: #10121c; }
+  .mini:focus { background: rgb(var(--fg-rgb) / 0.92); color: var(--focus-text); }
   .eq { display: flex; align-items: flex-end; gap: 0.2rem; height: 1.4rem; flex: none; }
   /* still bars, not an animation: one would redraw the screen every frame for as long as music plays */
   .eq i { width: 0.3rem; height: 100%; background: currentColor; border-radius: 0.1rem; }
@@ -509,12 +509,12 @@
   }
   /* screens off (idle.svelte.ts): black in case a frame still reaches them */
   .dark { position: fixed; inset: 0; z-index: 60; background: #000; }
-  .loading { position: absolute; z-index: 29; inset: 0; display: grid; place-items: center; background: #05060e; }
+  .loading { position: absolute; z-index: 29; inset: 0; display: grid; place-items: center; background: var(--bg); }
   .loading .hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.35; }
   .loading .what { position: relative; display: grid; justify-items: center; gap: 2.4rem; }
-  .loading .logo { max-width: 52rem; max-height: 20rem; object-fit: contain; filter: drop-shadow(0 0.4rem 2rem rgba(0, 0, 0, 0.6)); }
+  .loading .logo { max-width: 52rem; max-height: 20rem; object-fit: contain; filter: drop-shadow(0 0.4rem 2rem rgb(var(--shadow-rgb) / 0.6)); }
   .loading h1 { margin: 0; font-size: 4.4rem; }
-  .loading p { margin: 0; font-size: 1.8rem; color: rgba(255, 255, 255, 0.8); }
+  .loading p { margin: 0; font-size: 1.8rem; color: rgb(var(--fg-rgb) / 0.8); }
 
   /* ---- HUD ---- */
 </style>

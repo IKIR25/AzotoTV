@@ -190,9 +190,9 @@
   .bar { position: absolute; top: 4rem; left: 6rem; right: 22rem; }
   input {
     width: 100%; font: inherit; font-size: 2rem; color: var(--text); padding: 1.2rem 2rem; border-radius: 1.6rem;
-    border: 0.2rem solid transparent; background: rgba(255, 255, 255, 0.1); outline: none;
+    border: 0.2rem solid transparent; background: rgb(var(--fg-rgb) / 0.1); outline: none;
   }
-  input:focus { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
+  input:focus { border-color: var(--ring); background: rgb(var(--fg-rgb) / 0.16); }
   input::placeholder { color: var(--muted); }
   .results { top: 11rem; padding: 0 6rem 8rem; }
   .docked .bar { visibility: hidden; }
@@ -208,17 +208,17 @@
     flex: 1; min-width: 0; display: flex; align-items: center; gap: 1.4rem; padding: 0.6rem 1.2rem;
     border-radius: 1.2rem; text-align: left;
   }
-  .song:focus { background: rgba(255, 255, 255, 0.92); color: #10121c; }
-  .song:focus small, .song:focus .dur { color: rgba(16, 18, 28, 0.7); }
-  .thumb { flex: 0 0 4.6rem; height: 4.6rem; border-radius: 0.6rem; overflow: hidden; background: linear-gradient(160deg, #2a3157, #151833); }
+  .song:focus { background: rgb(var(--fg-rgb) / 0.92); color: var(--focus-text); }
+  .song:focus small, .song:focus .dur { color: rgb(var(--focus-text-rgb) / 0.7); }
+  .thumb { flex: 0 0 4.6rem; height: 4.6rem; border-radius: 0.6rem; overflow: hidden; background: var(--placeholder-grad); }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .txt { flex: 1; min-width: 0; font-size: 1.4rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .txt small { display: block; font-size: 1.15rem; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
   .dur { font-size: 1.2rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .state { font-size: 1.1rem; font-weight: 600; padding: 0.2rem 0.8rem; border-radius: 0.8rem; background: rgba(255, 255, 255, 0.14); white-space: nowrap; }
+  .state { font-size: 1.1rem; font-weight: 600; padding: 0.2rem 0.8rem; border-radius: 0.8rem; background: rgb(var(--fg-rgb) / 0.14); white-space: nowrap; }
   .state.ok { background: rgba(80, 200, 120, 0.3); }
   .state.bad { background: rgba(224, 22, 43, 0.5); }
-  .song:focus .state { background: rgba(16, 18, 28, 0.12); }
+  .song:focus .state { background: rgb(var(--focus-text-rgb) / 0.12); }
   .act { flex: 0 0 auto; font-size: 1.2rem; padding: 0.7rem 1.3rem; }
   .note { margin-top: 1.6rem; font-size: 1.3rem; color: var(--muted); }
 </style>

@@ -45,7 +45,7 @@
   section { width: 72rem; border-radius: 2.4rem; padding: 3rem 3rem 2.4rem; }
   h1 { font-size: 2.6rem; font-weight: 600; padding: 0 1.4rem; }
   .lead { font-size: 1.4rem; color: var(--muted); margin: 0.4rem 1.4rem 1.6rem; }
-  .err { color: #ff8a8a; font-size: 1.5rem; padding: 0 1.4rem; }
+  .err { color: var(--danger-text); font-size: 1.5rem; padding: 0 1.4rem; }
   .opt {
     display: flex; align-items: center; gap: 1.4rem; width: 100%; text-align: left;
     padding: 1.1rem 1.4rem; border-radius: 1.4rem; margin-bottom: 0.3rem;
@@ -53,8 +53,8 @@
   .txt { font-size: 1.7rem; font-weight: 600; }
   .txt small { display: block; font-size: 1.2rem; font-weight: 400; color: var(--muted); margin-top: 0.2rem; }
   .state { margin-left: auto; font-size: 1.3rem; font-weight: 700; color: var(--muted); }
-  .state.on { color: #6fe3a1; }
-  .opt:focus { background: #fff; color: #10121c; }
-  .opt:focus small, .opt:focus .state { color: rgba(16, 18, 28, 0.65); }
-  .opt:focus .state.on { color: #128a4a; }
+  .state.on { color: var(--ok); }
+  .opt:focus { background: var(--focus-bg); color: var(--focus-text); }
+  .opt:focus small, .opt:focus .state { color: rgb(var(--focus-text-rgb) / 0.65); }
+  .opt:focus .state.on { color: var(--ok-on-focus); }
 </style>

@@ -53,7 +53,7 @@
   form { width: 46rem; border-radius: 2.4rem; padding: 3rem 4rem; display: grid; gap: 1.4rem; justify-items: center; }
   .pic {
     position: relative; width: 9rem; height: 9rem; border-radius: 50%; overflow: hidden;
-    display: grid; place-items: center; background: linear-gradient(135deg, #ff4fa3, #7c8cff);
+    display: grid; place-items: center; background: var(--avatar-grad);
   }
   .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .pic em { font-style: normal; font-size: 4rem; font-weight: 700; }
@@ -61,9 +61,9 @@
   label { display: grid; gap: 0.5rem; font-size: 1.3rem; color: var(--muted); width: 100%; }
   input {
     font: inherit; font-size: 1.7rem; color: var(--text); padding: 1.1rem 1.4rem; border-radius: 1.2rem;
-    border: 0.2rem solid transparent; background: rgba(255, 255, 255, 0.1); outline: none;
+    border: 0.2rem solid transparent; background: rgb(var(--fg-rgb) / 0.1); outline: none;
   }
-  input:focus { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
-  .err { color: #ff8a8a; font-size: 1.3rem; }
+  input:focus { border-color: var(--ring); background: rgb(var(--fg-rgb) / 0.16); }
+  .err { color: var(--danger-text); font-size: 1.3rem; }
   .btn { justify-content: center; width: 100%; }
 </style>

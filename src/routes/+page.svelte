@@ -352,19 +352,19 @@
     position: absolute; top: 11rem; left: 4.6rem; width: 66rem;
     padding: 1.4rem; border-radius: 2rem; text-align: left;
   }
-  .shelf:focus { background: rgba(255, 255, 255, 0.06); }
+  .shelf:focus { background: rgb(var(--fg-rgb) / 0.06); }
   .info { height: 25rem; display: flex; flex-direction: column; justify-content: flex-end; }
   .cover {
     width: 12rem; height: 12rem; object-fit: cover; border-radius: 1.2rem; margin-bottom: 1.4rem;
-    box-shadow: 0 1.4rem 3rem rgba(0, 0, 0, 0.5); flex: none;
+    box-shadow: 0 1.4rem 3rem rgb(var(--shadow-rgb) / 0.5); flex: none;
   }
   .kicker { display: flex; align-items: center; gap: 1.2rem; font-size: 1.5rem; font-weight: 600; margin-bottom: 0.8rem; }
   .chlogo {
     width: 6rem; height: 3.6rem; border-radius: 0.7rem; display: grid; place-items: center;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgb(var(--fg-rgb) / 0.12);
   }
   .chlogo img { max-width: 85%; max-height: 80%; object-fit: contain; }
-  .onair { color: #ff5d6c; }
+  .onair { color: var(--danger); }
   .art { max-width: 40rem; max-height: 12rem; object-fit: contain; object-position: left bottom; align-self: flex-start; }
   h1 {
     font-size: 4.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; flex: none;
@@ -372,23 +372,23 @@
   }
   h1.small { font-size: 3.4rem; -webkit-line-clamp: 1; line-clamp: 1; }
   .meta { margin-top: 1.4rem; }
-  .bar { display: block; width: 32rem; height: 0.5rem; border-radius: 0.25rem; margin-top: 1.2rem; background: rgba(255, 255, 255, 0.2); overflow: hidden; flex: none; }
-  .bar em { display: block; height: 100%; background: #fff; transform-origin: left; }
-  .bar.live em { background: #ff5d6c; }
+  .bar { display: block; width: 32rem; height: 0.5rem; border-radius: 0.25rem; margin-top: 1.2rem; background: rgb(var(--fg-rgb) / 0.2); overflow: hidden; flex: none; }
+  .bar em { display: block; height: 100%; background: var(--fg); transform-origin: left; }
+  .bar.live em { background: var(--danger); }
   p {
-    margin-top: 1.2rem; font-size: 1.45rem; line-height: 1.5; color: rgba(244, 245, 250, 0.82);
+    margin-top: 1.2rem; font-size: 1.45rem; line-height: 1.5; color: rgb(var(--text-rgb) / 0.82);
     display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
   .nav { display: flex; align-items: center; gap: 1.6rem; margin-top: 1.8rem; height: 3.4rem; }
   /* shown only while the shelf has focus: plain state change, no transition (see tween.ts) */
   .open {
     display: none; font-size: 1.4rem; font-weight: 700; padding: 0.7rem 1.8rem;
-    border-radius: 1.4rem; background: #fff; color: #10121c;
+    border-radius: 1.4rem; background: var(--fg); color: var(--focus-text);
   }
   .shelf:focus .open { display: inline-block; }
   .dots { display: flex; gap: 0.6rem; }
-  .dots i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: rgba(255, 255, 255, 0.3); }
-  .dots i.on { background: #fff; width: 2rem; border-radius: 0.35rem; }
+  .dots i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: rgb(var(--fg-rgb) / 0.3); }
+  .dots i.on { background: var(--fg); width: 2rem; border-radius: 0.35rem; }
   .count { font-size: 1.3rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* ---- apps ---- */
@@ -399,14 +399,14 @@
   /* 20rem wide while they fit the row, narrower when more apps come */
   .app {
     width: min(20rem, calc((108rem - (var(--n) - 1) * 3.2rem) / var(--n))); aspect-ratio: 5 / 3; border-radius: 2.2rem; display: grid; place-items: center;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1rem 2.4rem rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 1px 0 rgb(var(--fg-rgb) / 0.35), 0 1rem 2.4rem rgb(var(--shadow-rgb) / 0.4);
   }
   .app:focus {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0.3rem #fff, 0 2.4rem 4.4rem rgba(0, 0, 0, 0.6);
+    box-shadow: inset 0 1px 0 rgb(var(--fg-rgb) / 0.5), 0 0 0 0.3rem var(--ring), 0 2.4rem 4.4rem rgb(var(--shadow-rgb) / 0.6);
   }
-  .app.picked { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0.5rem #fff, 0 3.4rem 6rem rgba(0, 0, 0, 0.75); }
-  .app :global(svg) { width: 7.4rem; height: 7.4rem; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-  .app :global(svg .fill) { fill: #fff; stroke-width: 1.6; }
+  .app.picked { box-shadow: inset 0 1px 0 rgb(var(--fg-rgb) / 0.5), 0 0 0 0.5rem var(--ring), 0 3.4rem 6rem rgb(var(--shadow-rgb) / 0.75); }
+  .app :global(svg) { width: 7.4rem; height: 7.4rem; fill: none; stroke: var(--on-accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .app :global(svg .fill) { fill: var(--on-accent); stroke-width: 1.6; }
   .label { margin-top: 2.2rem; font-size: 1.6rem; font-weight: 600; visibility: hidden; }
   .label.on { visibility: visible; }
 
@@ -422,10 +422,10 @@
   .pic {
     position: relative; display: grid; place-items: center; overflow: hidden;
     aspect-ratio: 16 / 9; border-radius: 1.4rem;
-    background: linear-gradient(160deg, #2a3157, #151833); box-shadow: 0 0.8rem 1.6rem rgba(0, 0, 0, 0.4);
+    background: var(--placeholder-grad); box-shadow: 0 0.8rem 1.6rem rgb(var(--shadow-rgb) / 0.4);
   }
   /* plain state change, no transition (see tween.ts) */
-  .pin:focus .pic { box-shadow: 0 0 0 0.3rem #fff, 0 1.6rem 3rem rgba(0, 0, 0, 0.55); }
+  .pin:focus .pic { box-shadow: 0 0 0 0.3rem var(--ring), 0 1.6rem 3rem rgb(var(--shadow-rgb) / 0.55); }
   .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .pic img.blur { filter: blur(1.4rem) brightness(0.7); transform: scale(1.3); }
   .pic img.contain, .pic img.pixelated { object-fit: contain; }
@@ -435,10 +435,10 @@
   /* title art over a picture without one */
   .pic img.title {
     inset: auto auto 1rem 1.2rem; width: 55%; height: 38%; object-fit: contain; object-position: left bottom;
-    filter: drop-shadow(0 0.2rem 0.6rem rgba(0, 0, 0, 0.6));
+    filter: drop-shadow(0 0.2rem 0.6rem rgb(var(--shadow-rgb) / 0.6));
   }
   .pic em { font-style: normal; font-size: 5rem; font-weight: 800; opacity: 0.3; }
-  .pbar { position: absolute; left: 0; right: 0; bottom: 0; height: 0.5rem; background: rgba(0, 0, 0, 0.55); }
+  .pbar { position: absolute; left: 0; right: 0; bottom: 0; height: 0.5rem; background: rgb(var(--shadow-rgb) / 0.55); }
   .pbar b { display: block; height: 100%; background: var(--accent); }
   .cap { display: block; margin-top: 0.8rem; font-size: 1.35rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cap small { display: block; font-weight: 400; color: var(--muted); font-size: 1.1rem; margin-top: 0.1rem; overflow: hidden; text-overflow: ellipsis; }

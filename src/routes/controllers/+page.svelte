@@ -191,26 +191,26 @@
     text-align: center; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
   }
   .slot.empty { background: transparent; border-style: dashed; color: var(--muted); }
-  .slot.lit { transform: scale(1.05); border-color: var(--accent); box-shadow: 0 0 0 0.3rem var(--accent), 0 0 3rem rgba(124, 140, 255, 0.5); }
+  .slot.lit { transform: scale(1.05); border-color: var(--accent); box-shadow: 0 0 0 0.3rem var(--accent), 0 0 3rem rgb(var(--accent-rgb) / 0.5); }
   .slot.asleep { opacity: 0.55; }
   .num {
     width: 3.4rem; height: 3.4rem; border-radius: 50%; display: grid; place-items: center;
-    font-size: 1.7rem; font-weight: 700; background: var(--accent); color: #fff;
+    font-size: 1.7rem; font-weight: 700; background: var(--accent); color: var(--on-accent);
   }
-  .empty .num { background: rgba(255, 255, 255, 0.1); color: var(--muted); }
+  .empty .num { background: rgb(var(--fg-rgb) / 0.1); color: var(--muted); }
   .ico svg { width: 7.5rem; height: 7.5rem; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
   .ico.plus svg { width: 4rem; height: 4rem; opacity: 0.6; }
   .name { font-size: 1.6rem; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sub { font-size: 1.25rem; color: var(--muted); min-height: 1.6rem; }
   .batt { display: flex; align-items: center; gap: 0.3rem; height: 1.8rem; }
-  .batt i { width: 1.4rem; height: 0.8rem; border-radius: 0.2rem; background: rgba(255, 255, 255, 0.15); }
+  .batt i { width: 1.4rem; height: 0.8rem; border-radius: 0.2rem; background: rgb(var(--fg-rgb) / 0.15); }
   .batt i.on { background: #7be08f; }
   .batt.low i.on { background: #ff8a6a; }
   .batt small { margin-left: 0.5rem; font-size: 1.1rem; color: var(--muted); }
   .extra { font-size: 1.3rem; color: var(--muted); }
   .help { width: 94rem; border-radius: 1.8rem; padding: 1.6rem 2.4rem; display: grid; gap: 0.7rem; font-size: 1.35rem; line-height: 1.45; color: var(--muted); }
-  .help b { color: var(--text, #f4f5fa); }
-  .joy { color: #f4f5fa; background: rgba(255, 60, 60, 0.14); border-radius: 1rem; padding: 0.8rem 1.2rem; }
+  .help b { color: var(--text); }
+  .joy { color: var(--text); background: rgba(255, 60, 60, 0.14); border-radius: 1rem; padding: 0.8rem 1.2rem; }
   .news { color: #9fe3ae; }
   .dot {
     display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: #3fb6ff; margin-right: 0.8rem;

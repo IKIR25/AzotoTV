@@ -113,10 +113,10 @@
 </div>
 
 <style>
-  .dim { position: absolute; z-index: 22; inset: 0; display: grid; place-items: center; background: rgba(5, 6, 14, 0.6); }
+  .dim { position: absolute; z-index: 22; inset: 0; display: grid; place-items: center; background: rgb(var(--bg-rgb) / 0.6); }
   .panel {
     display: flex; gap: 4rem; width: 110rem; max-width: calc(100% - 8rem); padding: 4rem;
-    border-radius: 2.8rem; background: rgba(16, 18, 32, 0.95);
+    border-radius: 2.8rem; background: rgb(var(--panel-rgb) / 0.95);
   }
   .qr { flex: none; width: 36rem; height: 36rem; border-radius: 2rem; background: #fff; padding: 1.2rem; }
   .qr :global(svg) { width: 100%; height: 100%; display: block; }
@@ -129,7 +129,7 @@
   .code { display: flex; gap: 1.2rem; margin: 1.8rem 0 1.4rem; }
   .code span {
     width: 6.4rem; height: 8rem; display: grid; place-items: center; border-radius: 1.4rem;
-    background: rgba(255, 255, 255, 0.08); font-size: 4.4rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    background: rgb(var(--fg-rgb) / 0.08); font-size: 4.4rem; font-weight: 700; font-variant-numeric: tabular-nums;
   }
   .small { font-size: 1.3rem; color: var(--muted); margin: 0; }
   .list { display: flex; flex-direction: column; gap: 0.4rem; width: 100%; max-height: 16rem; overflow: hidden; }
@@ -138,12 +138,12 @@
     padding: 0.9rem 1.4rem; border-radius: 1.2rem; text-align: left; font-size: 1.5rem; font-weight: 600;
   }
   .phone small { font-size: 1.2rem; color: var(--muted); font-weight: 400; margin-left: auto; }
-  .phone .x { display: none; font-style: normal; font-size: 1.2rem; font-weight: 700; color: #ff5d6c; }
+  .phone .x { display: none; font-style: normal; font-size: 1.2rem; font-weight: 700; color: var(--danger); }
   .phone:focus .x { display: inline; }
   /* plain state change, no transition (see tween.ts) */
-  .phone:focus { background: #fff; color: #10121c; }
-  .phone:focus small { color: rgba(16, 18, 28, 0.65); }
-  .phone.armed:focus { background: #ff5d6c; color: #fff; }
+  .phone:focus { background: var(--focus-bg); color: var(--focus-text); }
+  .phone:focus small { color: rgb(var(--focus-text-rgb) / 0.65); }
+  .phone.armed:focus { background: var(--danger); color: var(--on-accent); }
   .btn { margin-top: auto; }
   .side > .btn { margin-top: 2.4rem; }
   .hint { margin-top: 1.4rem; font-size: 1.15rem; color: var(--muted); }

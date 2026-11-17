@@ -183,11 +183,11 @@
     font-size: 1.6rem; padding: 0.9rem 2.2rem; border-radius: 2rem; color: var(--muted);
     transition: background 0.15s, color 0.15s;
   }
-  .tab.on { color: var(--text); background: rgba(255, 255, 255, 0.14); }
-  .tab:focus { background: rgba(255, 255, 255, 0.92); color: #10121c; }
+  .tab.on { color: var(--text); background: rgb(var(--fg-rgb) / 0.14); }
+  .tab:focus { background: rgb(var(--fg-rgb) / 0.92); color: var(--focus-text); }
   kbd {
     font: inherit; font-size: 1.1rem; font-weight: 600; color: var(--muted); padding: 0.2rem 0.6rem;
-    border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 0.5rem; margin: 0 0.6rem;
+    border: 1px solid rgb(var(--fg-rgb) / 0.3); border-radius: 0.5rem; margin: 0 0.6rem;
   }
   .row { flex-basis: 100%; display: flex; align-items: center; gap: 1.6rem; margin-top: 0.6rem; }
   .row .btn.primary { font-size: 1.3rem; padding: 0.7rem 1.6rem; }
@@ -195,8 +195,8 @@
   .sorts, .manage { display: flex; gap: 0.8rem; }
   .manage { margin-left: auto; margin-right: 6rem; }
   .chip { font-size: 1.3rem; padding: 0.7rem 1.5rem; border-radius: 1.4rem; }
-  .chip.sel { background: rgba(255, 255, 255, 0.34); }
-  .chip.sel:focus { background: #fff; }
+  .chip.sel { background: rgb(var(--fg-rgb) / 0.34); }
+  .chip.sel:focus { background: var(--focus-bg); }
   .msg { padding: 2rem 6rem; font-size: 1.8rem; color: var(--muted); }
   h2 { font-size: 1.9rem; font-weight: 600; margin: 1.6rem 6rem 0; }
   .grid {

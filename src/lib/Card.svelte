@@ -179,15 +179,15 @@
   .face {
     position: relative; display: grid; place-items: center; overflow: hidden;
     width: var(--w); aspect-ratio: 2 / 3; border-radius: 1.2rem;
-    background: linear-gradient(160deg, #2a3157, #151833);
-    box-shadow: 0 0.8rem 1.6rem rgba(0, 0, 0, 0.4);
+    background: var(--placeholder-grad);
+    box-shadow: 0 0.8rem 1.6rem rgb(var(--shadow-rgb) / 0.4);
   }
   /* Focus ring + lift shadow live on their own element and only fade (opacity is
      compositor-friendly; animating a big box-shadow repaints every frame).
      Its opacity is set inline by liftTo(). */
   .ring {
     position: absolute; inset: 0; border-radius: 1.2rem; pointer-events: none;
-    box-shadow: 0 0 0 0.3rem #fff, 0 1.6rem 3rem rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 0 0.3rem var(--ring), 0 1.6rem 3rem rgb(var(--shadow-rgb) / 0.55);
     opacity: 0;
   }
   .wide .face { aspect-ratio: 16 / 9; }
@@ -199,15 +199,15 @@
   img.fill { filter: blur(1.4rem) brightness(0.75); transform: scale(1.3); }
   img.pixelated { image-rendering: pixelated; object-fit: contain; }
   em { font-style: normal; font-size: 6rem; font-weight: 800; opacity: 0.3; }
-  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 0.5rem; background: rgba(0, 0, 0, 0.55); }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 0.5rem; background: rgb(var(--shadow-rgb) / 0.55); }
   .bar b { display: block; height: 100%; background: var(--accent); }
   .badge {
     position: absolute; top: 0.7rem; right: 0.7rem; min-width: 2.4rem; height: 2.4rem; padding: 0 0.6rem;
     border-radius: 1.2rem; display: grid; place-items: center; font-size: 1.2rem; font-weight: 700;
-    background: var(--accent); color: #fff;
+    background: var(--accent); color: var(--on-accent);
   }
-  .badge.ok { background: rgba(0, 0, 0, 0.6); }
-  .badge.tag { font-size: 1rem; font-weight: 600; padding: 0 0.8rem; background: rgba(10, 12, 24, 0.78); }
+  .badge.ok { background: rgb(var(--shadow-rgb) / 0.6); }
+  .badge.tag { font-size: 1rem; font-weight: 600; padding: 0 0.8rem; background: rgb(var(--scrim-rgb) / 0.78); }
   .cap { display: block; margin-top: 0.8rem; font-size: 1.25rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cap small { display: block; font-weight: 400; color: var(--muted); font-size: 1.05rem; margin-top: 0.1rem; }
   .card:focus { z-index: 2; }
@@ -216,16 +216,16 @@
     display: flex; align-items: center; gap: 1.2rem; min-width: 0; padding: 0.6rem 1rem; border-radius: 1.2rem; text-align: left;
   }
   /* no transitions here: plain state changes only (see tween.ts) */
-  .item:focus { background: rgba(255, 255, 255, 0.92); color: #10121c; }
-  .item:focus small { color: rgba(16, 18, 28, 0.7); }
+  .item:focus { background: rgb(var(--fg-rgb) / 0.92); color: var(--focus-text); }
+  .item:focus small { color: rgb(var(--focus-text-rgb) / 0.7); }
   .pic {
     position: relative; flex: 0 0 auto; height: 6rem; aspect-ratio: 2 / 3; border-radius: 0.7rem; overflow: hidden;
-    display: grid; place-items: center; background: linear-gradient(160deg, #2a3157, #151833);
+    display: grid; place-items: center; background: var(--placeholder-grad);
   }
   .wide .pic { height: 5.4rem; aspect-ratio: 16 / 9; }
   .pic .tag {
     position: absolute; right: 0.3rem; bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; padding: 0 0.4rem;
-    border-radius: 0.4rem; background: rgba(10, 12, 24, 0.8); color: #fff;
+    border-radius: 0.4rem; background: rgb(var(--scrim-rgb) / 0.8); color: var(--fg);
   }
   .square .pic { aspect-ratio: 1; }
   .tall .pic { aspect-ratio: 9 / 16; }
@@ -237,8 +237,8 @@
   .txt small { display: block; font-size: 1.1rem; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pill {
     flex: 0 0 auto; font-size: 1.05rem; font-weight: 700; padding: 0.15rem 0.7rem; border-radius: 0.8rem;
-    background: rgba(255, 255, 255, 0.14); white-space: nowrap;
+    background: rgb(var(--fg-rgb) / 0.14); white-space: nowrap;
   }
-  .pill.new { background: var(--accent); color: #fff; }
-  .item:focus .pill { background: rgba(16, 18, 28, 0.12); }
+  .pill.new { background: var(--accent); color: var(--on-accent); }
+  .item:focus .pill { background: rgb(var(--focus-text-rgb) / 0.12); }
 </style>

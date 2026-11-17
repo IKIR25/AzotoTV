@@ -12,6 +12,7 @@
   import { sleepNow } from './idle.svelte';
   import { tvLink } from './tvlink.svelte';
   import { admin, checkAdmin } from './admin.svelte';
+  import { current, themes } from './themes/index.svelte';
 
   // tvOS-style control menu (START): a TG that has just started (first, focused),
   // switch profile, notifications, pair a phone (and the TV, when it has forgotten AzotoTV), controllers, sounds, TG alerts and PIN of this profile,
@@ -221,6 +222,21 @@
     <span class="state">{languages.find((l) => l.id === lang)?.name ?? lang}</span>
   </button>
 
+  <button
+    class="opt"
+    data-focusable
+    onclick={() => {
+      close();
+      goto('/theme');
+    }}
+  >
+    <span class="ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-1 2-2 0-1.4-1.2-1.6-1.2-2.8 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.4 17 3 12 3z" /><path d="M7.5 11h.01M9.5 7.5h.01M14 7h.01M16.8 10h.01" /></svg>
+    </span>
+    <span class="txt">{t('Theme')}</span>
+    <span class="state">{t(themes.find((x) => x.id === current.pick)?.name ?? '')}</span>
+  </button>
+
   {#if admin.is}
   <button
     class="opt"
@@ -275,7 +291,7 @@
 <style>
   .sheet {
     position: absolute; z-index: 22; top: 0; right: 0; bottom: 0; width: 40rem;
-    border-radius: 2.4rem 0 0 2.4rem; background: rgba(16, 18, 32, 0.94);
+    border-radius: 2.4rem 0 0 2.4rem; background: rgb(var(--panel-rgb) / 0.94);
     padding: 3rem 2rem;
   }
   .opt {
@@ -287,22 +303,22 @@
   .avatar {
     position: relative; overflow: hidden; flex: none; display: grid; place-items: center;
     width: 5.2rem; height: 5.2rem; border-radius: 50%; font-weight: 700; font-size: 2rem;
-    background: linear-gradient(135deg, #ff4fa3, #7c8cff); color: #fff;
+    background: var(--avatar-grad); color: var(--on-accent);
   }
   .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .ico { width: 2.4rem; height: 2.4rem; flex: none; margin-left: 0.4rem; }
   svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .sep { height: 1px; background: var(--glass-edge); margin: 1.1rem 1.4rem; }
   /* plain state change, no transition (see tween.ts) */
-  .opt:focus { background: #fff; color: #10121c; }
-  .opt:focus small { color: rgba(16, 18, 28, 0.65); }
-  .opt.armed:focus { background: #ff5d6c; color: #fff; }
+  .opt:focus { background: var(--focus-bg); color: var(--focus-text); }
+  .opt:focus small { color: rgb(var(--focus-text-rgb) / 0.65); }
+  .opt.armed:focus { background: var(--danger); color: var(--on-accent); }
   .count {
     margin-left: auto; min-width: 2.4rem; padding: 0.2rem 0.7rem; border-radius: 1.2rem; text-align: center;
-    background: var(--azoto); color: #fff; font-size: 1.2rem; font-weight: 700;
+    background: var(--azoto); color: var(--on-accent); font-size: 1.2rem; font-weight: 700;
   }
   .state { margin-left: auto; font-size: 1.3rem; font-weight: 600; color: var(--muted); }
-  .opt:focus .state { color: rgba(16, 18, 28, 0.65); }
+  .opt:focus .state { color: rgb(var(--focus-text-rgb) / 0.65); }
   .hint { position: absolute; bottom: 1.8rem; left: 3.4rem; font-size: 1.15rem; color: var(--muted); }
   kbd {
     font: inherit; font-size: 0.95rem; font-weight: 700; padding: 0.05rem 0.45rem;

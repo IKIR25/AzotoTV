@@ -229,32 +229,32 @@
   .sub { font-size: 1.9rem; color: var(--muted); margin-top: 0.6rem; }
   .meta { margin-top: 1.4rem; }
   p {
-    margin-top: 1.4rem; font-size: 1.55rem; line-height: 1.55; color: rgba(244, 245, 250, 0.85); max-width: 66rem;
+    margin-top: 1.4rem; font-size: 1.55rem; line-height: 1.55; color: rgb(var(--text-rgb) / 0.85); max-width: 66rem;
     display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
   }
   .actions { display: flex; gap: 1rem; margin-top: 2.2rem; }
   .tracks { display: flex; gap: 1rem; margin-top: 1.2rem; }
-  .chip { font-size: 1.3rem; font-weight: 500; padding: 0.8rem 1.6rem; border-radius: 1.4rem; background: rgba(255, 255, 255, 0.1); }
+  .chip { font-size: 1.3rem; font-weight: 500; padding: 0.8rem 1.6rem; border-radius: 1.4rem; background: rgb(var(--fg-rgb) / 0.1); }
   .chip .k { font-weight: 700; margin-right: 0.3rem; }
 
   .eps { display: grid; gap: 1.2rem; padding: 0 6rem 2rem; max-width: 120rem; }
   .ep { display: flex; gap: 2rem; padding: 1.2rem; border-radius: 1.6rem; text-align: left; transition: background 0.15s; }
-  .ep:focus { background: rgba(255, 255, 255, 0.22); box-shadow: 0 0 0 0.25rem #fff; }
-  .thumb { position: relative; flex: 0 0 22rem; aspect-ratio: 16 / 9; border-radius: 1rem; overflow: hidden; background: #1d2240; }
+  .ep:focus { background: rgb(var(--fg-rgb) / 0.22); box-shadow: 0 0 0 0.25rem var(--ring); }
+  .thumb { position: relative; flex: 0 0 22rem; aspect-ratio: 16 / 9; border-radius: 1rem; overflow: hidden; background: var(--placeholder); }
   .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 0.45rem; background: rgba(0, 0, 0, 0.55); }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 0.45rem; background: rgb(var(--shadow-rgb) / 0.55); }
   .bar b { display: block; height: 100%; background: var(--accent); }
   .txt { display: grid; align-content: start; gap: 0.4rem; min-width: 0; }
   .txt strong { font-size: 1.7rem; }
   .txt small { color: var(--muted); font-size: 1.2rem; }
-  .ov { font-size: 1.3rem; line-height: 1.45; color: rgba(244, 245, 250, 0.75); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ov { font-size: 1.3rem; line-height: 1.45; color: rgb(var(--text-rgb) / 0.75); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
   .person { flex: 0 0 12rem; text-align: center; }
-  .avatar { display: grid; place-items: center; width: 10rem; height: 10rem; margin: 0 auto; border-radius: 50%; overflow: hidden; background: #1d2240; position: relative; }
+  .avatar { display: grid; place-items: center; width: 10rem; height: 10rem; margin: 0 auto; border-radius: 50%; overflow: hidden; background: var(--placeholder); position: relative; }
   .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .avatar em { font-style: normal; font-size: 4rem; font-weight: 700; opacity: 0.4; }
   .pn { display: block; margin-top: 0.7rem; font-size: 1.2rem; font-weight: 600; }
   .pn small { display: block; color: var(--muted); font-weight: 400; font-size: 1.05rem; }
-  .person:focus .avatar { box-shadow: 0 0 0 0.3rem #fff; }
+  .person:focus .avatar { box-shadow: 0 0 0 0.3rem var(--ring); }
   .end { height: 10rem; }
 </style>

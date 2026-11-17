@@ -124,7 +124,7 @@
   .sub { font-size: 1.8rem; color: var(--muted); margin-top: 0.6rem; }
   .meta { margin-top: 1.2rem; }
   p {
-    margin-top: 1.2rem; font-size: 1.45rem; line-height: 1.5; color: rgba(244, 245, 250, 0.82);
+    margin-top: 1.2rem; font-size: 1.45rem; line-height: 1.5; color: rgb(var(--text-rgb) / 0.82);
     display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
   .rows { top: 37rem; padding-top: 0.4rem; }

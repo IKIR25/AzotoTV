@@ -184,8 +184,8 @@
   .play svg { width: 1.6rem; height: 1.6rem; fill: currentColor; }
   .sub { font-size: 1.9rem; font-weight: 600; margin: 0.4rem 6rem 0; }
   .chip { font-size: 1.3rem; padding: 0.7rem 1.5rem; border-radius: 1.4rem; }
-  .chip.sel { background: rgba(255, 255, 255, 0.34); }
-  .chip.sel:focus { background: #fff; }
+  .chip.sel { background: rgb(var(--fg-rgb) / 0.34); }
+  .chip.sel:focus { background: var(--focus-bg); }
   .grid {
     display: grid; grid-template-columns: repeat(7, 14rem); gap: 2.2rem 1.4rem;
     padding: 2rem 6rem 2rem; justify-content: start;

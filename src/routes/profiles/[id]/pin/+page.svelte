@@ -57,13 +57,13 @@
   section { width: 46rem; border-radius: 2.4rem; padding: 3rem 4rem; display: grid; gap: 1.2rem; justify-items: center; }
   .pic {
     position: relative; width: 9rem; height: 9rem; border-radius: 50%; overflow: hidden;
-    display: grid; place-items: center; background: linear-gradient(135deg, #ff4fa3, #7c8cff);
+    display: grid; place-items: center; background: var(--avatar-grad);
   }
   .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .pic em { font-style: normal; font-size: 4rem; font-weight: 700; }
   h1 { font-size: 2.6rem; font-weight: 600; }
   p { font-size: 1.5rem; color: var(--muted); min-height: 2rem; }
-  p.err { color: #ff8a8a; }
+  p.err { color: var(--danger-text); }
   .link { font-size: 1.3rem; color: var(--muted); padding: 0.6rem 1.2rem; border-radius: 1rem; }
-  .link:focus { background: #fff; color: #10121c; }
+  .link:focus { background: var(--focus-bg); color: var(--focus-text); }
 </style>

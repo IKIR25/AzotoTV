@@ -206,15 +206,15 @@
   .sub { font-size: 1.8rem; color: var(--muted); margin-top: 0.6rem; font-style: italic; }
   .meta { margin-top: 1.4rem; }
   p {
-    margin-top: 1.4rem; font-size: 1.55rem; line-height: 1.55; color: rgba(244, 245, 250, 0.85); max-width: 66rem;
+    margin-top: 1.4rem; font-size: 1.55rem; line-height: 1.55; color: rgb(var(--text-rgb) / 0.85); max-width: 66rem;
     display: -webkit-box; -webkit-line-clamp: 5; line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
   }
   .seasons { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 2rem; max-width: 74rem; }
   .chip {
-    font-size: 1.3rem; padding: 0.7rem 1.4rem; border-radius: 1.4rem; background: rgba(255, 255, 255, 0.12);
+    font-size: 1.3rem; padding: 0.7rem 1.4rem; border-radius: 1.4rem; background: rgb(var(--fg-rgb) / 0.12);
   }
-  .chip.sel { background: rgba(255, 255, 255, 0.3); }
-  .chip:focus { background: #fff; color: #10121c; }
+  .chip.sel { background: rgb(var(--fg-rgb) / 0.3); }
+  .chip:focus { background: var(--focus-bg); color: var(--focus-text); }
   .chip.done { color: var(--muted); border: 1px solid var(--glass-edge); background: none; }
   .actions { display: flex; align-items: center; gap: 1rem; margin-top: 2.2rem; }
   .hint { font-size: 1.4rem; color: var(--muted); }

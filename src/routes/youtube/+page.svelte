@@ -188,12 +188,12 @@
   .row { display: flex; align-items: center; gap: 1.6rem; margin-top: 1.2rem; }
   .row .btn.primary { font-size: 1.3rem; padding: 0.7rem 1.6rem; }
   .row svg { width: 1.6rem; height: 1.6rem; fill: currentColor; }
-  .chip { font-size: 1.3rem; font-weight: 500; padding: 0.7rem 1.5rem; border-radius: 1.4rem; background: rgba(255, 255, 255, 0.1); }
+  .chip { font-size: 1.3rem; font-weight: 500; padding: 0.7rem 1.5rem; border-radius: 1.4rem; background: rgb(var(--fg-rgb) / 0.1); }
   .chip .k { font-weight: 700; margin-right: 0.3rem; }
   .acc { display: flex; align-items: center; gap: 0.7rem; }
   .acc img { width: 2.2rem; height: 2.2rem; border-radius: 50%; object-fit: cover; margin-left: -0.6rem; }
-  .chip.warn { background: #e0162b; color: #fff; }
-  .chip.warn:focus { background: #ff4e45; color: #fff; }
+  .chip.warn { background: var(--destroy); color: var(--on-accent); }
+  .chip.warn:focus { background: var(--destroy-hi); color: var(--on-accent); }
   .rows { padding-top: 1.4rem; }
   .msg { margin: 0 6rem 2rem; font-size: 1.6rem; color: var(--muted); max-width: 80rem; line-height: 1.5; }
   .msg.small { font-size: 1.4rem; }

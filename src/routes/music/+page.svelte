@@ -182,11 +182,11 @@
   .art { height: 26rem; display: flex; align-items: flex-end; margin-bottom: 2rem; }
   .art img, .ph {
     max-width: 54rem; max-height: 26rem; border-radius: 1.6rem;
-    box-shadow: 0 2.4rem 5rem rgba(0, 0, 0, 0.55);
+    box-shadow: 0 2.4rem 5rem rgb(var(--shadow-rgb) / 0.55);
   }
   .ph {
     width: 26rem; height: 26rem; display: grid; place-items: center; font-size: 10rem; opacity: 0.4;
-    background: linear-gradient(160deg, #2a3157, #151833);
+    background: var(--placeholder-grad);
   }
   h1 {
     font-size: 2.8rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15;
@@ -194,17 +194,17 @@
   }
   .by { font-size: 1.7rem; color: var(--muted); margin-top: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .bar { margin-top: 2rem; height: 0.6rem; border-radius: 0.3rem; background: rgba(255, 255, 255, 0.22); overflow: hidden; }
-  .bar b { display: block; height: 100%; background: #fff; transform-origin: left; }
+  .bar { margin-top: 2rem; height: 0.6rem; border-radius: 0.3rem; background: rgb(var(--fg-rgb) / 0.22); overflow: hidden; }
+  .bar b { display: block; height: 100%; background: var(--fg); transform-origin: left; }
   .times {
     display: flex; justify-content: space-between; margin-top: 0.7rem;
     font-size: 1.25rem; color: var(--muted); font-variant-numeric: tabular-nums;
   }
 
   .controls { display: flex; align-items: center; justify-content: center; gap: 1.6rem; margin-top: 1.6rem; }
-  .ctl { position: relative; width: 5.2rem; height: 5.2rem; padding: 0; justify-content: center; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+  .ctl { position: relative; width: 5.2rem; height: 5.2rem; padding: 0; justify-content: center; border-radius: 50%; background: rgb(var(--fg-rgb) / 0.1); }
   .ctl svg { width: 2.6rem; height: 2.6rem; fill: currentColor; }
-  .ctl.big { width: 7rem; height: 7rem; background: rgba(255, 255, 255, 0.24); }
+  .ctl.big { width: 7rem; height: 7rem; background: rgb(var(--fg-rgb) / 0.24); }
   .ctl.big svg { width: 3.6rem; height: 3.6rem; }
   .ctl:not(.on):not(.big):not(:focus) { color: var(--muted); }
   .ctl[data-key='prev']:not(:focus), .ctl[data-key='next']:not(:focus) { color: var(--text); }
@@ -224,11 +224,11 @@
     width: 100%; display: flex; align-items: center; gap: 1.4rem; padding: 0.8rem 1.2rem;
     border-radius: 1.2rem; text-align: left;
   }
-  .row:focus { background: rgba(255, 255, 255, 0.92); color: #10121c; }
-  .row:focus small, .row:focus .dur { color: rgba(16, 18, 28, 0.7); }
+  .row:focus { background: rgb(var(--fg-rgb) / 0.92); color: var(--focus-text); }
+  .row:focus small, .row:focus .dur { color: rgb(var(--focus-text-rgb) / 0.7); }
   .thumb {
     flex: 0 0 7.2rem; height: 4.05rem; border-radius: 0.6rem; overflow: hidden;
-    background: linear-gradient(160deg, #2a3157, #151833);
+    background: var(--placeholder-grad);
   }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .txt { flex: 1; min-width: 0; font-size: 1.35rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

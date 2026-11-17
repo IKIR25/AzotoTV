@@ -54,10 +54,10 @@
   label { display: grid; gap: 0.5rem; font-size: 1.3rem; color: var(--muted); }
   input {
     font: inherit; font-size: 1.7rem; color: var(--text); padding: 1.1rem 1.4rem; border-radius: 1.2rem;
-    border: 0.2rem solid transparent; background: rgba(255, 255, 255, 0.1); outline: none;
+    border: 0.2rem solid transparent; background: rgb(var(--fg-rgb) / 0.1); outline: none;
     user-select: text; -webkit-user-select: text; cursor: text;
   }
-  input:focus { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
-  .err { color: #ff8a8a; font-size: 1.3rem; }
+  input:focus { border-color: var(--ring); background: rgb(var(--fg-rgb) / 0.16); }
+  .err { color: var(--danger-text); font-size: 1.3rem; }
   .btn { justify-content: center; margin-top: 0.6rem; }
 </style>

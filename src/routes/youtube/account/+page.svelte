@@ -163,7 +163,7 @@
   .wrap { position: absolute; inset: 0; display: grid; place-items: center; }
   .panel {
     display: flex; gap: 4rem; width: 110rem; max-width: calc(100% - 8rem); padding: 4rem;
-    border-radius: 2.8rem; background: rgba(16, 18, 32, 0.95);
+    border-radius: 2.8rem; background: rgb(var(--panel-rgb) / 0.95);
   }
   .qr { flex: none; width: 36rem; height: 36rem; border-radius: 2rem; background: #fff; padding: 1.2rem; }
   .qr :global(svg) { width: 100%; height: 100%; display: block; }
@@ -172,23 +172,23 @@
   ol { margin: 0; padding-left: 2.4rem; font-size: 1.6rem; line-height: 1.5; color: var(--muted); }
   ol b { color: var(--text); font-weight: 700; }
   .code {
-    margin: 0.6rem 0 0.8rem 2.4rem; padding: 0.6rem 2rem; border-radius: 1.4rem; background: rgba(255, 255, 255, 0.1);
+    margin: 0.6rem 0 0.8rem 2.4rem; padding: 0.6rem 2rem; border-radius: 1.4rem; background: rgb(var(--fg-rgb) / 0.1);
     font-size: 4rem; font-weight: 700; letter-spacing: 0.12em; font-variant-numeric: tabular-nums;
   }
   .small { font-size: 1.3rem; color: var(--muted); max-width: 60rem; }
   .card { width: 56rem; border-radius: 2.4rem; padding: 3rem 4rem; display: grid; gap: 1.2rem; justify-items: center; text-align: center; }
   .pic {
     position: relative; width: 9rem; height: 9rem; border-radius: 50%; overflow: hidden;
-    display: grid; place-items: center; background: linear-gradient(135deg, #ff4e45, #a3001b);
+    display: grid; place-items: center; background: linear-gradient(135deg, var(--destroy-hi), #a3001b);
     font-size: 4rem; font-weight: 700;
   }
   .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .pic svg { width: 4.6rem; height: 4.6rem; fill: none; stroke: #fff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .pic svg { width: 4.6rem; height: 4.6rem; fill: none; stroke: var(--on-accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   h1 { font-size: 2.6rem; font-weight: 600; }
   .handle { margin-top: -0.8rem; }
   p { font-size: 1.5rem; color: var(--muted); }
-  p.err { color: #ff8a8a; }
+  p.err { color: var(--danger-text); }
   .row { display: flex; gap: 1.2rem; margin-top: 0.6rem; }
-  .btn.warn { background: #e0162b; color: #fff; }
-  .btn.warn:focus { background: #ff4e45; color: #fff; }
+  .btn.warn { background: var(--destroy); color: var(--on-accent); }
+  .btn.warn:focus { background: var(--destroy-hi); color: var(--on-accent); }
 </style>

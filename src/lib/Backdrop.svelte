@@ -125,14 +125,14 @@
   .layer.blur { filter: blur(3.5rem) saturate(1.4); transform: scale(1.15); object-position: center; }
   .ambient .shade {
     background:
-      radial-gradient(ellipse at 30% 45%, rgba(7, 8, 15, 0.35), rgba(7, 8, 15, 0.7) 75%),
-      linear-gradient(0deg, rgba(7, 8, 15, 0.6), transparent 40%);
+      radial-gradient(ellipse at 30% 45%, rgb(var(--bg-rgb) / 0.35), rgb(var(--bg-rgb) / 0.7) 75%),
+      linear-gradient(0deg, rgb(var(--bg-rgb) / 0.6), transparent 40%);
   }
   /* keep text legible: darken left side and bottom */
   .shade {
     position: absolute; inset: 0; z-index: 3;
     background:
-      linear-gradient(90deg, rgba(7, 8, 15, 0.92) 0%, rgba(7, 8, 15, 0.55) 38%, rgba(7, 8, 15, 0.1) 70%),
-      linear-gradient(0deg, rgba(7, 8, 15, 0.96) 0%, rgba(7, 8, 15, 0.5) 32%, transparent 60%);
+      linear-gradient(90deg, rgb(var(--bg-rgb) / 0.92) 0%, rgb(var(--bg-rgb) / 0.55) 38%, rgb(var(--bg-rgb) / 0.1) 70%),
+      linear-gradient(0deg, rgb(var(--bg-rgb) / 0.96) 0%, rgb(var(--bg-rgb) / 0.5) 32%, transparent 60%);
   }
 </style>

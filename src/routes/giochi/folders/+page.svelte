@@ -145,10 +145,10 @@
   .txt { font-size: 1.5rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .add .txt { color: var(--muted); }
   .state { margin-left: auto; font-size: 1.2rem; font-weight: 700; color: var(--muted); flex: none; }
-  .opt:focus { background: #fff; color: #10121c; }
-  .opt:focus .txt, .opt:focus .state { color: #10121c; }
-  .opt.armed:focus { background: #ff5d6c; color: #fff; }
-  .opt.armed:focus .txt, .opt.armed:focus .state { color: #fff; }
+  .opt:focus { background: var(--focus-bg); color: var(--focus-text); }
+  .opt:focus .txt, .opt:focus .state { color: var(--focus-text); }
+  .opt.armed:focus { background: var(--danger); color: var(--on-accent); }
+  .opt.armed:focus .txt, .opt.armed:focus .state { color: var(--on-accent); }
   .tip { font-size: 1.15rem; color: var(--muted); margin: 1.4rem 1.4rem 0; }
-  .err { color: #ff8a8a; font-size: 1.35rem; margin: 1rem 1.4rem 0; }
+  .err { color: var(--danger-text); font-size: 1.35rem; margin: 1rem 1.4rem 0; }
 </style>

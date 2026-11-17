@@ -164,28 +164,30 @@
     width: 100%; display: flex; align-items: center; gap: 1.4rem; padding: 0.8rem 1.2rem;
     border-radius: 1.4rem; text-align: left;
   }
-  .ch:focus { background: rgba(255, 255, 255, 0.92); color: #10121c; }
-  .ch:focus small, .ch:focus .num { color: rgba(16, 18, 28, 0.65); }
+  .ch:focus { background: rgb(var(--fg-rgb) / 0.92); color: var(--focus-text); }
+  .ch:focus small, .ch:focus .num { color: rgb(var(--focus-text-rgb) / 0.65); }
   .num { flex: 0 0 3.2rem; text-align: right; font-size: 1.4rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
   .logo {
     flex: 0 0 8rem; height: 4.5rem; border-radius: 0.8rem; display: grid; place-items: center;
-    background: rgba(255, 255, 255, 0.08); overflow: hidden;
+    background: rgb(var(--fg-rgb) / 0.08); overflow: hidden;
   }
   .logo img { max-width: 85%; max-height: 80%; object-fit: contain; }
   .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
   .txt b { font-size: 1.4rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .txt small { font-size: 1.1rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bar { display: block; height: 0.35rem; border-radius: 0.2rem; background: rgba(255, 255, 255, 0.2); overflow: hidden; margin-top: 0.3rem; }
-  .ch:focus .bar { background: rgba(16, 18, 28, 0.18); }
+  .bar { display: block; height: 0.35rem; border-radius: 0.2rem; background: rgb(var(--fg-rgb) / 0.2); overflow: hidden; margin-top: 0.3rem; }
+  .ch:focus .bar { background: rgb(var(--focus-text-rgb) / 0.18); }
   .bar em { display: block; height: 100%; background: var(--accent); transform-origin: left; }
   .bar.big { height: 0.5rem; margin: 1rem 0 0; }
 
   .detail { flex: 1; min-width: 0; border-radius: 2.2rem; padding: 2.4rem 2.8rem; display: flex; flex-direction: column; overflow: hidden; }
+  /* a long overview or schedule gets cut at the bottom; nothing above it shrinks (the title used to vanish) */
+  .detail > * { flex-shrink: 0; }
   .pic { height: 22rem; display: flex; align-items: center; margin-bottom: 1.6rem; flex-shrink: 0; }
-  .pic img { max-width: 100%; max-height: 22rem; border-radius: 1.2rem; box-shadow: 0 1.6rem 3rem rgba(0, 0, 0, 0.45); }
+  .pic img { max-width: 100%; max-height: 22rem; border-radius: 1.2rem; box-shadow: 0 1.6rem 3rem rgb(var(--shadow-rgb) / 0.45); }
   .pic img.lg { max-height: 10rem; box-shadow: none; }
   .chan { font-size: 1.3rem; color: var(--muted); display: flex; gap: 1.2rem; align-items: center; }
-  .dot { color: #ff5d6c; font-weight: 600; }
+  .dot { color: var(--danger); font-weight: 600; }
   h1 {
     font-size: 2.8rem; font-weight: 700; line-height: 1.15; margin-top: 0.4rem;
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -193,7 +195,7 @@
   .ep { font-size: 1.5rem; color: var(--muted); margin-top: 0.2rem; }
   .slot { font-size: 1.3rem; color: var(--muted); margin-top: 0.8rem; }
   .ov {
-    font-size: 1.3rem; line-height: 1.5; color: rgba(244, 245, 250, 0.82); margin-top: 1.2rem;
+    font-size: 1.3rem; line-height: 1.5; color: rgb(var(--text-rgb) / 0.82); margin-top: 1.2rem;
     display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
   h2 { font-size: 1.4rem; font-weight: 600; margin-top: 1.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
@@ -204,11 +206,11 @@
   }
   .next time { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
   .next span { overflow: hidden; text-overflow: ellipsis; }
-  .bell { flex: none; width: 1.6rem; height: 1.6rem; fill: none; stroke: #9aa6ff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .act { display: none; margin-left: auto; padding-left: 1rem; font-style: normal; font-size: 1.1rem; color: rgba(16, 18, 28, 0.6); flex: none; }
-  .prog:focus { background: rgba(255, 255, 255, 0.92); color: #10121c; }
-  .prog:focus time { color: rgba(16, 18, 28, 0.65); }
-  .prog:focus .bell { stroke: #4a55c8; }
+  .bell { flex: none; width: 1.6rem; height: 1.6rem; fill: none; stroke: var(--accent-soft); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .act { display: none; margin-left: auto; padding-left: 1rem; font-style: normal; font-size: 1.1rem; color: rgb(var(--focus-text-rgb) / 0.6); flex: none; }
+  .prog:focus { background: rgb(var(--fg-rgb) / 0.92); color: var(--focus-text); }
+  .prog:focus time { color: rgb(var(--focus-text-rgb) / 0.65); }
+  .prog:focus .bell { stroke: var(--accent-on-focus); }
   .prog:focus .act { display: block; }
   .hint { margin-top: auto; padding-top: 1.2rem; font-size: 1.1rem; color: var(--muted); }
   .msg { position: absolute; top: 12rem; left: 6rem; font-size: 1.8rem; color: var(--muted); }

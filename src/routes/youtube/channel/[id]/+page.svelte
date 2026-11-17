@@ -61,13 +61,13 @@
   .banner { height: 15rem; background-size: cover; background-position: center; mask-image: linear-gradient(180deg, #000 55%, transparent); }
   header { display: flex; align-items: center; gap: 2.4rem; padding: 0 6rem 1.4rem; margin-top: -4rem; position: relative; }
   header.nobanner { margin-top: 0; padding-top: 6rem; }
-  .avatar { width: 10rem; height: 10rem; border-radius: 50%; object-fit: cover; box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.5); }
+  .avatar { width: 10rem; height: 10rem; border-radius: 50%; object-fit: cover; box-shadow: 0 0.6rem 2rem rgb(var(--shadow-rgb) / 0.5); }
   .who { flex: 1; min-width: 0; }
   h1 { font-size: 3.4rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta { margin-top: 0.4rem; }
   .btn.primary { font-size: 1.4rem; padding: 0.9rem 2rem; }
-  .btn.on { background: rgba(255, 255, 255, 0.2); }
-  .btn.on:focus { background: #fff; }
+  .btn.on { background: rgb(var(--fg-rgb) / 0.2); }
+  .btn.on:focus { background: var(--focus-bg); }
   .grid { display: grid; grid-template-columns: repeat(4, 24rem); gap: 2.4rem 1.4rem; padding: 1.4rem 6rem 2rem; }
   .msg { position: absolute; top: 12rem; left: 6rem; font-size: 1.8rem; color: var(--muted); }
   .end { height: 8rem; }

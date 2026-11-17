@@ -47,10 +47,10 @@
 </div>
 
 <style>
-  .dim { position: absolute; z-index: 40; inset: 0; display: grid; place-items: center; background: rgba(5, 6, 14, 0.6); }
+  .dim { position: absolute; z-index: 40; inset: 0; display: grid; place-items: center; background: rgb(var(--bg-rgb) / 0.6); }
   .panel {
     display: grid; justify-items: center; gap: 1.6rem; width: 72rem; max-width: calc(100% - 8rem);
-    padding: 4rem; border-radius: 2.8rem; background: rgba(16, 18, 32, 0.95); text-align: center;
+    padding: 4rem; border-radius: 2.8rem; background: rgb(var(--panel-rgb) / 0.95); text-align: center;
   }
   .ico { width: 5rem; height: 5rem; color: var(--accent); }
   svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }

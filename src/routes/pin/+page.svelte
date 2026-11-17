@@ -80,12 +80,12 @@
   section { width: 52rem; border-radius: 2.4rem; padding: 3rem 4rem; display: grid; gap: 1.2rem; justify-items: center; text-align: center; }
   .pic {
     position: relative; width: 9rem; height: 9rem; border-radius: 50%; overflow: hidden;
-    display: grid; place-items: center; background: linear-gradient(135deg, #ff4fa3, #7c8cff);
+    display: grid; place-items: center; background: var(--avatar-grad);
     font-size: 4rem; font-weight: 700;
   }
   .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   h1 { font-size: 2.6rem; font-weight: 600; }
   p { font-size: 1.5rem; color: var(--muted); min-height: 2rem; }
-  p.err { color: #ff8a8a; }
+  p.err { color: var(--danger-text); }
   .row { display: flex; gap: 1.2rem; margin-top: 0.6rem; }
 </style>

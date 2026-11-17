@@ -270,63 +270,63 @@
 <style>
   .shade {
     position: fixed; inset: 0; pointer-events: none;
-    background: linear-gradient(90deg, rgba(7, 8, 15, 0.72) 0%, rgba(7, 8, 15, 0.5) 45%, transparent 75%);
+    background: linear-gradient(90deg, rgb(var(--bg-rgb) / 0.72) 0%, rgb(var(--bg-rgb) / 0.5) 45%, transparent 75%);
   }
   .info { position: relative; padding: 17rem 6rem 3rem; width: 78rem; min-height: 56rem; }
   h1 { font-size: 5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
   .logo { max-width: 46rem; max-height: 14rem; object-fit: contain; object-position: left bottom; display: block; }
   .meta { margin-top: 1.4rem; }
   p {
-    margin-top: 1.4rem; font-size: 1.55rem; line-height: 1.55; color: rgba(244, 245, 250, 0.85); max-width: 66rem;
+    margin-top: 1.4rem; font-size: 1.55rem; line-height: 1.55; color: rgb(var(--text-rgb) / 0.85); max-width: 66rem;
     display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
   }
   .played { margin-top: 1rem; font-size: 1.3rem; color: var(--muted); }
   .actions { display: flex; gap: 1rem; margin-top: 2.2rem; }
   .tracks { display: flex; gap: 1rem; margin-top: 1.2rem; }
-  .chip { font-size: 1.3rem; font-weight: 500; padding: 0.8rem 1.6rem; border-radius: 1.4rem; background: rgba(255, 255, 255, 0.1); }
+  .chip { font-size: 1.3rem; font-weight: 500; padding: 0.8rem 1.6rem; border-radius: 1.4rem; background: rgb(var(--fg-rgb) / 0.1); }
   .chip .k { font-weight: 700; margin-right: 0.3rem; }
   .hint { margin-top: 2.4rem; font-size: 1.15rem; color: var(--muted); }
   /* chapters: the same list as a series' episodes (item page) */
   h2 { font-size: 1.9rem; font-weight: 600; margin: 0 6rem 1rem; position: relative; }
   .eps { position: relative; display: grid; gap: 1.2rem; padding: 0 6rem 8rem; max-width: 120rem; }
   .ep { display: flex; gap: 2rem; padding: 1.2rem; border-radius: 1.6rem; text-align: left; transition: background 0.15s; }
-  .ep:focus { background: rgba(255, 255, 255, 0.22); box-shadow: 0 0 0 0.25rem #fff; }
-  .thumb { position: relative; flex: 0 0 22rem; aspect-ratio: 16 / 9; border-radius: 1rem; overflow: hidden; background: #1d2240; }
+  .ep:focus { background: rgb(var(--fg-rgb) / 0.22); box-shadow: 0 0 0 0.25rem var(--ring); }
+  .thumb { position: relative; flex: 0 0 22rem; aspect-ratio: 16 / 9; border-radius: 1rem; overflow: hidden; background: var(--placeholder); }
   .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .thumb img.fill { filter: blur(1.4rem) brightness(0.75); transform: scale(1.3); }
   .thumb img.pixelated { image-rendering: pixelated; object-fit: contain; }
   .tag {
     position: absolute; left: 0.6rem; bottom: 0.6rem; padding: 0.2rem 0.7rem; border-radius: 0.6rem;
-    font-size: 1rem; font-weight: 700; background: var(--accent); color: #fff;
+    font-size: 1rem; font-weight: 700; background: var(--accent); color: var(--on-accent);
   }
   .txt { display: grid; align-content: start; gap: 0.4rem; min-width: 0; }
   .txt strong { font-size: 1.7rem; }
-  .st { font-weight: 500; color: rgba(244, 245, 250, 0.8); }
-  .ov { font-size: 1.3rem; line-height: 1.45; color: rgba(244, 245, 250, 0.75); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .st { font-weight: 500; color: rgb(var(--text-rgb) / 0.8); }
+  .ov { font-size: 1.3rem; line-height: 1.45; color: rgb(var(--text-rgb) / 0.75); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   /* mods: the episode row plus an on/off switch at the end */
   .mod { align-items: center; }
   .mod .txt { flex: 1; }
-  .ph { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: 700; color: rgba(244, 245, 250, 0.7); }
-  .sw { flex: 0 0 auto; width: 5.6rem; height: 3rem; border-radius: 1.5rem; background: rgba(255, 255, 255, 0.18); position: relative; transition: background 0.15s; margin-right: 1rem; }
-  .sw span { position: absolute; top: 0.35rem; left: 0.35rem; width: 2.3rem; height: 2.3rem; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+  .ph { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: 700; color: rgb(var(--text-rgb) / 0.7); }
+  .sw { flex: 0 0 auto; width: 5.6rem; height: 3rem; border-radius: 1.5rem; background: rgb(var(--fg-rgb) / 0.18); position: relative; transition: background 0.15s; margin-right: 1rem; }
+  .sw span { position: absolute; top: 0.35rem; left: 0.35rem; width: 2.3rem; height: 2.3rem; border-radius: 50%; background: var(--fg); transition: transform 0.15s; }
   .mod.on .sw { background: var(--accent); }
   .mod.on .sw span { transform: translateX(2.6rem); }
   .count { font-weight: 500; color: var(--muted); margin-left: 0.6rem; }
-  .bar { position: relative; margin: 0 6rem 1.6rem; max-width: 40rem; height: 0.5rem; border-radius: 0.25rem; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+  .bar { position: relative; margin: 0 6rem 1.6rem; max-width: 40rem; height: 0.5rem; border-radius: 0.25rem; background: rgb(var(--fg-rgb) / 0.14); overflow: hidden; }
   .bar span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
   .achs { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; padding: 0 6rem 8rem; max-width: 150rem; }
   /* plain, not .glass: hundreds of backdrop blurs are too much for the TV's GPU */
   .ach {
     display: flex; align-items: center; gap: 1.4rem; padding: 1rem; border-radius: 1.4rem; text-align: left; transition: background 0.15s;
-    background: rgba(20, 22, 40, 0.55); border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgb(var(--scrim-rgb) / 0.55); border: 1px solid rgb(var(--fg-rgb) / 0.08);
   }
-  .ach:focus { background: rgba(255, 255, 255, 0.22); box-shadow: 0 0 0 0.25rem #fff; }
+  .ach:focus { background: rgb(var(--fg-rgb) / 0.22); box-shadow: 0 0 0 0.25rem var(--ring); }
   .ach .icon { flex: 0 0 6.4rem; width: 6.4rem; height: 6.4rem; border-radius: 0.8rem; object-fit: cover; }
   .ach.locked .icon { filter: grayscale(1) brightness(0.55); }
-  .ach.locked strong { color: rgba(244, 245, 250, 0.7); }
-  .secret { display: grid; place-items: center; font-size: 3rem; font-weight: 700; color: rgba(244, 245, 250, 0.5); background: rgba(255, 255, 255, 0.08); }
+  .ach.locked strong { color: rgb(var(--text-rgb) / 0.7); }
+  .secret { display: grid; place-items: center; font-size: 3rem; font-weight: 700; color: rgb(var(--text-rgb) / 0.5); background: rgb(var(--fg-rgb) / 0.08); }
   .ach strong { font-size: 1.45rem; }
   .ach .ov { font-size: 1.15rem; }
-  .when { font-size: 1.05rem; font-weight: 600; color: #9aa6ff; }
+  .when { font-size: 1.05rem; font-weight: 600; color: var(--accent-soft); }
   .msg { position: absolute; top: 12rem; left: 6rem; font-size: 1.8rem; color: var(--muted); }
 </style>

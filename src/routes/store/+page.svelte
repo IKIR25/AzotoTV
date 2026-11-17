@@ -48,18 +48,18 @@
   header p { margin-top: 0.8rem; font-size: 1.5rem; color: var(--muted); max-width: 80rem; line-height: 1.5; }
   .list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.4rem; padding: 1rem 6rem; max-width: 120rem; }
   .entry { display: flex; align-items: center; gap: 2rem; padding: 1.4rem 1.8rem 1.4rem 1.4rem; border-radius: 1.8rem; text-align: left; transition: background 0.15s; }
-  .entry:focus { background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 0 0.3rem #fff; }
+  .entry:focus { background: rgb(var(--fg-rgb) / 0.2); box-shadow: 0 0 0 0.3rem var(--ring); }
   .tile {
     flex: 0 0 12rem; height: 7.2rem; border-radius: 1.4rem; display: grid; place-items: center;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0.6rem 1.4rem rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 1px 0 rgb(var(--fg-rgb) / 0.35), 0 0.6rem 1.4rem rgb(var(--shadow-rgb) / 0.35);
   }
-  .tile svg { width: 4.4rem; height: 4.4rem; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-  .tile :global(svg .fill) { fill: #fff; stroke-width: 1.6; }
+  .tile svg { width: 4.4rem; height: 4.4rem; fill: none; stroke: var(--on-accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .tile :global(svg .fill) { fill: var(--on-accent); stroke-width: 1.6; }
   .txt { flex: 1; display: grid; gap: 0.4rem; min-width: 0; }
   .txt strong { font-size: 1.8rem; }
-  .d { font-size: 1.25rem; line-height: 1.45; color: rgba(244, 245, 250, 0.75); }
-  .state { flex: 0 0 auto; font-size: 1.25rem; font-weight: 600; padding: 0.6rem 1.2rem; border-radius: 1.2rem; background: rgba(255, 255, 255, 0.12); }
+  .d { font-size: 1.25rem; line-height: 1.45; color: rgb(var(--text-rgb) / 0.75); }
+  .state { flex: 0 0 auto; font-size: 1.25rem; font-weight: 600; padding: 0.6rem 1.2rem; border-radius: 1.2rem; background: rgb(var(--fg-rgb) / 0.12); }
   .entry.on .state { background: transparent; color: var(--muted); }
-  .entry:focus .state { background: #fff; color: #10121c; }
+  .entry:focus .state { background: var(--focus-bg); color: var(--focus-text); }
   .foot { margin: 1.4rem 6rem 8rem; font-size: 1.3rem; color: var(--muted); }
 </style>

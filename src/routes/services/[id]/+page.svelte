@@ -124,16 +124,16 @@
   label small { font-size: 1.1rem; opacity: 0.8; }
   input {
     font: inherit; font-size: 1.6rem; color: var(--text); padding: 1rem 1.3rem; border-radius: 1.2rem;
-    border: 0.2rem solid transparent; background: rgba(255, 255, 255, 0.1); outline: none;
+    border: 0.2rem solid transparent; background: rgb(var(--fg-rgb) / 0.1); outline: none;
     user-select: text; -webkit-user-select: text; cursor: text;
   }
-  input:focus { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
-  .ok { list-style: none; padding: 0; color: #6fe3a1; font-size: 1.35rem; display: grid; gap: 0.3rem; }
-  .err { color: #ff8a8a; font-size: 1.35rem; }
+  input:focus { border-color: var(--ring); background: rgb(var(--fg-rgb) / 0.16); }
+  .ok { list-style: none; padding: 0; color: var(--ok); font-size: 1.35rem; display: grid; gap: 0.3rem; }
+  .err { color: var(--danger-text); font-size: 1.35rem; }
   /* Save spans the form and Try reaches past its middle, so Down goes field -> Save -> Try */
   .row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.2rem; margin-top: 0.4rem; }
   .row .btn { justify-content: center; }
   .row .primary { grid-column: 1 / -1; }
-  .btn.armed:focus { background: #ff5d6c; color: #fff; }
+  .btn.armed:focus { background: var(--danger); color: var(--on-accent); }
   .tip { font-size: 1.1rem; color: var(--muted); }
 </style>

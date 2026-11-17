@@ -92,13 +92,13 @@
 <style>
   .sheet {
     position: absolute; z-index: 22; top: 0; right: 0; bottom: 0; width: 64rem;
-    border-radius: 2.4rem 0 0 2.4rem; background: rgba(16, 18, 32, 0.96);
+    border-radius: 2.4rem 0 0 2.4rem; background: rgb(var(--panel-rgb) / 0.96);
   }
   h2 { position: absolute; top: 3.4rem; left: 3.4rem; font-size: 2.4rem; font-weight: 700; }
   .path { position: absolute; top: 7.2rem; left: 3.4rem; right: 3rem; font-size: 1.2rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
   .places { position: absolute; top: 9.6rem; left: 3rem; right: 3rem; display: flex; gap: 0.8rem; flex-wrap: wrap; max-height: 4.6rem; overflow: hidden; }
   .chip { font-size: 1.2rem; padding: 0.6rem 1.3rem; border-radius: 1.4rem; }
-  .chip.sel { background: rgba(255, 255, 255, 0.3); }
+  .chip.sel { background: rgb(var(--fg-rgb) / 0.3); }
   .list { top: 15rem; bottom: 5rem; padding: 0.6rem 2rem 2rem; }
   .opt {
     display: flex; align-items: center; gap: 1.2rem; width: 100%; text-align: left;
@@ -106,12 +106,12 @@
   }
   .ico { width: 2rem; height: 2rem; flex: none; display: grid; place-items: center; font-weight: 700; color: var(--muted); }
   .ico svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
-  .game .ico { color: #6fe3a1; }
-  .use .ico { color: #6fe3a1; }
+  .game .ico { color: var(--ok); }
+  .use .ico { color: var(--ok); }
   .txt { font-size: 1.5rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .opt:focus { background: #fff; color: #10121c; }
-  .opt:focus .ico { color: #10121c; }
-  .err { color: #ff8a8a; font-size: 1.3rem; padding: 0.4rem 1.4rem 1rem; }
+  .opt:focus { background: var(--focus-bg); color: var(--focus-text); }
+  .opt:focus .ico { color: var(--focus-text); }
+  .err { color: var(--danger-text); font-size: 1.3rem; padding: 0.4rem 1.4rem 1rem; }
   .empty { color: var(--muted); font-size: 1.4rem; padding: 1rem 1.4rem; }
   .hint { position: absolute; bottom: 1.8rem; left: 3.4rem; font-size: 1.15rem; color: var(--muted); }
   kbd {

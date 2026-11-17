@@ -154,17 +154,17 @@
   .layer.front { opacity: 1; z-index: 0; }
   .shade {
     position: absolute; inset: 0; z-index: 2;
-    background: linear-gradient(0deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.15) 35%, transparent 55%);
+    background: linear-gradient(0deg, rgb(var(--shadow-rgb) / 0.7) 0%, rgb(var(--shadow-rgb) / 0.15) 35%, transparent 55%);
   }
   .title { position: absolute; z-index: 3; left: 6rem; bottom: 5.4rem; }
   .title img { max-width: 30rem; max-height: 9rem; object-fit: contain; object-position: left bottom; display: block; }
   .title span { font-size: 3rem; font-weight: 700; letter-spacing: -0.01em; }
-  .title span.photo { font-size: 2.4rem; text-shadow: 0 0.1rem 0.8rem rgba(0, 0, 0, 0.7); }
-  .title small { display: block; margin-top: 0.4rem; font-size: 1.5rem; color: rgba(255, 255, 255, 0.8); }
+  .title span.photo { font-size: 2.4rem; text-shadow: 0 0.1rem 0.8rem rgb(var(--shadow-rgb) / 0.7); }
+  .title small { display: block; margin-top: 0.4rem; font-size: 1.5rem; color: rgb(var(--fg-rgb) / 0.8); }
   .time { position: absolute; z-index: 3; right: 6rem; bottom: 4.6rem; text-align: right; }
   .clock { font-size: 7rem; font-weight: 300; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
-  .date { font-size: 1.7rem; color: rgba(255, 255, 255, 0.75); margin-top: 0.6rem; }
+  .date { font-size: 1.7rem; color: rgb(var(--fg-rgb) / 0.75); margin-top: 0.6rem; }
   .date::first-letter { text-transform: uppercase; }
   .song { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.2rem; }
-  .song small { display: block; font-size: 1.25rem; font-weight: 400; color: rgba(255, 255, 255, 0.7); }
+  .song small { display: block; font-size: 1.25rem; font-weight: 400; color: rgb(var(--fg-rgb) / 0.7); }
 </style>

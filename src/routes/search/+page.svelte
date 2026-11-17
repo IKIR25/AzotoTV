@@ -171,9 +171,9 @@
   .bar { position: absolute; top: 10rem; left: 6rem; right: 6rem; }
   input {
     width: 100%; font: inherit; font-size: 2rem; color: var(--text); padding: 1.2rem 2rem; border-radius: 1.6rem;
-    border: 0.2rem solid transparent; background: rgba(255, 255, 255, 0.1); outline: none;
+    border: 0.2rem solid transparent; background: rgb(var(--fg-rgb) / 0.1); outline: none;
   }
-  input:focus { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
+  input:focus { border-color: var(--ring); background: rgb(var(--fg-rgb) / 0.16); }
   input::placeholder { color: var(--muted); }
   .results { top: 16.5rem; }
   /* keyboard docked on the left (see Keyboard.svelte .side): results go right */

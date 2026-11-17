@@ -126,14 +126,14 @@
     --u: 5.4rem; --g: 0.6rem;
     position: absolute; z-index: 25; left: 50%; bottom: 3rem; transform: translateX(-50%);
     padding: 2rem 2.2rem 1.4rem; border-radius: 2.4rem; display: grid; gap: var(--g);
-    background: rgba(16, 18, 32, 0.95);
+    background: rgb(var(--panel-rgb) / 0.95);
   }
   .osk.side { --u: 4.6rem; left: 4rem; top: 10rem; bottom: auto; transform: none; }
   .side .key { height: 4.4rem; }
   .side .legend { max-width: 50rem; justify-self: center; }
   .field {
     margin-bottom: 0.8rem; padding: 0.9rem 1.4rem; border-radius: 1.2rem;
-    background: rgba(255, 255, 255, 0.08); border: 0.2rem solid rgba(255, 255, 255, 0.5);
+    background: rgb(var(--fg-rgb) / 0.08); border: 0.2rem solid rgb(var(--fg-rgb) / 0.5);
   }
   .name { display: block; font-size: 1.1rem; color: var(--muted); margin-bottom: 0.2rem; }
   .val { font-size: 1.9rem; min-height: 2.6rem; white-space: pre; overflow: hidden; }
@@ -145,12 +145,12 @@
   .krow { display: flex; gap: var(--g); }
   .key {
     width: calc(var(--u) * var(--kw) + var(--g) * (var(--kw) - 1)); height: 4.8rem;
-    border-radius: 1rem; font-size: 1.8rem; background: rgba(255, 255, 255, 0.1);
+    border-radius: 1rem; font-size: 1.8rem; background: rgb(var(--fg-rgb) / 0.1);
   }
-  .key.act { font-size: 1.4rem; font-weight: 600; background: rgba(255, 255, 255, 0.18); }
+  .key.act { font-size: 1.4rem; font-weight: 600; background: rgb(var(--fg-rgb) / 0.18); }
   .key.on { background: var(--accent); }
   /* no transitions here: plain state changes only (see tween.ts) */
-  .key:focus { background: #fff; color: #10121c; }
+  .key:focus { background: var(--focus-bg); color: var(--focus-text); }
   .legend {
     display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 1.6rem;
     margin-top: 0.8rem; font-size: 1.1rem; color: var(--muted);

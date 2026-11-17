@@ -84,21 +84,21 @@
 <style>
   .sheet {
     position: absolute; z-index: 22; top: 0; right: 0; bottom: 0; width: 48rem;
-    border-radius: 2.4rem 0 0 2.4rem; background: rgba(16, 18, 32, 0.94);
+    border-radius: 2.4rem 0 0 2.4rem; background: rgb(var(--panel-rgb) / 0.94);
   }
   h2 { position: absolute; top: 4rem; left: 3.4rem; font-size: 2.4rem; font-weight: 700; }
   .list { top: 9.5rem; bottom: 5rem; padding: 0.6rem 2rem 2rem; }
   input {
     width: 100%; font: inherit; font-size: 1.6rem; color: var(--text); padding: 1.1rem 1.4rem; margin-bottom: 1rem;
-    border-radius: 1.2rem; border: 0.2rem solid transparent; background: rgba(255, 255, 255, 0.1); outline: none;
+    border-radius: 1.2rem; border: 0.2rem solid transparent; background: rgb(var(--fg-rgb) / 0.1); outline: none;
   }
-  input:focus { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
+  input:focus { border-color: var(--ring); background: rgb(var(--fg-rgb) / 0.16); }
   input::placeholder { color: var(--muted); }
   .opt { display: flex; width: 100%; text-align: left; padding: 1.1rem 1.4rem; border-radius: 1.2rem; margin-bottom: 0.4rem; }
   .txt { font-size: 1.6rem; font-weight: 600; }
   .txt small { display: block; font-size: 1.15rem; font-weight: 400; color: var(--muted); margin-top: 0.15rem; }
-  .opt:focus { background: #fff; color: #10121c; }
-  .opt:focus small { color: rgba(16, 18, 28, 0.65); }
+  .opt:focus { background: var(--focus-bg); color: var(--focus-text); }
+  .opt:focus small { color: rgb(var(--focus-text-rgb) / 0.65); }
   .hint { position: absolute; bottom: 1.8rem; left: 3.4rem; font-size: 1.15rem; color: var(--muted); }
   kbd {
     font: inherit; font-size: 0.95rem; font-weight: 700; padding: 0.05rem 0.45rem;

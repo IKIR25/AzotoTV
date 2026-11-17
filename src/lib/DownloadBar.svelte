@@ -65,21 +65,21 @@
 <style>
   .dl {
     margin-top: 2.2rem; width: 62rem; padding: 1.6rem 2rem; border-radius: 1.4rem;
-    background: rgba(10, 12, 24, 0.55); border: 1px solid var(--glass-edge);
+    background: rgb(var(--scrim-rgb) / 0.55); border: 1px solid var(--glass-edge);
   }
   .head { display: flex; justify-content: space-between; align-items: baseline; font-size: 1.7rem; }
   .head span { font-variant-numeric: tabular-nums; color: var(--muted); }
-  .bar { display: block; height: 0.8rem; margin-top: 1rem; border-radius: 0.4rem; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+  .bar { display: block; height: 0.8rem; margin-top: 1rem; border-radius: 0.4rem; background: rgb(var(--fg-rgb) / 0.14); overflow: hidden; }
   /* width is laid out, not composited: safe from the WebKitGTK transition glitch */
   .bar b { display: block; height: 100%; border-radius: 0.4rem; background: var(--accent); transition: width 1.2s linear; }
-  .bad .bar b { background: #e0a040; }
+  .bad .bar b { background: var(--caution); }
   .facts { margin-top: 0.9rem; font-size: 1.35rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .note { margin-top: 0.7rem; font-size: 1.35rem; line-height: 1.4; }
-  .bad .note { color: #f0c070; }
-  .steps { display: flex; gap: 2.4rem; margin-top: 1.2rem; padding: 0; list-style: none; font-size: 1.3rem; color: rgba(244, 245, 250, 0.4); }
+  .bad .note { color: var(--caution-text); }
+  .steps { display: flex; gap: 2.4rem; margin-top: 1.2rem; padding: 0; list-style: none; font-size: 1.3rem; color: rgb(var(--text-rgb) / 0.4); }
   .steps li::before { content: '○ '; }
   .steps li.done { color: var(--muted); }
   .steps li.done::before { content: '✓ '; }
-  .steps li.now { color: #fff; font-weight: 600; }
+  .steps li.now { color: var(--fg); font-weight: 600; }
   .steps li.now::before { content: '● '; }
 </style>

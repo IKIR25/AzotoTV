@@ -154,7 +154,7 @@
   header { padding: 4.4rem 6rem 1.4rem; }
   h1 { font-size: 3.4rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta { margin-top: 0.5rem; }
-  .desc { margin-top: 0.8rem; font-size: 1.4rem; line-height: 1.5; max-width: 80rem; color: rgba(244, 245, 250, 0.85); }
+  .desc { margin-top: 0.8rem; font-size: 1.4rem; line-height: 1.5; max-width: 80rem; color: rgb(var(--text-rgb) / 0.85); }
   .row { display: flex; gap: 1.6rem; margin-top: 1.6rem; }
   .row svg { width: 1.6rem; height: 1.6rem; fill: currentColor; }
   section { padding: 1.2rem 6rem 0.6rem; }
@@ -163,13 +163,13 @@
   .ph {
     position: relative; aspect-ratio: 4 / 3; border-radius: 1rem; overflow: hidden;
     /* no will-change: a layer per picture (thousands in a big album) made scrolling crawl */
-    background: rgba(255, 255, 255, 0.06);
+    background: rgb(var(--fg-rgb) / 0.06);
   }
-  .ph:focus { z-index: 2; box-shadow: 0 0 0 0.3rem #fff, 0 1.2rem 2.4rem rgba(0, 0, 0, 0.5); }
+  .ph:focus { z-index: 2; box-shadow: 0 0 0 0.3rem var(--ring), 0 1.2rem 2.4rem rgb(var(--shadow-rgb) / 0.5); }
   .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .dur {
     position: absolute; right: 0.6rem; bottom: 0.6rem; padding: 0.2rem 0.7rem; border-radius: 0.6rem;
-    font-size: 1.1rem; font-weight: 600; background: rgba(0, 0, 0, 0.7);
+    font-size: 1.1rem; font-weight: 600; background: rgb(var(--shadow-rgb) / 0.7);
   }
   .msg { margin: 1rem 6rem; font-size: 1.6rem; color: var(--muted); }
   .end { height: 8rem; }

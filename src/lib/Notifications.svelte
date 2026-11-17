@@ -102,7 +102,7 @@
 <style>
   .sheet {
     position: absolute; z-index: 23; top: 0; right: 0; bottom: 0; width: 54rem;
-    border-radius: 2.4rem 0 0 2.4rem; background: rgba(16, 18, 32, 0.96);
+    border-radius: 2.4rem 0 0 2.4rem; background: rgb(var(--panel-rgb) / 0.96);
   }
   h2 { position: absolute; top: 4rem; left: 3.4rem; font-size: 2.4rem; font-weight: 700; }
   h3 {
@@ -116,7 +116,7 @@
   }
   .pic {
     flex: none; width: 5.2rem; height: 7.8rem; border-radius: 0.8rem; overflow: hidden;
-    background: rgba(255, 255, 255, 0.08); display: grid; place-items: center;
+    background: rgb(var(--fg-rgb) / 0.08); display: grid; place-items: center;
   }
   .pic img { width: 100%; height: 100%; object-fit: cover; }
   .pic.logo { width: 7.8rem; height: 4.4rem; }
@@ -124,20 +124,20 @@
   .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
   .txt b { font-size: 1.55rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .txt small { font-size: 1.15rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .txt .k { color: #9aa6ff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 1rem; }
+  .txt .k { color: var(--accent-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 1rem; }
   .txt .t { font-size: 1.05rem; }
   .dot { flex: none; width: 1rem; height: 1rem; border-radius: 50%; background: var(--azoto); }
-  .bell { flex: none; width: 2.2rem; height: 2.2rem; color: #9aa6ff; }
+  .bell { flex: none; width: 2.2rem; height: 2.2rem; color: var(--accent-soft); }
   svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .clear { justify-content: center; margin-top: 1rem; }
   .clear b { font-size: 1.35rem; text-align: center; color: var(--muted); }
   /* plain state change, no transition (see tween.ts) */
-  .row:focus { background: #fff; color: #10121c; }
-  .row:focus small, .row.clear:focus b { color: rgba(16, 18, 28, 0.65); }
-  .row:focus .k, .row:focus .bell { color: #4a55c8; }
-  .row.dead:focus { background: rgba(255, 255, 255, 0.82); }
-  .row.clear.armed:focus { background: #ff5d6c; }
-  .row.clear.armed:focus b { color: #fff; }
+  .row:focus { background: var(--focus-bg); color: var(--focus-text); }
+  .row:focus small, .row.clear:focus b { color: rgb(var(--focus-text-rgb) / 0.65); }
+  .row:focus .k, .row:focus .bell { color: var(--accent-on-focus); }
+  .row.dead:focus { background: rgb(var(--fg-rgb) / 0.82); }
+  .row.clear.armed:focus { background: var(--danger); }
+  .row.clear.armed:focus b { color: var(--on-accent); }
   .empty { font-size: 1.5rem; line-height: 1.5; color: var(--muted); padding: 1rem 1.4rem; }
   .hint { position: absolute; bottom: 1.8rem; left: 3.4rem; font-size: 1.15rem; color: var(--muted); }
   kbd {

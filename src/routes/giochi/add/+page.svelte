@@ -148,32 +148,32 @@
   .k em { font-style: normal; }
   .file {
     display: grid; gap: 0.4rem; text-align: left; padding: 1.1rem 1.4rem; border-radius: 1.2rem;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgb(var(--fg-rgb) / 0.1);
   }
   .file .v { font-size: 1.5rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
-  .file:focus { background: #fff; color: #10121c; }
-  .file:focus .k { color: rgba(16, 18, 28, 0.65); }
+  .file:focus { background: var(--focus-bg); color: var(--focus-text); }
+  .file:focus .k { color: rgb(var(--focus-text-rgb) / 0.65); }
   label { display: grid; gap: 0.4rem; }
   input {
     font: inherit; font-size: 1.6rem; color: var(--text); padding: 1rem 1.3rem; border-radius: 1.2rem;
-    border: 0.2rem solid transparent; background: rgba(255, 255, 255, 0.1); outline: none;
+    border: 0.2rem solid transparent; background: rgb(var(--fg-rgb) / 0.1); outline: none;
     user-select: text; -webkit-user-select: text; cursor: text;
   }
-  input:focus { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
+  input:focus { border-color: var(--ring); background: rgb(var(--fg-rgb) / 0.16); }
   .hits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
   .hit {
     display: flex; align-items: center; gap: 1rem; padding: 0.6rem; border-radius: 1rem; text-align: left;
-    background: rgba(255, 255, 255, 0.08); border: 0.2rem solid transparent; min-height: 5.2rem;
+    background: rgb(var(--fg-rgb) / 0.08); border: 0.2rem solid transparent; min-height: 5.2rem;
   }
   .hit img { width: 9rem; height: 3.4rem; object-fit: cover; border-radius: 0.5rem; flex: none; }
   .hit span { font-size: 1.25rem; font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
   .hit.none span { padding-left: 0.8rem; }
-  .hit.sel { border-color: #6fe3a1; }
-  .hit:focus { background: #fff; color: #10121c; }
+  .hit.sel { border-color: var(--ok); }
+  .hit:focus { background: var(--focus-bg); color: var(--focus-text); }
   .chips { display: flex; gap: 0.8rem; }
   .chip { font-size: 1.4rem; padding: 0.7rem 1.8rem; border-radius: 1.4rem; }
-  .chip.sel { background: rgba(255, 255, 255, 0.34); }
-  .chip.sel:focus { background: #fff; }
-  .err { color: #ff8a8a; font-size: 1.35rem; }
+  .chip.sel { background: rgb(var(--fg-rgb) / 0.34); }
+  .chip.sel:focus { background: var(--focus-bg); }
+  .err { color: var(--danger-text); font-size: 1.35rem; }
   .add { justify-content: center; margin-top: 0.6rem; }
 </style>

@@ -182,13 +182,13 @@
 <style>
   .shade {
     position: fixed; inset: 0; pointer-events: none;
-    background: linear-gradient(90deg, rgba(7, 8, 15, 0.82) 0%, rgba(7, 8, 15, 0.6) 50%, rgba(7, 8, 15, 0.2) 85%),
-      linear-gradient(0deg, rgba(7, 8, 15, 0.85) 0%, transparent 45%);
+    background: linear-gradient(90deg, rgb(var(--bg-rgb) / 0.82) 0%, rgb(var(--bg-rgb) / 0.6) 50%, rgb(var(--bg-rgb) / 0.2) 85%),
+      linear-gradient(0deg, rgb(var(--bg-rgb) / 0.85) 0%, transparent 45%);
   }
   .info { position: relative; padding: 14rem 6rem 2.4rem; width: 92rem; min-height: 50rem; }
   .owner { display: inline-flex; align-items: center; gap: 1rem; padding: 0.4rem 1.2rem 0.4rem 0.4rem; border-radius: 3rem; text-align: left; }
   .owner.static { padding-left: 0; }
-  .owner:focus { background: #fff; color: #10121c; }
+  .owner:focus { background: var(--focus-bg); color: var(--focus-text); }
   .owner img { width: 3.6rem; height: 3.6rem; border-radius: 50%; object-fit: cover; }
   .owner span { font-size: 1.5rem; font-weight: 600; }
   .owner small { display: block; font-size: 1.1rem; font-weight: 400; opacity: 0.7; }
@@ -199,31 +199,31 @@
   .meta { margin-top: 1.2rem; }
   /* wider than the text, up to the screen's margin: seven buttons on one line */
   .actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; width: max-content; max-width: 108rem; }
-  .btn.on { background: rgba(255, 255, 255, 0.24); }
-  .btn.on:focus { background: #fff; }
+  .btn.on { background: rgb(var(--fg-rgb) / 0.24); }
+  .btn.on:focus { background: var(--focus-bg); }
   /* A shows it whole */
   .desc {
     display: block; margin-top: 2rem; padding: 1rem 1.4rem; border-radius: 1.2rem; text-align: left;
-    font-size: 1.35rem; line-height: 1.5; color: rgba(244, 245, 250, 0.82); max-width: 80rem; background: rgba(255, 255, 255, 0.06);
+    font-size: 1.35rem; line-height: 1.5; color: rgb(var(--text-rgb) / 0.82); max-width: 80rem; background: rgb(var(--fg-rgb) / 0.06);
   }
   .desc span {
     display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line;
   }
   .desc.expanded span { display: block; }
-  .desc:focus { background: rgba(255, 255, 255, 0.18); box-shadow: 0 0 0 0.25rem #fff; }
+  .desc:focus { background: rgb(var(--fg-rgb) / 0.18); box-shadow: 0 0 0 0.25rem var(--ring); }
   h2 { position: relative; font-size: 1.9rem; font-weight: 600; margin: 1rem 6rem 1rem; }
   h2 .n { margin-left: 1rem; font-size: 1.4rem; font-weight: 400; color: var(--muted); }
   .comments { position: relative; display: grid; gap: 1rem; padding: 0 6rem; max-width: 100rem; }
   .cm { display: flex; gap: 1.4rem; padding: 1.2rem 1.4rem; border-radius: 1.4rem; text-align: left; transition: background 0.15s; }
-  .cm:focus { background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 0 0.25rem #fff; }
-  .cm img, .noav { flex: 0 0 3.6rem; width: 3.6rem; height: 3.6rem; border-radius: 50%; object-fit: cover; background: rgba(255, 255, 255, 0.12); }
+  .cm:focus { background: rgb(var(--fg-rgb) / 0.2); box-shadow: 0 0 0 0.25rem var(--ring); }
+  .cm img, .noav { flex: 0 0 3.6rem; width: 3.6rem; height: 3.6rem; border-radius: 50%; object-fit: cover; background: rgb(var(--fg-rgb) / 0.12); }
   .body { display: grid; gap: 0.4rem; min-width: 0; }
   .who { font-size: 1.25rem; font-weight: 600; }
   .who small { margin-left: 0.8rem; font-weight: 400; color: var(--muted); font-size: 1.1rem; }
-  .tag { margin-left: 0.6rem; padding: 0.1rem 0.6rem; border-radius: 0.5rem; font-size: 1rem; background: rgba(255, 255, 255, 0.2); }
+  .tag { margin-left: 0.6rem; padding: 0.1rem 0.6rem; border-radius: 0.5rem; font-size: 1rem; background: rgb(var(--fg-rgb) / 0.2); }
   /* A on a comment shows it whole */
   .txt {
-    font-size: 1.4rem; line-height: 1.45; white-space: pre-line; color: rgba(244, 245, 250, 0.9);
+    font-size: 1.4rem; line-height: 1.45; white-space: pre-line; color: rgb(var(--text-rgb) / 0.9);
     display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
   }
   .cm.open .txt { display: block; }

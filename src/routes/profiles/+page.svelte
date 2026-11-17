@@ -124,22 +124,22 @@
   .prof { display: grid; justify-items: center; gap: 1rem; width: calc(var(--pic) + 2rem); will-change: transform; }
   .pic {
     position: relative; width: var(--pic); height: var(--pic); border-radius: 50%; overflow: hidden;
-    display: grid; place-items: center; background: linear-gradient(135deg, #ff4fa3, #7c8cff);
-    box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.45);
+    display: grid; place-items: center; background: var(--avatar-grad);
+    box-shadow: 0 1rem 2.4rem rgb(var(--shadow-rgb) / 0.45);
   }
-  .add .pic { background: rgba(255, 255, 255, 0.1); }
+  .add .pic { background: rgb(var(--fg-rgb) / 0.1); }
   .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .pic em { font-style: normal; font-size: calc(var(--pic) * 0.4); font-weight: 700; color: rgba(255, 255, 255, 0.9); }
+  .pic em { font-style: normal; font-size: calc(var(--pic) * 0.4); font-weight: 700; color: rgb(var(--fg-rgb) / 0.9); }
   .manage .pic img { opacity: 0.45; }
   .x {
     position: absolute; inset: 0; display: grid; place-items: center; font-style: normal;
-    font-size: calc(var(--pic) * 0.33); color: #fff;
+    font-size: calc(var(--pic) * 0.33); color: var(--fg);
   }
   /* plain state change, no transition (see tween.ts) */
-  .prof:focus .pic { box-shadow: 0 0 0 0.4rem #fff, 0 1.4rem 3rem rgba(0, 0, 0, 0.55); }
+  .prof:focus .pic { box-shadow: 0 0 0 0.4rem var(--ring), 0 1.4rem 3rem rgb(var(--shadow-rgb) / 0.55); }
   .name { font-size: 1.9rem; font-weight: 600; color: var(--muted); }
   .prof:focus .name { color: var(--text); }
   small { font-size: 1.2rem; color: var(--muted); min-height: 1.6rem; }
   .tools { display: flex; gap: 1rem; margin-top: 1rem; }
-  .note { color: #ff8a8a; font-size: 1.5rem; }
+  .note { color: var(--danger-text); font-size: 1.5rem; }
 </style>

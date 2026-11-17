@@ -72,11 +72,11 @@
   section { width: 52rem; border-radius: 2.4rem; padding: 3rem 4rem; display: grid; gap: 1.2rem; justify-items: center; text-align: center; }
   .pic {
     width: 9rem; height: 9rem; border-radius: 50%; display: grid; place-items: center;
-    background: linear-gradient(135deg, #3fb6ff, #7c8cff);
+    background: linear-gradient(135deg, #3fb6ff, var(--accent));
   }
-  .pic svg { width: 4.6rem; height: 4.6rem; fill: none; stroke: #fff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .pic svg { width: 4.6rem; height: 4.6rem; fill: none; stroke: var(--on-accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   h1 { font-size: 2.6rem; font-weight: 600; }
   p { font-size: 1.5rem; color: var(--muted); min-height: 2rem; }
-  p.err { color: #ff8a8a; }
+  p.err { color: var(--danger-text); }
   .row { display: flex; gap: 1.2rem; margin-top: 0.6rem; }
 </style>

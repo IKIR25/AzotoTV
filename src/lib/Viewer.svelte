@@ -208,29 +208,29 @@
   .play {
     position: absolute; z-index: 3; left: 50%; top: 50%; transform: translate(-50%, -50%);
     width: 11rem; height: 11rem; border-radius: 50%; display: grid; place-items: center; align-content: center;
-    background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 0.3rem rgba(255, 255, 255, 0.85);
+    background: rgb(var(--shadow-rgb) / 0.55); box-shadow: 0 0 0 0.3rem rgb(var(--fg-rgb) / 0.85);
   }
-  .play svg { width: 5rem; height: 5rem; fill: #fff; margin-left: 0.6rem; }
+  .play svg { width: 5rem; height: 5rem; fill: var(--on-accent); margin-left: 0.6rem; }
   .play small { font-size: 1.3rem; font-weight: 600; }
   .info {
     position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; padding: 8rem 6rem 3.4rem;
     display: flex; align-items: flex-end; justify-content: space-between; gap: 4rem;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    background: linear-gradient(transparent, rgb(var(--shadow-rgb) / 0.8));
   }
   .txt { display: grid; gap: 0.5rem; min-width: 0; }
   .txt strong { font-size: 2.2rem; font-weight: 700; }
-  .txt span { font-size: 1.5rem; color: rgba(255, 255, 255, 0.8); }
+  .txt span { font-size: 1.5rem; color: rgb(var(--fg-rgb) / 0.8); }
   .wall {
     font-style: normal; font-size: 1.1rem; font-weight: 700; vertical-align: middle;
-    margin-left: 1.2rem; padding: 0.2rem 0.8rem; border-radius: 0.6rem; background: rgba(255, 255, 255, 0.2);
+    margin-left: 1.2rem; padding: 0.2rem 0.8rem; border-radius: 0.6rem; background: rgb(var(--fg-rgb) / 0.2);
   }
-  .hint { display: flex; gap: 2.2rem; font-size: 1.3rem; color: rgba(255, 255, 255, 0.75); white-space: nowrap; }
+  .hint { display: flex; gap: 2.2rem; font-size: 1.3rem; color: rgb(var(--fg-rgb) / 0.75); white-space: nowrap; }
   kbd {
     font: inherit; font-weight: 700; font-size: 1.1rem; padding: 0.1rem 0.6rem; margin-right: 0.3rem;
-    border-radius: 0.5rem; background: rgba(255, 255, 255, 0.18);
+    border-radius: 0.5rem; background: rgb(var(--fg-rgb) / 0.18);
   }
   .corner {
     position: absolute; z-index: 4; right: 4rem; bottom: 3rem; font-size: 1.5rem; font-weight: 600;
-    color: rgba(255, 255, 255, 0.85); text-shadow: 0 0.1rem 0.6rem rgba(0, 0, 0, 0.8);
+    color: rgb(var(--fg-rgb) / 0.85); text-shadow: 0 0.1rem 0.6rem rgb(var(--shadow-rgb) / 0.8);
   }
 </style>

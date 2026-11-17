@@ -64,16 +64,16 @@
 
 <style>
   .dots { display: flex; gap: 1.6rem; justify-content: center; margin: 0.6rem 0 1rem; }
-  .dots i { width: 1.6rem; height: 1.6rem; border-radius: 50%; border: 0.2rem solid rgba(255, 255, 255, 0.6); }
-  .dots i.on { background: #fff; border-color: #fff; }
+  .dots i { width: 1.6rem; height: 1.6rem; border-radius: 50%; border: 0.2rem solid rgb(var(--fg-rgb) / 0.6); }
+  .dots i.on { background: var(--fg); border-color: var(--ring); }
   .pad { display: grid; grid-template-columns: repeat(3, 7rem); gap: 1.2rem; justify-content: center; }
   .key {
     width: 7rem; height: 7rem; border-radius: 50%; display: grid; place-items: center;
-    font-size: 2.6rem; font-weight: 600; background: rgba(255, 255, 255, 0.12);
+    font-size: 2.6rem; font-weight: 600; background: rgb(var(--fg-rgb) / 0.12);
   }
   .key.del { background: none; }
   /* plain state change, no transition (see tween.ts) */
-  .key:focus { background: #fff; color: #10121c; }
+  .key:focus { background: var(--focus-bg); color: var(--focus-text); }
   svg { width: 2.8rem; height: 2.8rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .hint { font-size: 1.15rem; color: var(--muted); text-align: center; }
   kbd {
