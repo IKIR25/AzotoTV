@@ -24,10 +24,11 @@ Nitro laptop.
   Google account.
 - **Music** from Jellyfin, with per-profile playlists and YouTube Music search.
 - **Photos** from [Immich](https://immich.app), also as a screensaver.
-- **Games**: a library of folders, each with a `game.json`. Native Linux
-  games, Windows games through Proton, and games handed to emulators that you
-  install yourself (Eden, Dolphin, Azahar, MAME). One virtual controller per
-  player (`crates/azotopad`), per-profile saves, optional mods.
+- **Games**: native Linux games, Windows games through Proton, and games
+  handed to emulators that you install yourself (Eden, Dolphin, Azahar, MAME).
+  Added from the TV (pick the game's file, pictures and description are found
+  online) or by dropping Switch / Wii / 3DS files in a ROM folder. One virtual
+  controller per player (`crates/azotopad`), per-profile saves, optional mods.
 - **Phones**: a web page AzotoTV serves on the home network (remote, keyboard,
   "send to the TV", photos, the phone as a controller), and a small Android
   app that wraps it (`android/`).
@@ -49,7 +50,9 @@ first start asks for your Jellyfin server and a user, and films, series, live
 TV and music work from there. `yt-dlp` adds YouTube, `ffmpeg` the Mii app's
 music.
 
-Everything else is optional and described in **[docs/SETUP.md](docs/SETUP.md)**:
+Requests, photos and notifications are switched on from the TV, in
+**START › Services**. Everything else is optional too and described in
+**[docs/SETUP.md](docs/SETUP.md)**:
 requests, photos, notifications, the language, booting straight into AzotoTV
 (`./install.sh --session`), games, phones and game streaming.
 

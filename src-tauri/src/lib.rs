@@ -10,6 +10,7 @@ mod eden;
 mod games;
 mod jellyfin;
 mod kwin;
+mod library;
 mod bgm;
 mod mii;
 
@@ -41,6 +42,7 @@ mod profile;
 mod remote;
 mod immich;
 mod seerr;
+mod services;
 mod songs;
 mod sound;
 mod steamemu;
@@ -64,7 +66,7 @@ use songs::Songs;
 use youtube::Yt;
 use ytaccount::Account;
 use serde_json::Value;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 type Jfs<'a> = State<'a, Arc<Jf>>;
 type Seerrs<'a> = State<'a, Arc<Seerr>>;
@@ -260,6 +262,79 @@ async fn music_stop(music: State<'_, Arc<Music>>) -> Result<(), String> {
 }
 
 // ---- games -----------------------------------------------------------------
+
+// ---- adding games (library.rs) ---------------------------------------------
+
+/// Looks up art and descriptions for these games, one after the other, then
+/// tells the interface (`games-changed`).
+fn lookup(app: &AppHandle, hints: Vec<library::Hint>) {
+    if hints.is_empty() {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        for h in hints {
+            library::fetch(h).await;
+            let _ = app.emit("games-changed", ());
+        }
+    });
+}
+
+/// ROMs dropped in a ROM folder since the last look become games.
+#[tauri::command]
+async fn games_scan(app: AppHandle) -> Result<usize, String> {
+    let new = tauri::async_runtime::spawn_blocking(library::scan).await.map_err(|e| e.to_string())?;
+    let n = new.len();
+    lookup(&app, new);
+    Ok(n)
+}
+
+#[tauri::command]
+fn games_folders() -> library::Folders {
+    library::folders()
+}
+
+#[tauri::command]
+async fn games_set_folders(app: AppHandle, jf: Jfs<'_>, folders: Vec<String>, roms: Vec<String>, unhide: bool) -> Result<library::Folders, String> {
+    services::admin(&jf).await?;
+    let f = library::set_folders(folders, roms, unhide)?;
+    let _ = app.emit("games-changed", ());
+    Ok(f)
+}
+
+#[tauri::command]
+async fn games_browse(path: Option<String>) -> Result<library::Listing, String> {
+    tauri::async_runtime::spawn_blocking(move || library::browse(path)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn games_steam_search(term: String) -> Result<Vec<library::SteamHit>, String> {
+    library::steam_search(&term).await
+}
+
+#[tauri::command]
+async fn games_add(app: AppHandle, jf: Jfs<'_>, game: library::NewGame) -> Result<String, String> {
+    services::admin(&jf).await?;
+    let h = library::add(game)?;
+    let id = h.id().to_string();
+    lookup(&app, vec![h]);
+    Ok(id)
+}
+
+#[tauri::command]
+async fn games_edit(app: AppHandle, jf: Jfs<'_>, id: String, change: library::Change) -> Result<(), String> {
+    services::admin(&jf).await?;
+    if let Some(h) = library::edit(&id, change)? {
+        lookup(&app, vec![h]);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn games_remove(jf: Jfs<'_>, id: String) -> Result<(), String> {
+    services::admin(&jf).await?;
+    library::remove(&id)
+}
 
 /// The library, with the current profile's play history.
 #[tauri::command]
@@ -519,6 +594,34 @@ fn dev_credentials() -> Option<(String, String, String)> {
         std::env::var("AZOTOTV_JF_USER").ok()?,
         std::env::var("AZOTOTV_JF_PASS").ok()?,
     ))
+}
+
+// ---- START › Services (services.rs) ----------------------------------------
+
+#[tauri::command]
+async fn services_list(jf: Jfs<'_>) -> Result<Vec<services::Service>, String> {
+    services::list(&jf).await
+}
+
+#[tauri::command]
+async fn services_test(id: String, values: serde_json::Map<String, Value>) -> Result<Vec<String>, String> {
+    services::try_values(&id, values).await
+}
+
+#[tauri::command]
+async fn services_save(jf: Jfs<'_>, id: String, values: serde_json::Map<String, Value>) -> Result<Vec<String>, String> {
+    services::save(&jf, &id, values).await
+}
+
+#[tauri::command]
+async fn services_remove(jf: Jfs<'_>, id: String) -> Result<(), String> {
+    services::remove(&jf, &id).await
+}
+
+/// AzotoTV from the start (after a service changed: each reads its file once).
+#[tauri::command]
+fn app_restart(app: AppHandle) {
+    services::restart(&app);
 }
 
 /// The interface's language and region (locale.rs).
@@ -895,6 +998,11 @@ pub fn run() {
         .setup(|app| {
             std::thread::spawn(youtube::prune_cache);
             std::thread::spawn(immich::prune_cache);
+            // ROMs added while AzotoTV was off
+            {
+                let app = app.handle().clone();
+                std::thread::spawn(move || lookup(&app, library::scan()));
+            }
             app.state::<Arc<Songs>>().start(app.handle().clone());
             pad::spawn(app.handle().clone());
             controllers::watch_batteries(app.handle().clone());
@@ -934,6 +1042,19 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            services_list,
+            games_scan,
+            games_folders,
+            games_set_folders,
+            games_browse,
+            games_steam_search,
+            games_add,
+            games_edit,
+            games_remove,
+            services_test,
+            services_save,
+            services_remove,
+            app_restart,
             tv::tv_power,
             tv::tv_unpaired,
             tv::tv_pair_start,

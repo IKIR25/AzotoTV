@@ -11,6 +11,7 @@
   import { stopMusic } from './music.svelte';
   import { sleepNow } from './idle.svelte';
   import { tvLink } from './tvlink.svelte';
+  import { admin, checkAdmin } from './admin.svelte';
 
   // tvOS-style control menu (START): a TG that has just started (first, focused),
   // switch profile, notifications, pair a phone (and the TV, when it has forgotten AzotoTV), controllers, sounds, TG alerts and PIN of this profile,
@@ -22,6 +23,8 @@
   let armed = $state('');
   let armTimer: ReturnType<typeof setTimeout>;
   let avatarImg = $state(true);
+  // Services: only for Jellyfin administrators (their keys act for everyone)
+  checkAdmin();
 
   function confirm(key: string, run: () => void) {
     if (armed !== key) {
@@ -217,6 +220,22 @@
     <span class="txt">{t('Language')}</span>
     <span class="state">{languages.find((l) => l.id === lang)?.name ?? lang}</span>
   </button>
+
+  {#if admin.is}
+  <button
+    class="opt"
+    data-focusable
+    onclick={() => {
+      close();
+      goto('/services');
+    }}
+  >
+    <span class="ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="6.5" rx="1.5" /><rect x="3.5" y="13.5" width="17" height="6.5" rx="1.5" /><path d="M7 7.25h.01M7 16.75h.01M11 7.25h6M11 16.75h6" /></svg>
+    </span>
+    <span class="txt">{t('Services')}<small>{t('Seerr, Immich, Radarr / Sonarr…')}</small></span>
+  </button>
+  {/if}
 
   <button
     class="opt"

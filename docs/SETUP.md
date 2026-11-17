@@ -7,8 +7,11 @@ work from there.
 
 Everything below is optional. Each feature is switched on by a file in
 `~/.config/azototv/` (keep them mode 600: they hold API keys), and each has an
-example in [`examples/`](../examples). Restart AzotoTV after changing one
-(`pkill -x azototv` in the kiosk session, which starts it again).
+example in [`examples/`](../examples). Most of them can be set up from the TV
+instead: **START › Services** (shown to Jellyfin administrators) tries the
+address and key, writes the file and restarts AzotoTV. By hand, restart
+AzotoTV after changing a file (`pkill -x azototv` in the kiosk session, which
+starts it again).
 
 ## Language and region
 
@@ -29,6 +32,7 @@ side, and add it to `LANGUAGES` in `src-tauri/src/locale.rs` and to
 | `seerr.json` | Requests (search what isn't in the library and ask for it) | a Seerr API key |
 | `immich.json` | Gallery, photo screensaver, photos from phones | an [Immich](https://immich.app) user for the TV and its API key |
 | `music.json` | Downloading songs found on YouTube Music into the library | a folder inside a Jellyfin music library, a Jellyfin API key |
+| `steamgriddb.json` | Pictures for games added from the TV, console games too | a free [SteamGridDB](https://www.steamgriddb.com) API key |
 | `youtube.json` | A profile's own Google account in YouTube | an OAuth client: see `src-tauri/src/ytaccount.rs` |
 | `reminders.json` | Programmes announced by themselves (the evening news…) | their channel and name as the guide has them |
 | `tv/` | Turning a Hisense / VIDAA TV on and off | see `src-tauri/src/tv.rs` |
@@ -75,8 +79,27 @@ Plasma desktop, and "AzotoTV" in its menu comes back.
 
 ## Games
 
-`~/Games` (or `$AZOTOTV_GAMES`) holds one folder per game with a `game.json`;
-its format is at the top of `src-tauri/src/games.rs`. AzotoTV launches native
+Games are added from the TV (Jellyfin administrators):
+
+- **Games › Add a game**: pick the file that starts it (a Windows `.exe`, a
+  Linux program, a Switch / Wii / 3DS file), say which Steam game it is, done.
+  The game stays where it is; its pictures and description are looked up
+  online once.
+- **ROM folders** (`~/Games/roms` to begin with): Switch (`.nsp`, `.xci`), Wii
+  (`.rvz`, `.wbfs`, `.iso`) and 3DS (`.3ds`, `.cci`) files put there, in
+  subfolders too, show up in Games by themselves.
+- **Games › Game folders**: which folders hold games and which are searched
+  for ROMs, on any disk (`~/.config/azototv/games.json`).
+- A game's **Edit** button: its name, players, Steam match, new pictures, or
+  taking it out of AzotoTV (its files are never deleted).
+
+Pictures come from Steam for Steam games, from SteamGridDB for everything when
+it has a key (START › Services), and from GameTDB for Wii and 3DS boxes;
+descriptions from Steam or Wikipedia.
+
+By hand: each game folder holds one folder per game with a `game.json`; its
+format is at the top of `src-tauri/src/games.rs` (`library.rs` for the
+folders). AzotoTV launches native
 games itself, Windows games through Proton (`umu-run`), and hands the rest to
 emulators you install: Eden (`eden.rs`), Dolphin (`dolphin.rs`), Azahar
 (`azahar.rs`), MAME. No game, ROM, key or firmware comes with AzotoTV.

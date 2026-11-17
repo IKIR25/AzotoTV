@@ -26,11 +26,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::AppHandle;
 
-use crate::games::{Kind, library, player_dir};
+use crate::games::{Kind, player_dir};
 
 /// The emulator's settings folder for game `id`, if the game uses it.
 pub fn settings_dir(id: &str) -> Option<PathBuf> {
-    let d = library().join(id).join("steam_settings");
+    let d = crate::library::game_dir(id).join("steam_settings");
     d.is_dir().then_some(d)
 }
 

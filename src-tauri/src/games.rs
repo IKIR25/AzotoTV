@@ -1,6 +1,7 @@
 //! Games: the library on disk and launching a game.
 //!
-//! Library: `$AZOTOTV_GAMES` or `~/Games`, one folder per game with a
+//! Library: the game folders (`$AZOTOTV_GAMES` or `~/Games` unless
+//! `games.json` lists others, see `library.rs`), one folder per game with a
 //! `game.json` (the frontend only ever sends a game id, never a command):
 //!
 //! ```json
@@ -129,6 +130,9 @@ pub struct Manifest {
     /// how the iPhone app plays it (Mobile games), see the top of this file
     #[serde(default)]
     pub phone: Option<PhoneMode>,
+    /// added from the TV: "pc" (a game where it is) or "rom" (found in a ROM folder), see library.rs
+    #[serde(default)]
+    pub added: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -245,6 +249,11 @@ const ART: [&str; 4] = ["cover", "hero", "logo", "header"];
 pub struct GameInfo {
     pub id: String,
     pub name: String,
+    /// when its art last changed (unix seconds): pictures are asked for with
+    /// it, so new art isn't taken from the web view's cache
+    pub art_stamp: u64,
+    /// added from the TV ("pc" / "rom"), see library.rs
+    pub added: Option<String>,
     #[serde(rename = "type")]
     pub kind: Kind,
     /// "mobile", "n64", "nes", "arcade", or none (the type decides)
@@ -310,8 +319,13 @@ pub(crate) fn home() -> PathBuf {
     std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| "/".into())
 }
 
-pub fn library() -> PathBuf {
-    std::env::var_os("AZOTOTV_GAMES").map(PathBuf::from).unwrap_or_else(|| home().join("Games"))
+/// "~/x" -> $HOME/x; anything else as it is.
+pub(crate) fn expand_home(p: &str) -> PathBuf {
+    match p.strip_prefix("~/") {
+        Some(rest) => home().join(rest),
+        None if p == "~" => home(),
+        None => PathBuf::from(p),
+    }
 }
 
 pub(crate) fn data_dir() -> PathBuf {
@@ -353,20 +367,21 @@ fn read_manifest(id: &str) -> Result<Manifest, String> {
     if !valid_id(id) {
         return Err(t!("not a valid game: {id}", id = id));
     }
-    let path = library().join(id).join("game.json");
+    let path = crate::library::game_dir(id).join("game.json");
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn read_info(id: &str) -> Info {
-    std::fs::read_to_string(library().join(id).join("info.json"))
+    std::fs::read_to_string(crate::library::game_dir(id).join("info.json"))
         .ok()
         .and_then(|t| serde_json::from_str(&t).ok())
         .unwrap_or_default()
 }
 
 fn art_path(id: &str, kind: &str) -> Option<PathBuf> {
-    ["jpg", "png", "webp"].iter().map(|e| library().join(id).join("art").join(format!("{kind}.{e}"))).find(|p| p.exists())
+    let dir = crate::library::game_dir(id).join("art");
+    ["jpg", "png", "webp"].iter().map(|e| dir.join(format!("{kind}.{e}"))).find(|p| p.exists())
 }
 
 /// `game://localhost/<id>/<kind>`
@@ -416,13 +431,13 @@ fn record_played(user: &str, id: &str, seconds: u64, chapter: Option<usize>) {
 
 pub fn list(user: &str) -> Vec<GameInfo> {
     let played = read_played(user);
-    let mut v: Vec<GameInfo> = std::fs::read_dir(library())
+    let mut v: Vec<GameInfo> = crate::library::ids()
         .into_iter()
-        .flatten()
-        .flatten()
-        .filter_map(|e| {
-            let id = e.file_name().to_string_lossy().to_string();
+        .filter_map(|id| {
             let m = read_manifest(&id).ok()?;
+            if m.added.as_deref() == Some("rom") && !Path::new(&m.exe).exists() {
+                return None; // its ROM is gone (another disk, deleted)
+            }
             let info = read_info(&id);
             // the pad as the first chapter has it (chapters may override the game's)
             let first = m.for_chapter(None).ok()?;
@@ -431,7 +446,14 @@ pub fn list(user: &str) -> Vec<GameInfo> {
                 Some(azotopad::Profile::Keys { map, .. }) => ("keys", map.values().any(|t| t == "mouse")),
                 _ => ("xbox", false),
             };
+            let art_stamp = std::fs::metadata(crate::library::game_dir(&id).join("art"))
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map_or(0, |d| d.as_secs());
             Some(GameInfo {
+                art_stamp,
+                added: m.added.clone(),
                 name: m.name,
                 kind: m.kind,
                 platform: m.platform,
@@ -470,12 +492,9 @@ pub fn list(user: &str) -> Vec<GameInfo> {
 
 /// The Mobile games, each with how the phone can play it (none yet: listed, not playable).
 pub fn phone_games() -> Vec<PhoneGame> {
-    let mut v: Vec<PhoneGame> = std::fs::read_dir(library())
+    let mut v: Vec<PhoneGame> = crate::library::ids()
         .into_iter()
-        .flatten()
-        .flatten()
-        .filter_map(|e| {
-            let id = e.file_name().to_string_lossy().to_string();
+        .filter_map(|id| {
             let m = read_manifest(&id).ok()?;
             if m.platform.as_deref() != Some("mobile") {
                 return None;
@@ -1197,7 +1216,7 @@ impl Games {
         pgid: Arc<AtomicI32>,
         phone: bool,
     ) -> Result<(), String> {
-        let dir = library().join(id);
+        let dir = crate::library::game_dir(id);
         let exe = match m.exe.strip_prefix("~/") {
             Some(rest) => home().join(rest),
             None if Path::new(&m.exe).is_absolute() => PathBuf::from(&m.exe),

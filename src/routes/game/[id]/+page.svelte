@@ -9,6 +9,8 @@
   import Picker from '$lib/Picker.svelte';
   import PinButton from '$lib/PinButton.svelte';
   import { gamePin } from '$lib/pins.svelte';
+  import { admin, checkAdmin } from '$lib/admin.svelte';
+  import { goto } from '$app/navigation';
   import {
     achievementIcon, artUrl, chapterArt, findGame, getAchievements, getSettings, heroUrl, lastPlayed, launch, library, loadGames,
     modArt, platform, playTrailer, playtime, saveSettings, setMod, worldMode, type Achievement, type Mod,
@@ -53,6 +55,11 @@
 
   $effect(() => {
     stage.backdrop = g ? heroUrl(g) : null;
+  });
+
+  $effect(() => {
+    void auth.id;
+    checkAdmin();
   });
 
   const padLabel = $derived(
@@ -140,6 +147,9 @@
           </button>
         {/if}
         <PinButton pin={gamePin(g)} />
+        {#if admin.is}
+          <button class="btn icon" data-focusable data-key="edit" data-scroll-top onclick={() => goto(`/game/${g!.id}/edit`)}>{t('Edit')}</button>
+        {/if}
       </div>
       {#if g.cursor}
         <div class="tracks">

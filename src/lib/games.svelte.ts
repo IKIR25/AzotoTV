@@ -45,6 +45,10 @@ export interface World {
 export interface Game {
   id: string;
   name: string;
+  /** when its art last changed: part of the picture URLs, so new art shows */
+  art_stamp: number;
+  /** added from the TV: "pc" (a game where it is) or "rom" (found in a ROM folder) */
+  added: 'pc' | 'rom' | null;
   type: 'native' | 'proton' | 'switch' | 'wii' | '3ds' | 'minecraft';
   /** "mobile" / "n64" / "nes" / "arcade": a port of a phone or console game, or an
    * arcade machine (MAME); otherwise `type` decides the platform */
@@ -145,7 +149,7 @@ export const achievementIcon = (g: Game, a: Achievement) => `game://localhost/${
 /** Earned ones first (newest first), then the rest in the game's order. */
 export const getAchievements = (id: string) => invoke<Achievement[]>('game_achievements', { id });
 
-export const artUrl = (g: Game, kind: Art) => (g.art.includes(kind) ? `game://localhost/${g.id}/${kind}` : null);
+export const artUrl = (g: Game, kind: Art) => (g.art.includes(kind) ? `game://localhost/${g.id}/${kind}?v=${g.art_stamp}` : null);
 
 /** Best wide picture for a backdrop: the hero art, else the store header. */
 export const heroUrl = (g: Game) => artUrl(g, 'hero') ?? artUrl(g, 'header');
@@ -227,8 +231,56 @@ export interface Settings {
 export const getSettings = () => invoke<Settings>('game_settings');
 export const saveSettings = (settings: Settings) => invoke<Settings>('game_save_settings', { settings });
 
+// ---- adding games (library.rs) ----
+
+export interface Folders {
+  folders: string[];
+  roms: string[];
+  /** ROMs taken out of AzotoTV */
+  hidden: number;
+}
+export interface DiskEntry {
+  name: string;
+  path: string;
+  dir: boolean;
+  /** looks like something to start */
+  game: boolean;
+}
+export interface Listing {
+  path: string;
+  parent: string | null;
+  entries: DiskEntry[];
+  places: [string, string][];
+}
+export interface SteamHit {
+  appid: number;
+  name: string;
+  image: string | null;
+}
+
+/** Turns new ROMs into games; reloads the library when there were some. */
+export async function scanGames() {
+  const n = await invoke<number>('games_scan').catch(() => 0);
+  if (n && library.user) await loadGames(library.user);
+  return n;
+}
+export const gameFolders = () => invoke<Folders>('games_folders');
+export const setGameFolders = (folders: string[], roms: string[], unhide = false) =>
+  invoke<Folders>('games_set_folders', { folders, roms, unhide });
+export const browse = (path: string | null) => invoke<Listing>('games_browse', { path });
+export const steamSearch = (term: string) => invoke<SteamHit[]>('games_steam_search', { term });
+export const addGame = (game: { exe: string; name: string; steam_appid: number | null; players: number }) =>
+  invoke<string>('games_add', { game });
+export const editGame = (id: string, change: { name: string; players: number; steam_appid: number | null; refresh: boolean }) =>
+  invoke<void>('games_edit', { id, change });
+export const removeGame = (id: string) => invoke<void>('games_remove', { id });
+
 /** Call once at startup. */
 export function initGames() {
+  // art and descriptions of added games arrive a little later
+  const changed = listen('games-changed', () => {
+    if (library.user) void loadGames(library.user);
+  });
   const shown = listen('game-shown', () => (game.loading = false));
   // a game the iPhone app started in its phone mode (phone.rs `/api/app/play`)
   const started = listen<{ id: string; name: string }>('game-started', (e) => {
@@ -245,6 +297,7 @@ export function initGames() {
     if (e.payload.reason === 'error') showToast(t('The game closed with an error: {error}', { error: e.payload.error }));
   });
   return () => {
+    void changed.then((f) => f());
     void un.then((f) => f());
     void shown.then((f) => f());
     void started.then((f) => f());

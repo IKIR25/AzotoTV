@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '$lib/i18n';
+  import { t, tn } from '$lib/i18n';
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -9,10 +9,11 @@
   import { key } from '$lib/input.svelte';
   import Card from '$lib/Card.svelte';
   import {
-    artUrl, byRecent, giochiTab, heroUrl, lastPlayed, launch, library, loadGames, platform, PLATFORMS, worldMode,
+    artUrl, byRecent, giochiTab, heroUrl, lastPlayed, launch, library, loadGames, platform, PLATFORMS, scanGames, worldMode,
     type Game, type Platform,
   } from '$lib/games.svelte';
   import { gamePin, worldPin } from '$lib/pins.svelte';
+  import { admin, checkAdmin } from '$lib/admin.svelte';
 
   // The Giochi app: a tab per console (PC, Mobile, Switch, 3DS, Wii, N64, NES, Arcade; only those
   // with games), switched with LB / RB from anywhere on the page or with A on
@@ -56,6 +57,13 @@
     return () => (shoulder.tab = null);
   });
 
+  // ROMs dropped in a ROM folder since the last look show up now
+  $effect(() => {
+    void auth.id;
+    checkAdmin();
+    void scanGames();
+  });
+
   $effect(() => {
     const user = auth.id;
     void refresh.n;
@@ -81,7 +89,7 @@
 <div class="scroller">
   <header>
     <h1>{t('Games')}</h1>
-    <span class="count">{inTab.length ? `${inTab.length} ${inTab.length === 1 ? 'gioco' : 'giochi'}` : ''}</span>
+    <span class="count">{inTab.length ? tn(inTab.length, '{n} game', '{n} games', { n: inTab.length }) : ''}</span>
     {#if tabs.length > 1}
       <div class="tabs">
         <kbd>{key('LB')}</kbd>
@@ -104,13 +112,19 @@
           <button class="btn chip" class:sel={sort === i} data-focusable data-scroll-top onclick={() => (sort = i)}>{s.label}</button>
         {/each}
       </div>
+      {#if admin.is}
+        <div class="manage">
+          <button class="btn chip" data-focusable data-key="add" data-scroll-top onclick={() => goto('/giochi/add')}>{t('＋ Add a game')}</button>
+          <button class="btn chip" data-focusable data-key="folders" data-scroll-top onclick={() => goto('/giochi/folders')}>{t('Game folders')}</button>
+        </div>
+      {/if}
     </div>
   </header>
 
   {#if failed && !library.games.length}
     <p class="msg">{t('Couldn\'t read the game library.')}</p>
   {:else if library.user === auth.id && !library.games.length}
-    <p class="msg">{t('No games installed.')}</p>
+    <p class="msg">{admin.is ? t('No games yet: add one, or put Switch, Wii and 3DS files in a ROM folder (Game folders).') : t('No games installed.')}</p>
   {/if}
 
   {#if games.length}
@@ -178,7 +192,8 @@
   .row { flex-basis: 100%; display: flex; align-items: center; gap: 1.6rem; margin-top: 0.6rem; }
   .row .btn.primary { font-size: 1.3rem; padding: 0.7rem 1.6rem; }
   .row svg { width: 1.6rem; height: 1.6rem; fill: currentColor; }
-  .sorts { display: flex; gap: 0.8rem; }
+  .sorts, .manage { display: flex; gap: 0.8rem; }
+  .manage { margin-left: auto; margin-right: 6rem; }
   .chip { font-size: 1.3rem; padding: 0.7rem 1.5rem; border-radius: 1.4rem; }
   .chip.sel { background: rgba(255, 255, 255, 0.34); }
   .chip.sel:focus { background: #fff; }

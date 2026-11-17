@@ -51,7 +51,7 @@
   const APP_ROOTS = ['/tv', '/live', '/musica', '/giochi', '/youtube', '/store', '/galleria', '/mii'];
   const bare = $derived(
     path === '/' || path === '/live' || path.startsWith('/musica') || path === '/music' || path.startsWith('/tracks/') ||
-      path === '/giochi' || path.startsWith('/game/') || path.startsWith('/youtube') || path === '/store' || path.startsWith('/galleria') || path.startsWith('/mii') || path === '/pin' || path === '/tvpair' || path === '/controllers',
+      path.startsWith('/giochi') || path.startsWith('/game/') || path.startsWith('/youtube') || path === '/store' || path.startsWith('/galleria') || path.startsWith('/mii') || path === '/pin' || path === '/tvpair' || path === '/controllers' || path.startsWith('/services'),
   );
 
   function back() {
