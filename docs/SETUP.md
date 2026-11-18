@@ -29,7 +29,7 @@ side, and add it to `LANGUAGES` in `src-tauri/src/locale.rs` and to
 
 | File | Switches on | Needs |
 | --- | --- | --- |
-| `arr.json` | "Ready to watch" notifications, download progress on requests | Radarr / Sonarr API keys, a Jellyfin API key; optionally RDT-Client |
+| `arr.json` | "Ready to watch" notifications, download progress on requests (`"announce": false`: progress only, for a second machine) | Radarr / Sonarr API keys, a Jellyfin API key; optionally RDT-Client |
 | `seerr.json` | Requests (search what isn't in the library and ask for it) | a Seerr API key |
 | `immich.json` | Gallery, photo screensaver, photos from phones | an [Immich](https://immich.app) user for the TV and its API key |
 | `music.json` | Downloading songs found on YouTube Music into the library | a folder inside a Jellyfin music library, a Jellyfin API key |

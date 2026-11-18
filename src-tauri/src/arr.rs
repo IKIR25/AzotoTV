@@ -10,6 +10,8 @@
 //! Config `~/.config/azototv/arr.json` (mode 600, keys stay in Rust):
 //! `{"jellyfinKey": "...", "radarr": {"url", "apiKey"}, "sonarr": {"url", "apiKey"}}`
 //! (`jellyfinKey`: an API key, scanning a library needs an admin).
+//! `"announce": false` turns the notifications (and the scans) off on this
+//! machine: a second machine that only wants the download progress.
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -48,6 +50,9 @@ struct Config {
     jellyfin_key: Option<String>,
     radarr: Option<Service>,
     sonarr: Option<Service>,
+    /// false: no new-arrival notifications (nor library scans) from this
+    /// machine, the file only gives a second machine the download progress
+    announce: Option<bool>,
 }
 
 /// One imported file.
@@ -117,6 +122,10 @@ impl Arr {
 
     /// Poll forever (spawned from setup).
     pub fn start(self) {
+        if self.cfg.announce == Some(false) {
+            eprintln!("[arr] \"announce\": false in arr.json: no new-arrival notifications from here");
+            return;
+        }
         let me = Arc::new(self);
         tauri::async_runtime::spawn(async move {
             loop {
