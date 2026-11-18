@@ -7,7 +7,9 @@ import { showToast } from './stage.svelte';
 import { t } from '$lib/i18n';
 
 export type PadStyle = 'xbox' | 'pad' | 'nintendo' | 'playstation';
-export const input = $state<{ remote: boolean; style: PadStyle; desk: boolean; pointer: boolean }>({
+export const input = $state<{ remote: boolean; style: PadStyle; desk: boolean; pointer: boolean; tv: boolean }>({
+  /** the machine under the TV (kiosk, AZOTOTV_FULLSCREEN), not a window on a computer */
+  tv: true,
   remote: false,
   style: 'pad',
   /** the keyboard or the mouse was used last: hints name keys, text is typed for real */
@@ -20,6 +22,7 @@ export const input = $state<{ remote: boolean; style: PadStyle; desk: boolean; p
 import('@tauri-apps/api/core')
   .then(({ invoke }) => invoke<boolean>('tv_mode'))
   .then((tv) => {
+    input.tv = tv;
     if (!tv) input.desk = true;
   })
   .catch(() => {});

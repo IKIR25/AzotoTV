@@ -9,6 +9,7 @@
 // dark screen only wakes it up and is not acted on.
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { input } from './input.svelte';
 
 const SAVER_MS = 5 * 60_000;
 
@@ -63,6 +64,9 @@ export function startIdle(busy: () => boolean, saverOk: () => boolean, darkOk: (
     }
     const idle = now - last;
     if (!saver.still && idle >= after * 0.4) saver.still = true;
+    // a window on a computer: its owner may be busy in another one, so no
+    // screensaver and never the screens off
+    if (!input.tv) return;
     if (!saver.on && !saver.dark && saverOk() && idle >= after) saver.on = true;
     if (!saver.dark && darkOk() && idle >= after * 4) {
       saver.on = false;

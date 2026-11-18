@@ -738,6 +738,24 @@ pub(crate) fn origins() -> HashMap<(String, String), String> {
         .collect()
 }
 
+/// This library's games: (id, Steam app id, plain name).
+fn local_games() -> Vec<(String, Option<u32>, String)> {
+    crate::library::ids()
+        .into_iter()
+        .filter_map(|id| {
+            let v: Value = serde_json::from_str(&fs::read_to_string(crate::library::game_dir(&id).join("game.json")).ok()?).ok()?;
+            let appid = v["steam_appid"].as_u64().map(|a| a as u32);
+            let name = plain(v["name"].as_str()?);
+            Some((id, appid, name))
+        })
+        .collect()
+}
+
+/// A name to compare games by: "Slime Rancher™: 2" -> "slimerancher2".
+fn plain(name: &str) -> String {
+    name.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect()
+}
+
 /// Every linked AzotoTV's games (the ones that answer).
 pub async fn games() -> Vec<Remote> {
     let ps = with_store(|s| s.peers.clone());
@@ -751,12 +769,18 @@ pub async fn games() -> Vec<Remote> {
         Some((p, offers))
     });
     let from = origins();
+    let local = local_games();
     let mut out = Vec::new();
     for (p, offers) in futures_util::future::join_all(lists).await.into_iter().flatten() {
         for o in offers {
             let lack = missing(o.kind, o.platform.as_deref());
+            // downloaded from there, or the same game got here another way (Steam)
+            let same = from.get(&(p.id.clone(), o.id.clone())).cloned().or_else(|| {
+                let name = plain(&o.name);
+                local.iter().find(|(_, a, n)| (o.steam_appid.is_some() && *a == o.steam_appid) || *n == name).map(|(id, _, _)| id.clone())
+            });
             out.push(Remote {
-                here: from.get(&(p.id.clone(), o.id.clone())).cloned(),
+                here: same,
                 brings: lack.as_ref().is_some_and(|(_, b)| *b),
                 missing: lack.map(|(n, _)| n),
                 peer: p.id.clone(),
@@ -1135,5 +1159,6 @@ mod tests {
         assert_eq!(norm_url("192.168.1.5"), "http://192.168.1.5:8686");
         assert_eq!(norm_url("http://tv.lan:9000/"), "http://tv.lan:9000");
         assert_eq!(urlencode("a b+ü.x"), "a%20b%2B%C3%BC.x");
+        assert_eq!(plain("Slime Rancher™: 2"), "slimerancher2");
     }
 }

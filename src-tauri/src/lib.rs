@@ -592,6 +592,10 @@ async fn system_reboot() -> Result<(), String> {
 /// the desktop's screens alone.
 #[tauri::command]
 async fn display_power(on: bool) -> Result<(), String> {
+    // a computer's screens are its owner's, not AzotoTV's
+    if !tv_mode() {
+        return Ok(());
+    }
     tauri::async_runtime::spawn_blocking(move || stream::screens(on)).await.map_err(|e| e.to_string())
 }
 

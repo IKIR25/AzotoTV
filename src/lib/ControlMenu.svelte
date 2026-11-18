@@ -1,6 +1,6 @@
 <script lang="ts">
   import { lang, languages, setLanguage, t } from '$lib/i18n';
-  import { key } from './input.svelte';
+  import { input, key } from './input.svelte';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { invoke } from '@tauri-apps/api/core';
@@ -16,7 +16,8 @@
 
   // tvOS-style control menu (START): a TG that has just started (first, focused),
   // switch profile, notifications, pair a phone (and the TV, when it has forgotten AzotoTV), controllers, sounds, TG alerts and PIN of this profile,
-  // leave to the desktop, reboot, standby. D-pad stays inside it; B or START closes it. Leaving /
+  // leave to the desktop, reboot, standby (on a computer: full screen and close
+  // AzotoTV instead, and no TV pairing or TG alerts). D-pad stays inside it; B or START closes it. Leaving /
   // rebooting need a second A within a few seconds. Nothing here turns the
   // machine off: it's the home server (Jellyfin, downloads…).
   const close = () => (control.open = false);
@@ -55,11 +56,19 @@
     sleepNow();
   }
 
-  const actions = [
-    { key: 'desktop', label: t('Exit to the desktop'), armed: t('Press again to exit'), run: () => invoke('system_exit') },
-    { key: 'reboot', label: t('Restart'), armed: t('Press again to restart'), run: reboot },
-    { key: 'poweroff', label: t('Turn off'), sub: t('The TV turns off, the server stays on'), run: standby },
-  ];
+  type Action = { key: string; label: string; armed?: string; sub?: string; run: () => void };
+  // on a computer (a window, not the TV) the machine is someone's desktop:
+  // no restarting it or leaving to it, just the window
+  const actions: Action[] = input.tv
+    ? [
+        { key: 'desktop', label: t('Exit to the desktop'), armed: t('Press again to exit'), run: () => invoke('system_exit') },
+        { key: 'reboot', label: t('Restart'), armed: t('Press again to restart'), run: reboot },
+        { key: 'poweroff', label: t('Turn off'), sub: t('The TV turns off, the server stays on'), run: standby },
+      ]
+    : [
+        { key: 'fullscreen', label: t('Full screen'), sub: t('Or F11'), run: () => (close(), invoke('window_fullscreen')) },
+        { key: 'quit', label: t('Close AzotoTV'), armed: t('Press again to close'), run: () => invoke('system_exit') },
+      ];
 
   // pressing Language moves to the next one
   const nextLanguage = languages[(languages.findIndex((l) => l.id === lang) + 1) % languages.length];
@@ -167,7 +176,7 @@
     <span class="txt">Controller<small>{t('Who is connected, pair Joy-Cons and other controllers')}</small></span>
   </button>
 
-  {#if tvLink.unpaired}
+  {#if input.tv && tvLink.unpaired}
     <button
       class="opt"
       data-focusable
@@ -202,7 +211,7 @@
     <span class="state">{sounds.on ? t('Yes') : 'No'}</span>
   </button>
 
-  {#if prefs.auto_reminders}
+  {#if input.tv && prefs.auto_reminders}
   <button
     class="opt"
     data-focusable
@@ -290,6 +299,10 @@
       <span class="ico" aria-hidden="true">
         {#if a.key === 'desktop'}
           <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></svg>
+        {:else if a.key === 'fullscreen'}
+          <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+        {:else if a.key === 'quit'}
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
         {:else if a.key === 'reboot'}
           <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v5h-5" /></svg>
         {:else}

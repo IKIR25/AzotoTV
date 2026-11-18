@@ -438,7 +438,7 @@ fn played_path(user: &str) -> PathBuf {
     player_dir(user).join("games.json")
 }
 
-fn read_played(user: &str) -> HashMap<String, Played> {
+pub(crate) fn read_played(user: &str) -> HashMap<String, Played> {
     std::fs::read_to_string(played_path(user)).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
 }
 
@@ -599,6 +599,10 @@ pub fn gpu_env() -> impl Iterator<Item = (&'static String, &'static String)> {
 /// CPU's turbo stays off for the menus, so a laptop under the TV stays cool
 /// and quiet, and comes on only while a game runs.
 pub fn set_turbo(on: bool) {
+    // the kiosk only: a computer's CPU settings are its owner's
+    if std::env::var_os("AZOTOTV_FULLSCREEN").is_none() {
+        return;
+    }
     let Some((file, yes, no)) = &crate::system::system().turbo else { return };
     if let Err(e) = std::fs::write(file, if on { yes } else { no }) {
         eprintln!("[games] turbo {}: {e}", if on { "on" } else { "off" });
@@ -789,13 +793,14 @@ fn tv_1080p() -> Vec<String> {
     args
 }
 
-/// Every game's env. Games driven by the stick-mouse show the system pointer in
-/// their menus: the default one is a small black arrow you can't find on a TV.
-/// The shader cache is shared by every player (same Linux user), so the driver
-/// must never trim it: the next player would compile everything again.
-const GAME_ENV: [(&str, &str); 4] = [
-    ("XCURSOR_THEME", "Breeze_Light"),
-    ("XCURSOR_SIZE", "72"),
+/// On the TV, games driven by the stick-mouse show the system pointer in their
+/// menus: the default one is a small black arrow you can't find from the sofa.
+/// (On a computer they keep the desktop's own.)
+const TV_CURSOR: [(&str, &str); 2] = [("XCURSOR_THEME", "Breeze_Light"), ("XCURSOR_SIZE", "72")];
+
+/// Every game's env. The shader cache is shared by every player (same Linux
+/// user), so the driver must never trim it: the next player would compile everything again.
+const GAME_ENV: [(&str, &str); 2] = [
     ("__GL_SHADER_DISK_CACHE_SKIP_CLEANUP", "1"),
     // Proton's xalia (pad control for launcher windows) runs next to every
     // game once a pad exists: no use here, and it costs CPU
@@ -1348,6 +1353,9 @@ impl Games {
         }
         cmd.envs(gpu_env());
         cmd.envs(GAME_ENV);
+        if std::env::var_os("AZOTOTV_FULLSCREEN").is_some() {
+            cmd.envs(TV_CURSOR);
+        }
         cmd.envs(&m.env);
         if phone {
             // its touch "phone mode" (read from the streamed touchscreen)

@@ -86,13 +86,15 @@ fn n3ds_root(player: &Path) -> PathBuf {
         .unwrap_or_else(|| base.join("0".repeat(32)).join("0".repeat(32)))
 }
 
-/// Folders never part of the saves (caches, temporary files, logs).
+/// Folders never part of the saves (caches, temporary files, logs): by name,
+/// whatever the case and separators ("shader_cache", "Code Cache").
 fn skip_name(n: &str) -> bool {
-    const SKIP: [&str; 20] = [
+    const SKIP: [&str; 18] = [
         "temp", "tmp", "cache", "caches", "shadercache", "shadercaches", "dxcache", "d3dscache", "glcache", "gpucache",
-        "nv_cache", "code cache", "crashdumps", "crashes", "crash-reports", "inetcache", "webcache", "logs", "microsoft", "nvidia corporation",
+        "nvcache", "codecache", "crashdumps", "crashes", "crashreports", "inetcache", "webcache", "logs",
     ];
-    SKIP.contains(&n.to_lowercase().as_str()) || n.ends_with(".azototv-part")
+    let plain: String = n.chars().filter(|c| !matches!(c, '_' | '-' | ' ')).flat_map(char::to_lowercase).collect();
+    SKIP.contains(&plain.as_str()) || plain == "microsoft" || plain == "nvidiacorporation" || n.ends_with(".azototv-part")
 }
 
 /// How many folders deep a game's unit is in the player's home, for a path in
@@ -154,9 +156,36 @@ fn hex4(disc: &str) -> String {
     disc.bytes().take(4).map(|b| format!("{b:02x}")).collect()
 }
 
+/// A game played here before its units were learned (before saves were
+/// shared): what was written during its last session. Only one game runs at a
+/// time, so that is what changed after the game played before it ended and
+/// until it ended itself.
+fn guess_units(kind: Kind, user: &str, id: &str) -> BTreeSet<String> {
+    if learned_roots(kind).is_empty() {
+        return BTreeSet::new();
+    }
+    let played = crate::games::read_played(user);
+    let Some(me) = played.get(id).filter(|p| p.last > 0) else { return BTreeSet::new() };
+    let end = (me.last as i64 + 120) * 1000;
+    let mut start = (me.last as i64 - me.seconds as i64 - 120) * 1000;
+    for (g, p) in &played {
+        if g != id && p.last < me.last {
+            start = start.max(p.last as i64 * 1000);
+        }
+    }
+    learn_walk(kind, user, id).iter().filter(|(_, s)| s.mtime > start && s.mtime <= end).filter_map(|(p, _)| unit_of(p)).collect()
+}
+
 /// The game's units: the known ones and the learned ones.
 fn units(user: &str, id: &str, m: &Manifest) -> BTreeSet<String> {
     let mut u = with_player(user, |p| p.get(id).map(|g| g.units.clone()).unwrap_or_default());
+    if u.is_empty() {
+        u = guess_units(m.kind, user, id);
+        if !u.is_empty() {
+            eprintln!("[saves] {id}: from its last session {u:?}");
+            with_player(user, |p| p.entry(id.to_string()).or_default().units.extend(u.iter().cloned()));
+        }
+    }
     match m.kind {
         Kind::Proton => {
             u.insert("wine".into());
@@ -374,6 +403,10 @@ fn record(user: &str, id: &str, peer: &str, units: &BTreeSet<String>, digest: &s
     });
 }
 
+fn played_secs(user: &str, id: &str) -> u64 {
+    crate::games::read_played(user).get(id).map(|p| p.seconds).unwrap_or(0)
+}
+
 fn mods_on(user: &str, id: &str, m: &Manifest) -> Vec<String> {
     let mut v = crate::mods::enabled(user, id, &m.mods);
     v.sort();
@@ -507,6 +540,9 @@ struct StateOut {
     /// over both sides' units
     files: Files,
     playing: bool,
+    /// how long this player has played it there (seconds)
+    #[serde(default)]
+    played: u64,
 }
 
 async fn state_in(State(ctx): State<Ctx>, ConnectInfo(from): ConnectInfo<SocketAddr>, h: HeaderMap, Json(r): Json<StateIn>) -> Response {
@@ -529,6 +565,7 @@ async fn state_in(State(ctx): State<Ctx>, ConnectInfo(from): ConnectInfo<SocketA
         files: manifest(m.kind, &r.user, &r.game, &all),
         units: mine,
         playing: not_playing(&ctx, &r.game).is_err(),
+        played: played_secs(&r.user, &r.game),
     })
     .into_response()
 }
@@ -723,6 +760,11 @@ async fn sync(user: &str, id: &str, when: When) -> Result<(Outcome, String), Str
         (true, Outcome::Got)
     } else if last.as_deref() == Some(&r) {
         (false, Outcome::Gave)
+    } else if last.is_none() {
+        // never synced: the saves of the side it was played on more (a
+        // first game here only made new settings, it mustn't replace the old ones)
+        let t = theirs.played >= played_secs(user, id);
+        (t, if t { Outcome::Got } else { Outcome::Gave })
     } else {
         let t = newest(&theirs.files) > newest(&here);
         (t, Outcome::Both(t))
@@ -898,6 +940,7 @@ mod tests {
         let mut f = Files::new();
         collect(&d, "wine", &|_| true, &mut f);
         assert_eq!(f.keys().collect::<Vec<_>>(), ["wine/Saved Games/G/slot1"]);
+        assert!(skip_name("shader_cache") && skip_name("Code Cache") && skip_name("NVIDIA Corporation") && !skip_name("saves"));
         fs::remove_dir_all(&d).unwrap();
     }
 }
