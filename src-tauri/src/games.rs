@@ -390,7 +390,7 @@ fn valid_id(id: &str) -> bool {
     !id.is_empty() && !id.starts_with('.') && !id.contains('/') && !id.contains('\0')
 }
 
-fn read_manifest(id: &str) -> Result<Manifest, String> {
+pub(crate) fn read_manifest(id: &str) -> Result<Manifest, String> {
     if !valid_id(id) {
         return Err(t!("not a valid game: {id}", id = id));
     }
@@ -1227,6 +1227,8 @@ impl Games {
             }
             *r = Some(Running { id: id.to_string(), pgid: pgid.clone(), phone, quit: Default::default() });
         }
+        // the other machine's saves, when they are newer (a game shared with a linked AzotoTV)
+        crate::saves::before(&app, user, user_name, id, m.kind);
         let result = self.clone().start(app, user, user_name, id, chapter, world.as_deref(), &m, pgid, phone);
         if result.is_err() {
             *self.running.lock().unwrap() = None;
@@ -1461,6 +1463,7 @@ impl Games {
                 false
             }
         };
+        crate::saves::snapshot(user, id, m.kind);
         let mut child = match cmd.spawn() {
             Ok(c) => c,
             Err(e) => {
@@ -1492,6 +1495,7 @@ impl Games {
 
         let id = id.to_string();
         let user = user.to_string();
+        let kind = m.kind;
         let stop_watch = Arc::new(std::sync::atomic::AtomicBool::new(false));
         if steam_emu {
             let (app, kind, user, id, stop) = (app.clone(), m.kind, user.clone(), id.clone(), stop_watch.clone());
@@ -1528,6 +1532,7 @@ impl Games {
                 *self.running.lock().unwrap() = None;
                 let seconds = started.elapsed().as_secs();
                 record_played(&user, &id, seconds, chapter);
+                crate::saves::after(&app, &user, &id, kind);
                 let (reason, error) = match status {
                     _ if quit.load(Ordering::Relaxed) => ("quit", None),
                     Ok(_) => ("exit", None),

@@ -141,6 +141,11 @@ fn profile_index(player: &Path, user_name: &str) -> Result<usize, String> {
     index_of(&raw, &uuid).ok_or_else(|| t!("Switch profile not found"))
 }
 
+/// Makes sure the player has their Switch profile (see `profile_index`).
+pub(crate) fn profile_for(player: &Path, user_name: &str) -> Result<(), String> {
+    profile_index(player, user_name).map(|_| ())
+}
+
 /// Where Eden keeps this player's game saves (`<title id>/` inside), if
 /// they have a Switch profile: the folder is named after the profile's UUID
 /// as two little-endian u64 halves, high one first, in hex.

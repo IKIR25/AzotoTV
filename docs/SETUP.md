@@ -114,6 +114,13 @@ Games are added from the TV (Jellyfin administrators):
   and Azahar are installed from Flathub. Files already on this machine (your
   own keys, say) are never replaced. MAME and umu-launcher are system
   packages: the game page says when one is missing.
+  A downloaded game keeps one set of saves per profile on both machines
+  (`saves.rs`): before a game starts and after it ends, the side that changed
+  gives its saves to the other; when both changed while apart (one was off),
+  the newest wins and the other is kept in `players/<id>/saves-prev/<game>/`
+  until the next sync. The game page's **Saves** sets it per game: by itself
+  (shared, but apart while the profile's mods differ between the two),
+  always shared, or only on this machine (a game modded only there).
 
 Pictures come from Steam for Steam games, from SteamGridDB for everything when
 it has a key (START › Services), and from GameTDB for Wii and 3DS boxes;

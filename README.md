@@ -36,7 +36,8 @@ Nitro laptop.
   start through Steam).
 - **Linked AzotoTVs**: two installs (the TV and a computer) see each other's
   games and download them over the home network, to play with whichever
-  machine's hardware is in front of you.
+  machine's hardware is in front of you; the saves follow, or stay apart
+  for a game you choose.
 - **Phones**: a web page AzotoTV serves on the home network: sign in with a
   profile's PIN or a code from the TV, then films, series, live TV and music
   playing on the phone (resume points shared with the TV, "watch on the TV" /

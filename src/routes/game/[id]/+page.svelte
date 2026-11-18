@@ -13,7 +13,8 @@
   import { goto } from '$app/navigation';
   import {
     achievementIcon, artUrl, chapterArt, findGame, getAchievements, getSettings, heroUrl, lastPlayed, launch, library, loadGames,
-    modArt, platform, playTrailer, playtime, saveSettings, setMod, worldMode, type Achievement, type Mod,
+    modArt, platform, playTrailer, playtime, saveSettings, savesInfo, setMod, setSavesMode, worldMode,
+    type Achievement, type Mod, type SavesInfo,
   } from '$lib/games.svelte';
 
   // A game's page: hero art behind, logo, what it is, Gioca / Trailer, the
@@ -26,7 +27,10 @@
 
   const SENS = [0.5, 0.75, 1, 1.25, 1.5, 2];
   let sens = $state(1);
-  let sheet = $state<'trailer' | 'sens' | null>(null);
+  let sheet = $state<'trailer' | 'sens' | 'saves' | null>(null);
+  // a game that is also on a linked AzotoTV: its saves go along, or stay here
+  let saves = $state<SavesInfo | null>(null);
+  const SAVE_MODES = [null, 'shared', 'local'] as const;
   // games with chapters: Gioca carries on with the one played last
   const current = $derived(g?.chapters.length ? (g.played?.chapter ?? 0) : null);
   // Minecraft: Gioca goes back into the world played last; new worlds are made
@@ -40,6 +44,8 @@
     void refresh.n;
     missing = false;
     achievements = [];
+    saves = null;
+    savesInfo(cur).then((s) => cur === id && (saves = s), () => {});
     loadGames(user).then(async () => {
       if (cur !== id) return;
       const found = findGame(cur);
@@ -87,6 +93,25 @@
     }
     closeSheet();
   }
+
+  async function pickSaves(i: number) {
+    const mode = SAVE_MODES[i];
+    try {
+      await setSavesMode(id, mode);
+      if (saves) saves.mode = mode;
+    } catch (e) {
+      showToast(t('Setting not saved: {e}', { e }));
+    }
+    closeSheet();
+  }
+
+  // by itself, a game without mods simply shares them
+  const savesLabel = (s: SavesInfo) =>
+    s.mode === 'local'
+      ? t('Only on this one')
+      : s.mode === 'shared' || !g?.mods.length
+        ? t('Shared with {name}', { name: s.peer_name })
+        : t('With {name}, while the mods are the same', { name: s.peer_name });
 
   const fmt = (v: number) => `${v.toLocaleString(locale)}×`;
 
@@ -151,12 +176,20 @@
           <button class="btn icon" data-focusable data-key="edit" data-scroll-top onclick={() => goto(`/game/${g!.id}/edit`)}>{t('Edit')}</button>
         {/if}
       </div>
-      {#if g.cursor}
+      {#if g.cursor || saves}
         <div class="tracks">
-          <button class="btn chip" data-focusable data-key="sens" data-scroll-top onclick={() => (sheet = 'sens')}>
-            <span class="k">{t('Cursor sensitivity')}</span>
-            {fmt(sens)}
-          </button>
+          {#if g.cursor}
+            <button class="btn chip" data-focusable data-key="sens" data-scroll-top onclick={() => (sheet = 'sens')}>
+              <span class="k">{t('Cursor sensitivity')}</span>
+              {fmt(sens)}
+            </button>
+          {/if}
+          {#if saves}
+            <button class="btn chip" data-focusable data-key="saves" data-scroll-top onclick={() => (sheet = 'saves')}>
+              <span class="k">{t('Saves')}</span>
+              {savesLabel(saves)}
+            </button>
+          {/if}
         </div>
       {/if}
       {#if g.type === 'minecraft'}
@@ -263,6 +296,18 @@
       sheet = null;
       playTrailer(g!, i);
     }}
+    onclose={closeSheet}
+  />
+{:else if sheet === 'saves' && saves}
+  <Picker
+    title={t('Saves')}
+    options={[
+      { key: 0, main: t('By themselves'), sub: t('Shared with {name}, but each stays on its own machine while the mods on are different', { name: saves.peer_name }) },
+      { key: 1, main: t('Shared with {name}', { name: saves.peer_name }), sub: t('Always the same saves, before and after every game') },
+      { key: 2, main: t('Only on this one'), sub: t('This machine keeps its own saves (e.g. a game modded only here)') },
+    ]}
+    value={SAVE_MODES.indexOf(saves.mode)}
+    onpick={pickSaves}
     onclose={closeSheet}
   />
 {:else if sheet === 'sens'}

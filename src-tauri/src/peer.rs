@@ -112,7 +112,7 @@ fn my_name() -> String {
     if host.is_empty() { "AzotoTV".into() } else { host }
 }
 
-fn peer(id: &str) -> Result<Peer, String> {
+pub(crate) fn peer(id: &str) -> Result<Peer, String> {
     with_store(|s| s.peers.iter().find(|p| p.id == id).cloned()).ok_or_else(|| t!("That AzotoTV isn't linked any more"))
 }
 
@@ -134,7 +134,8 @@ pub fn routes(app: AppHandle) -> Router {
         .route("/api/peer/art/{game}/{kind}", get(art_out))
         .route("/api/peer/files/{game}", get(files_out))
         .route("/api/peer/file/{game}/{*path}", get(file_out))
-        .with_state(Ctx { app, lists: Default::default() })
+        .with_state(Ctx { app: app.clone(), lists: Default::default() })
+        .merge(crate::saves::routes(app))
 }
 
 fn err(code: StatusCode, msg: impl Into<String>) -> Response {
@@ -143,7 +144,7 @@ fn err(code: StatusCode, msg: impl Into<String>) -> Response {
 
 /// The calling peer, when its secret is right. Its address is kept up to
 /// date (a computer's changes now and then).
-fn caller(h: &HeaderMap, from: SocketAddr) -> Result<Peer, Response> {
+pub(crate) fn caller(h: &HeaderMap, from: SocketAddr) -> Result<Peer, Response> {
     let id = h.get("x-azoto-peer").and_then(|v| v.to_str().ok()).unwrap_or("");
     let secret = h.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok()).and_then(|v| v.strip_prefix("Bearer ")).unwrap_or("");
     with_store(|s| {
@@ -595,12 +596,16 @@ async fn file_out(
 
 // ---- calling the others -------------------------------------------------------------------
 
-fn client(timeout: Duration) -> reqwest::Client {
+pub(crate) fn client(timeout: Duration) -> reqwest::Client {
     reqwest::Client::builder().connect_timeout(Duration::from_secs(3)).timeout(timeout).build().expect("http client")
 }
 
 fn authed(c: &reqwest::Client, p: &Peer, path: &str) -> reqwest::RequestBuilder {
-    c.get(format!("{}{path}", p.url)).header("x-azoto-peer", my_id()).bearer_auth(&p.secret)
+    call(c, reqwest::Method::GET, p, path)
+}
+
+pub(crate) fn call(c: &reqwest::Client, method: reqwest::Method, p: &Peer, path: &str) -> reqwest::RequestBuilder {
+    c.request(method, format!("{}{path}", p.url)).header("x-azoto-peer", my_id()).bearer_auth(&p.secret)
 }
 
 /// "192.168.1.5" / "http://host:8686/" -> "http://192.168.1.5:8686"
@@ -723,7 +728,7 @@ pub struct Remote {
 }
 
 /// Where each local game came from: (peer, game) -> local id.
-fn origins() -> HashMap<(String, String), String> {
+pub(crate) fn origins() -> HashMap<(String, String), String> {
     crate::library::ids()
         .into_iter()
         .filter_map(|id| {
@@ -976,6 +981,8 @@ impl Downloads {
         fs::rename(&part, &dest).map_err(|e| format!("{}: {e}", dest.display()))?;
         crate::library::add_library(into)?;
         eprintln!("[peer] {} downloaded from {} into {}", game, p.name, dest.display());
+        // so its saves can follow (saves.rs)
+        crate::saves::tell_pair(p, game, &id).await;
         self.update(app, key, |pr| pr.done = total);
         // an emulator that comes from Flathub rather than from the other machine
         let kind: Option<Kind> = fs::read_to_string(dest.join("game.json"))
@@ -1104,7 +1111,7 @@ fn gb(b: u64) -> String {
     format!("{:.1} GB", b as f64 / 1e9)
 }
 
-fn urlencode(s: &str) -> String {
+pub(crate) fn urlencode(s: &str) -> String {
     s.bytes()
         .map(|b| match b {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (b as char).to_string(),

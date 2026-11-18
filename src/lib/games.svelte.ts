@@ -146,6 +146,15 @@ export async function setMod(g: Game, m: Mod, on: boolean) {
   g.mods = await invoke<Mod[]>('game_set_mod', { id: g.id, modId: m.id, on });
 }
 
+/** A game's saves shared with a linked AzotoTV (saves.rs); `mode` null: by
+ * itself, shared while each profile has the same mods on both. */
+export interface SavesInfo {
+  peer_name: string;
+  mode: 'shared' | 'local' | null;
+}
+export const savesInfo = (id: string) => invoke<SavesInfo | null>('saves_info', { id });
+export const setSavesMode = (id: string, mode: SavesInfo['mode']) => invoke<void>('saves_set_mode', { id, mode });
+
 export const achievementIcon = (g: Game, a: Achievement) => `game://localhost/${g.id}/ach-${a.icon}`;
 
 /** Earned ones first (newest first), then the rest in the game's order. */
@@ -170,8 +179,8 @@ export function playtime(s: number): string {
 export function lastPlayed(unix: number): string {
   const d = new Date(unix * 1000);
   const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-  if (days < 1 && new Date().getDate() === d.getDate()) return 'oggi';
-  if (days < 2) return 'ieri';
+  if (days < 1 && new Date().getDate() === d.getDate()) return t('today');
+  if (days < 2) return t('yesterday');
   if (days < 7) return t('{days} days ago', { days });
   return d.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
 }
@@ -291,6 +300,8 @@ export function initGames() {
     game.id = e.payload.id;
     game.name = e.payload.name;
   });
+  // saves shared with a linked AzotoTV (saves.rs): what happened to them
+  const saves = listen<{ game: string; text: string }>('saves-sync', (e) => showToast(e.payload.text, 4500));
   const un = listen<Ended>('game-ended', (e) => {
     game.active = false;
     game.loading = false;
@@ -303,5 +314,6 @@ export function initGames() {
     void un.then((f) => f());
     void shown.then((f) => f());
     void started.then((f) => f());
+    void saves.then((f) => f());
   };
 }

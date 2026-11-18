@@ -41,6 +41,7 @@ mod phonestream;
 mod player;
 mod profile;
 mod remote;
+mod saves;
 mod immich;
 mod seerr;
 mod services;
@@ -414,6 +415,18 @@ async fn game_launch(
         .await
         .map_err(|e| e.to_string())?
         .inspect_err(|e| eprintln!("[games] launch failed: {e}"))
+}
+
+/// Whether a game's saves are shared with a linked AzotoTV, and how (saves.rs).
+#[tauri::command]
+fn saves_info(id: String) -> Option<saves::Info> {
+    saves::info(&id)
+}
+
+/// "shared", "local", or null (by itself: shared while the mods are the same).
+#[tauri::command]
+fn saves_set_mode(id: String, mode: Option<saves::Mode>) -> Result<(), String> {
+    saves::set_mode(&id, mode)
 }
 
 // ---- AzotoTV's own profile settings (profile.rs) -----------------------------
@@ -1193,6 +1206,8 @@ pub fn run() {
             game_save_settings,
             game_running,
             game_launch,
+            saves_info,
+            saves_set_mode,
             yt_search,
             yt_video,
             yt_channel,
