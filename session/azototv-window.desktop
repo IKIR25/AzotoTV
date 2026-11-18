@@ -1,0 +1,11 @@
+# The "AzotoTV" entry of the desktop's menu on a computer (install.sh without
+# --session): AzotoTV in a window, F11 for full screen. Not TV mode, so it
+# never switches screens off or turns a TV on.
+[Desktop Entry]
+Type=Application
+Name=AzotoTV
+Comment=Films, photos, music and games from the home server
+Comment[it]=Film, foto, musica e giochi dal server di casa
+Exec=@HOME@/azototv/azototv
+Icon=video-television
+Categories=AudioVideo;

@@ -2,11 +2,13 @@
 # Builds AzotoTV and installs it for the user running this, in ~/azototv.
 #
 #   ./install.sh                 build, install, add "AzotoTV" to the desktop's menu
+#                                (in a window, for a computer; F11: full screen)
 #   ./install.sh --mii           also fetch the Mii renderer first (FFL.js, AGPL: see README)
 #   ./install.sh --android       also build the Android app first (needs the Android SDK)
 #   ./install.sh --session       also the login session that boots straight into AzotoTV
 #                                (KDE Plasma 6; asks for sudo) and the udev rules for
-#                                TV remotes and controller lights
+#                                TV remotes and controller lights; the menu's "AzotoTV"
+#                                then goes back to that session
 #   ./install.sh --no-turbo      also the service that keeps CPU turbo off outside games
 #                                (for a laptop that gets hot under the TV; asks for sudo)
 #   ./install.sh --no-build      install what is already built
@@ -96,7 +98,10 @@ mkdir -p "$DEST" "$HOME/.config/azototv" "$HOME/.local/share/applications"
 install -m 755 "$BIN" "$DEST/azototv.new" && mv -f "$DEST/azototv.new" "$DEST/azototv"
 install -m 755 session/session.sh session/kiosk.sh session/tv-mode.sh session/joycon-pair.sh session/joycon-rate.py "$DEST/"
 [ -e "$DEST/run-tv.sh" ] || install -m 755 session/run-tv.sh "$DEST/"
-grep -v '^#' session/azototv-menu.desktop | sed "s|@HOME@|$HOME|g" >"$HOME/.local/share/applications/azototv.desktop"
+# the menu entry: back to the TV session on a TV machine, a window on a computer
+menu=session/azototv-window.desktop
+[ -n "$SESSION" ] && menu=session/azototv-menu.desktop
+grep -v '^#' "$menu" | sed "s|@HOME@|$HOME|g" >"$HOME/.local/share/applications/azototv.desktop"
 
 if [ -n "$SESSION" ]; then
   say "Login session and udev rules (sudo)"
@@ -126,7 +131,8 @@ say "Done"
 "$DEST/azototv" --system 2>/dev/null | sed 's/^/  /' || true
 cat <<EOT
 
-Start it:   $DEST/run-tv.sh   (or "AzotoTV" in the desktop's menu)
+Start it:   "AzotoTV" in the desktop's menu, or $DEST/azototv (a window, F11: full screen)
+On a TV:    $DEST/run-tv.sh (TV mode: full screen, switches the screens off when idle)
 First start asks for your Jellyfin server and a user.
 Everything else is optional and switched on by a file in ~/.config/azototv/:
 the examples are in examples/, what each does is in docs/SETUP.md.

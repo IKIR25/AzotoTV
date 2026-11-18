@@ -1,7 +1,8 @@
 # Setting AzotoTV up
 
 `./install.sh` builds AzotoTV and puts it in `~/azototv`. Start it with
-`~/azototv/run-tv.sh`; the first start asks for your Jellyfin server and a
+`~/azototv/run-tv.sh` on a TV, or "AzotoTV" in the desktop's menu on a
+computer (a window; F11 for full screen); the first start asks for your Jellyfin server and a
 user. That is all it needs: films, series, live TV and music from Jellyfin
 work from there.
 

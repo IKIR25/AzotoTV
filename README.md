@@ -96,8 +96,10 @@ git clone https://github.com/IKIR25/AzotoTV && cd AzotoTV
 ~/azototv/run-tv.sh
 ```
 
-`install.sh` says what is missing, builds, and installs into `~/azototv`. The
-first start asks for your Jellyfin server and a user, and films, series, live
+`install.sh` says what is missing, builds, and installs into `~/azototv`.
+`run-tv.sh` is TV mode (full screen, screens off when idle); on a computer,
+start "AzotoTV" from the desktop's menu instead: a window, F11 for full
+screen. The first start asks for your Jellyfin server and a user, and films, series, live
 TV and music work from there. `yt-dlp` adds YouTube, `ffmpeg` the Mii app's
 music.
 
