@@ -94,6 +94,22 @@ Games are added from the TV (Jellyfin administrators):
 - A game's **Edit** button: its name, players, Steam match, new pictures, or
   taking it out of AzotoTV (its files are never deleted).
 
+- **Steam games** (a computer with Steam): every installed one shows up in
+  Games by itself (`steam.rs`) and starts through Steam, which keeps its saves
+  and runs its controllers. Taking one out of AzotoTV hides it for good.
+- **START › Linked AzotoTVs** (`peer.rs`): link with the AzotoTV next to
+  Jellyfin (offered by itself) or one at an address. Both must use the same
+  Jellyfin and you must be its administrator; nothing else to type. Each one's
+  games then appear in the other's Games under "On <machine>", with Download:
+  the whole game folder (and a ROM or executable kept elsewhere) comes over
+  the home network into a game folder of your choice, and an interrupted
+  download picks up where it stopped. Steam games and Minecraft stay where
+  they are. AzotoTV listens on port 8686 (the phones' port): on a computer
+  with a firewall, open it to the home network, e.g. `sudo ufw allow from
+  192.168.0.0/16 to any port 8686 proto tcp`, or the other machine can't
+  see its games. Emulators are not sent along yet: the game page says when
+  this machine lacks one.
+
 Pictures come from Steam for Steam games, from SteamGridDB for everything when
 it has a key (START › Services), and from GameTDB for Wii and 3DS boxes;
 descriptions from Steam or Wikipedia.

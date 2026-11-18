@@ -82,6 +82,7 @@
     {#if svc}
       <h1>{svc.title}</h1>
       <p class="lead">{svc.what}</p>
+      {#if svc.found}<p class="found">{t('Found next to Jellyfin: the address is already filled in')}</p>{/if}
       {#each svc.fields as f (f.key)}
         <label>
           <span>{f.label}{#if f.optional}<em>{t('optional')}</em>{/if}</span>
@@ -118,6 +119,7 @@
   :global(.osk-open) .wrap { place-items: start center; }
   form { width: 64rem; border-radius: 2.4rem; padding: 3rem 4rem; display: grid; gap: 1.3rem; }
   h1 { font-size: 2.6rem; font-weight: 600; }
+  .found { font-size: 1.35rem; color: var(--accent); margin-top: -0.6rem; }
   .lead { font-size: 1.4rem; color: var(--muted); margin-top: -0.6rem; }
   label { display: grid; gap: 0.4rem; font-size: 1.3rem; color: var(--muted); }
   label em { font-style: normal; margin-left: 0.8rem; opacity: 0.7; }

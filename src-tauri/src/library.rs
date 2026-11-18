@@ -15,7 +15,9 @@
 //!   (`.3ds`, `.cci`, `.cxi`). Each new one gets a game folder in the first
 //!   library (`"added": "rom"`), its art and description looked up online
 //!   once. Default: `roms` inside the first library.
-//! - `hidden`: ROMs taken out of AzotoTV, so the search doesn't bring them back.
+//! - `hidden`: ROMs taken out of AzotoTV, so the search doesn't bring them back
+//!   (and Steam games, as `steam:<appid>`: Steam's installed games are added
+//!   by themselves, see `steam.rs`).
 //!
 //! A game added from the TV stays where it is: its `game.json` points at the
 //! executable (`"added": "pc"`). Art: SteamGridDB when it has a key (START ›
@@ -144,6 +146,20 @@ pub fn set_folders(folders: Vec<String>, roms: Vec<String>, unhide: bool) -> Res
     }
     save_config(&c)?;
     Ok(self::folders())
+}
+
+/// Makes `dir` one of the game folders, when it isn't (a game downloaded
+/// from another AzotoTV into a folder of its own).
+pub fn add_library(dir: &Path) -> Result<(), String> {
+    let canon_dir = canon(dir);
+    if libraries().iter().any(|l| canon(l) == canon_dir) {
+        return Ok(());
+    }
+    let mut c = config();
+    let mut folders = folder_names();
+    folders.push(dir.to_string_lossy().to_string());
+    c.folders = Some(folders);
+    save_config(&c)
 }
 
 // ---- browsing the disk (folder and file pickers) -------------------------------
@@ -463,7 +479,7 @@ pub fn scan() -> Vec<Hint> {
         walk(&expand_home(&dir), 3, &mut files);
     }
     files.sort();
-    let mut new = Vec::new();
+    let mut new = scan_steam(&cfg);
     for f in files {
         let c = canon(&f);
         if known.contains(&c) || hidden.contains(&c) {
@@ -476,6 +492,35 @@ pub fn scan() -> Vec<Hint> {
                 new.push(Hint { id, name: rom.name, kind: rom.kind, steam_appid: None, code: rom.code });
             }
             Err(e) => eprintln!("[library] {}: {e}", c.display()),
+        }
+    }
+    new
+}
+
+/// Steam games installed since the last look (see `steam.rs`). A game the
+/// library has already, under that Steam app id, isn't added twice.
+fn scan_steam(cfg: &Config) -> Vec<Hint> {
+    let apps = crate::steam::installed();
+    if apps.is_empty() {
+        return Vec::new();
+    }
+    let known: HashSet<u64> = ids()
+        .iter()
+        .filter_map(|id| fs::read_to_string(game_dir(id).join("game.json")).ok())
+        .filter_map(|t| serde_json::from_str::<Value>(&t).ok()?["steam_appid"].as_u64())
+        .collect();
+    let mut new = Vec::new();
+    for app in apps {
+        if known.contains(&u64::from(app.appid)) || cfg.hidden.contains(&format!("steam:{}", app.appid)) {
+            continue;
+        }
+        match create(&app.name, Kind::Steam, Path::new(""), "steam", json!({ "steam_appid": app.appid })) {
+            Ok(id) => {
+                eprintln!("[library] new from Steam: {}", app.name);
+                crate::steam::copy_art(app.appid, &game_dir(&id));
+                new.push(Hint { id, name: app.name, kind: Kind::Steam, steam_appid: Some(app.appid), code: None });
+            }
+            Err(e) => eprintln!("[library] {}: {e}", app.name),
         }
     }
     new
@@ -595,6 +640,11 @@ fn hint_for(id: &str) -> Result<Hint, String> {
 pub fn remove(id: &str) -> Result<(), String> {
     let (path, v) = manifest_value(id)?;
     let dir = game_dir(id);
+    if let (Some("steam"), Some(a)) = (v["added"].as_str(), v["steam_appid"].as_u64()) {
+        let mut c = config();
+        c.hidden.push(format!("steam:{a}"));
+        save_config(&c)?;
+    }
     if v["added"].as_str() == Some("rom") {
         if let Some(e) = v["exe"].as_str() {
             let mut c = config();

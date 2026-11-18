@@ -529,6 +529,7 @@ impl Phone {
     }
 
     pub fn start(self: &Arc<Self>, app: AppHandle) {
+        let app_for_peers = app.clone();
         let ctx = Ctx { app, phone: self.clone() };
         let router = Router::new()
             .route("/", get(page))
@@ -567,21 +568,24 @@ impl Phone {
             .route("/api/app/seerr/status", get(app_seerr_status))
             .route("/api/app/dl", get(app_dl))
             .route("/ws", get(ws))
-            .with_state(ctx);
+            .with_state(ctx)
+            // other AzotoTVs (peer.rs)
+            .merge(crate::peer::routes(app_for_peers));
         tauri::async_runtime::spawn(async move {
             let listener = match tokio::net::TcpListener::bind(("0.0.0.0", port())).await {
                 Ok(l) => l,
                 Err(e) => return eprintln!("[phone] cannot listen on port {}: {e}", port()),
             };
             eprintln!("[phone] listening on port {}", port());
-            if let Err(e) = axum::serve(listener, router).await {
+            // (the caller's address: peer.rs keeps a linked computer's up to date)
+            if let Err(e) = axum::serve(listener, router.into_make_service_with_connect_info::<std::net::SocketAddr>()).await {
                 eprintln!("[phone] server stopped: {e}");
             }
         });
     }
 }
 
-fn port() -> u16 {
+pub(crate) fn port() -> u16 {
     std::env::var("AZOTOTV_PHONE_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(PORT)
 }
 

@@ -40,6 +40,11 @@ use crate::games::{data_dir, home};
 
 const FLATPAK: &str = "org.azahar_emu.Azahar";
 
+/// Azahar's flatpak is here.
+pub fn installed() -> bool {
+    crate::games::flatpak_installed(FLATPAK)
+}
+
 /// azotopad's virtual Xbox 360 pad as SDL 2.26+ names it: bytes 2-3 are a
 /// CRC16 of its name ("Microsoft X-Box 360 pad" -> 81b8). Eden clears them
 /// before comparing, Azahar compares the whole string, so here they must be

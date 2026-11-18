@@ -158,6 +158,9 @@ pub struct Service {
     what: String,
     /// its file exists
     configured: bool,
+    /// not configured, but found on the Jellyfin server's machine: the
+    /// fields hold what was found
+    found: bool,
     fields: Vec<Field>,
 }
 
@@ -225,16 +228,25 @@ pub(crate) async fn admin(jf: &Jf) -> Result<(), String> {
 
 pub async fn list(jf: &Jf) -> Result<Vec<Service>, String> {
     admin(jf).await?;
+    let unset: Vec<&str> = DEFS.iter().filter(|d| read(d).is_none()).map(|d| d.id).collect();
+    let found = match jf.server() {
+        Some(base) if !unset.is_empty() => discover(&base, &unset).await,
+        _ => Vec::new(),
+    };
     Ok(DEFS
         .iter()
         .map(|d| {
             let file = read(d);
             let (title, what) = title(d.id);
+            let seen = found.iter().find(|(id, _)| *id == d.id).map(|(_, v)| v);
+            // what was found stands in for the file
+            let file = file.or_else(|| seen.map(|v| Value::Object(v.clone())));
             Service {
                 id: d.id,
                 title,
                 what,
-                configured: file.is_some(),
+                configured: seen.is_none() && file.is_some(),
+                found: seen.is_some(),
                 fields: d
                     .fields
                     .iter()
@@ -382,6 +394,119 @@ async fn test(def: &Def, vals: &[(&'static str, String)]) -> Result<Vec<String>,
 pub async fn try_values(id: &str, values: Map<String, Value>) -> Result<Vec<String>, String> {
     let def = def(id)?;
     test(def, &clean(def, &values)).await
+}
+
+// ---- finding the services by themselves -------------------------------------
+
+/// The services' usual ports on the Jellyfin server's machine, each checked
+/// for being that service (not just something answering there), so a new
+/// install only needs Jellyfin's address. Radarr and Sonarr hand their own
+/// key to the home network (their "not for local addresses" setting), so
+/// those come complete; the others still need a key or a password typed in.
+async fn discover(jf_base: &str, ids: &[&str]) -> Vec<(&'static str, Map<String, Value>)> {
+    let Some(host) = reqwest::Url::parse(jf_base).ok().and_then(|u| u.host_str().map(str::to_string)) else {
+        return Vec::new();
+    };
+    let host = if host.contains(':') { format!("[{host}]") } else { host };
+    let http = reqwest::Client::builder().timeout(Duration::from_millis(2500)).build().expect("http client");
+    let probes = ids.iter().filter_map(|id| {
+        let base = |port: u16| format!("http://{host}:{port}");
+        let http = http.clone();
+        let id: &'static str = DEFS.iter().find(|d| d.id == *id)?.id;
+        Some(async move {
+            let mut v = Map::new();
+            let mut put = |k: &str, x: String| set_in(&mut v, k, x);
+            match id {
+                "seerr" => {
+                    let b = base(5055);
+                    let p = http_json(&http, &format!("{b}/api/v1/settings/public")).await?;
+                    p.get("mediaServerLogin")?;
+                    http_json(&http, &format!("{b}/api/v1/status")).await?["version"].as_str()?;
+                    put("url", b);
+                }
+                "immich" => {
+                    let b = base(2283);
+                    (http_json(&http, &format!("{b}/api/server/ping")).await?["res"] == "pong").then_some(())?;
+                    put("url", b);
+                }
+                "arr" => {
+                    for (svc, name, port) in [("radarr", "Radarr", 7878), ("sonarr", "Sonarr", 8989)] {
+                        let b = base(port);
+                        let Some(init) = http_json(&http, &format!("{b}/initialize.json")).await else { continue };
+                        if init["apiRoot"] != "/api/v3" {
+                            continue;
+                        }
+                        // the key, when it's given out, proves which one it is
+                        match init["apiKey"].as_str().filter(|k| !k.is_empty()) {
+                            Some(key) => {
+                                let st = http.get(format!("{b}/api/v3/system/status")).header("X-Api-Key", key).send().await.ok();
+                                let st: Option<Value> = match st {
+                                    Some(r) if r.status().is_success() => r.json().await.ok(),
+                                    _ => None,
+                                };
+                                if st.as_ref().and_then(|s| s["appName"].as_str()) != Some(name) {
+                                    continue;
+                                }
+                                put(&format!("{svc}.apiKey"), key.to_string());
+                            }
+                            None if http_title(&http, &b).await.is_some_and(|t| t.contains(name)) => {}
+                            None => continue,
+                        }
+                        put(&format!("{svc}.url"), b);
+                    }
+                    if http_title(&http, &base(6500)).await.is_some_and(|t| t.contains("Real-Debrid Torrent Client")) {
+                        put("rdt.url", base(6500));
+                    }
+                    (!v.is_empty()).then_some(())?;
+                }
+                _ => return None,
+            }
+            Some((id, v))
+        })
+    });
+    futures_util::future::join_all(probes).await.into_iter().flatten().collect()
+}
+
+fn set_in(m: &mut Map<String, Value>, key: &str, x: String) {
+    let mut v = Value::Object(std::mem::take(m));
+    set(&mut v, key, Some(x));
+    if let Value::Object(o) = v {
+        *m = o;
+    }
+}
+
+async fn http_json(http: &reqwest::Client, url: &str) -> Option<Value> {
+    let r = http.get(url).send().await.ok()?;
+    if !r.status().is_success() {
+        return None;
+    }
+    r.json().await.ok()
+}
+
+/// The `<title>` of the page at `url`.
+async fn http_title(http: &reqwest::Client, url: &str) -> Option<String> {
+    let r = http.get(url).send().await.ok()?;
+    let body = r.text().await.ok()?;
+    let start = body.find("<title>")? + 7;
+    Some(body[start..start + body[start..].find('<')?].trim().to_string())
+}
+
+/// START › Services › "Set up what was found": saves every service that was
+/// found complete (no key to type), each tried first. One line per service.
+pub async fn setup_found(jf: &Jf) -> Result<Vec<(String, Result<Vec<String>, String>)>, String> {
+    let mut out = Vec::new();
+    for s in list(jf).await?.into_iter().filter(|s| s.found) {
+        let mut values: Map<String, Value> = s.fields.iter().map(|f| (f.key.to_string(), json!(f.value))).collect();
+        // RDT-Client found but without its user: Radarr / Sonarr alone are enough
+        if values.get("rdt.username").and_then(Value::as_str).is_none_or(str::is_empty) {
+            values.remove("rdt.url");
+        }
+        let def = def(s.id)?;
+        let missing = def.fields.iter().any(|fd| !fd.optional && values.get(fd.key).and_then(Value::as_str).is_none_or(str::is_empty));
+        let r = if missing { Err(t!("found: it needs its key, open it")) } else { save(jf, s.id, values).await };
+        out.push((s.title, r));
+    }
+    Ok(out)
 }
 
 /// AzotoTV's own Jellyfin API key: the one it made before, or a new one.

@@ -215,6 +215,24 @@ impl Jf {
         st.sessions.iter().find(|s| &s.user_id == cur).cloned()
     }
 
+    /// Whether `token` (from another AzotoTV, peer.rs) belongs to an
+    /// administrator of this Jellyfin. Err: Jellyfin doesn't know it.
+    pub async fn is_admin_token(&self, token: &str) -> Result<bool, String> {
+        let base = self.server().ok_or("no Jellyfin here")?;
+        let resp = self
+            .client
+            .get(format!("{base}/Users/Me"))
+            .header("Authorization", self.auth_header("", Some(token)))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            return Err(format!("HTTP {}", resp.status()));
+        }
+        let me: Value = resp.json().await.map_err(|e| e.to_string())?;
+        Ok(me["Policy"]["IsAdministrator"].as_bool() == Some(true))
+    }
+
     /// The session this device holds for `user_id` (signed in on the TV), active or not.
     pub fn session_of(&self, user_id: &str) -> Option<Session> {
         self.store.lock().unwrap().sessions.iter().find(|s| s.user_id == user_id).cloned()

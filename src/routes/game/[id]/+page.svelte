@@ -163,6 +163,10 @@
         <div class="hint">
           {t('To leave: Pause › Save and quit › Quit game. Holding {a} closes it at once, without saving the last few minutes.', { a: key('HOME') })}
         </div>
+      {:else if g.type === 'steam'}
+        <div class="hint">
+          {t('Starts through Steam, which keeps its saves and runs the controllers: quit the game to go back to AzotoTV')}
+        </div>
       {:else}
         <div class="hint">
           {input.desk

@@ -34,7 +34,8 @@
       players = g.players;
       appid = g.steam_appid;
       added = g.added;
-      isConsole = g.type === 'switch' || g.type === 'wii' || g.type === '3ds';
+      // (a Steam game's app id is what starts it: no picking another)
+      isConsole = g.type === 'switch' || g.type === 'wii' || g.type === '3ds' || g.type === 'steam';
       ready = true;
       if (!isConsole) void search();
       await tick();

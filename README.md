@@ -32,6 +32,11 @@ Nitro laptop.
   Added from the TV (pick the game's file, pictures and description are found
   online) or by dropping Switch / Wii / 3DS files in a ROM folder. One virtual
   controller per player (`crates/azotopad`), per-profile saves, optional mods.
+  On a computer with Steam, its installed Steam games are listed too (they
+  start through Steam).
+- **Linked AzotoTVs**: two installs (the TV and a computer) see each other's
+  games and download them over the home network, to play with whichever
+  machine's hardware is in front of you.
 - **Phones**: a web page AzotoTV serves on the home network: sign in with a
   profile's PIN or a code from the TV, then films, series, live TV and music
   playing on the phone (resume points shared with the TV, "watch on the TV" /
@@ -104,7 +109,8 @@ TV and music work from there. `yt-dlp` adds YouTube, `ffmpeg` the Mii app's
 music.
 
 Requests, photos and notifications are switched on from the TV, in
-**START › Services**. Everything else is optional too and described in
+**START › Services**, which finds the ones running next to Jellyfin by itself
+(Radarr and Sonarr fully, the others still need their API key). Everything else is optional too and described in
 **[docs/SETUP.md](docs/SETUP.md)**:
 requests, photos, notifications, the language, booting straight into AzotoTV
 (`./install.sh --session`), games, phones and game streaming.

@@ -47,9 +47,11 @@ export interface Game {
   name: string;
   /** when its art last changed: part of the picture URLs, so new art shows */
   art_stamp: number;
-  /** added from the TV: "pc" (a game where it is) or "rom" (found in a ROM folder) */
-  added: 'pc' | 'rom' | null;
-  type: 'native' | 'proton' | 'switch' | 'wii' | '3ds' | 'minecraft';
+  /** added from the TV: "pc" (a game where it is), "rom" (found in a ROM folder)
+   * or "steam" (installed with Steam on this machine) */
+  added: 'pc' | 'rom' | 'steam' | null;
+  /** "steam": started through Steam, which runs its controllers too */
+  type: 'native' | 'proton' | 'switch' | 'wii' | '3ds' | 'minecraft' | 'steam';
   /** "mobile" / "n64" / "nes" / "arcade": a port of a phone or console game, or an
    * arcade machine (MAME); otherwise `type` decides the platform */
   platform: 'mobile' | 'switch' | 'n64' | 'nes' | 'arcade' | null;
@@ -117,7 +119,7 @@ export async function loadGames(user: string) {
 export const PLATFORMS = ['PC', 'Mobile', 'Switch', '3DS', 'Wii', 'N64', 'NES', 'Arcade'] as const;
 export type Platform = (typeof PLATFORMS)[number];
 const PORTS = { mobile: 'Mobile', switch: 'Switch', n64: 'N64', nes: 'NES', arcade: 'Arcade' } as const;
-export const platform = (g: Game): Platform =>
+export const platform = (g: Pick<Game, 'platform' | 'type'>): Platform =>
   g.platform
     ? PORTS[g.platform]
     : g.type === 'switch'

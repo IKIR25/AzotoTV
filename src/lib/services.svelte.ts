@@ -15,6 +15,8 @@ export interface Service {
   title: string;
   what: string;
   configured: boolean;
+  /** not set up, but found on the Jellyfin server's machine (the fields hold what was found) */
+  found: boolean;
   fields: ServiceField[];
 }
 
@@ -27,5 +29,6 @@ export async function loadServices() {
 
 export const testService = (id: string, values: Record<string, string>) => invoke<string[]>('services_test', { id, values });
 export const saveService = (id: string, values: Record<string, string>) => invoke<string[]>('services_save', { id, values });
+export const setupFound = () => invoke<[string, { Ok?: string[]; Err?: string }][]>('services_setup_found');
 export const removeService = (id: string) => invoke<void>('services_remove', { id });
 export const restartApp = () => invoke<void>('app_restart');

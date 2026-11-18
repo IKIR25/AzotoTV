@@ -33,6 +33,7 @@ mod music;
 mod notify;
 mod overlay;
 mod pad;
+mod peer;
 mod phone;
 mod phonejf;
 mod phonescreen;
@@ -45,6 +46,7 @@ mod seerr;
 mod services;
 mod songs;
 mod sound;
+mod steam;
 mod steamemu;
 mod stream;
 mod system;
@@ -632,9 +634,65 @@ async fn services_save(jf: Jfs<'_>, id: String, values: serde_json::Map<String, 
     services::save(&jf, &id, values).await
 }
 
+/// START › Services › "Set up what was found": one (service, outcome) per found service.
+#[tauri::command]
+async fn services_setup_found(jf: Jfs<'_>) -> Result<Vec<(String, Result<Vec<String>, String>)>, String> {
+    services::setup_found(&jf).await
+}
+
 #[tauri::command]
 async fn services_remove(jf: Jfs<'_>, id: String) -> Result<(), String> {
     services::remove(&jf, &id).await
+}
+
+// ---- linked AzotoTVs (peer.rs) -----------------------------------------------
+
+/// The AzotoTV next to Jellyfin, to offer linking with.
+#[tauri::command]
+async fn peer_find(jf: Jfs<'_>) -> Result<Option<peer::Found>, String> {
+    Ok(peer::find(&jf).await)
+}
+
+#[tauri::command]
+async fn peer_link(jf: Jfs<'_>, url: String) -> Result<peer::Peer, String> {
+    peer::link(&jf, &url).await
+}
+
+#[tauri::command]
+async fn peer_unlink(jf: Jfs<'_>, id: String) -> Result<(), String> {
+    peer::unlink(&jf, &id).await
+}
+
+#[tauri::command]
+async fn peer_status() -> Vec<peer::PeerState> {
+    peer::status().await
+}
+
+/// The linked AzotoTVs' games (the ones that answer now).
+#[tauri::command]
+async fn peer_games() -> Vec<peer::Remote> {
+    peer::games().await
+}
+
+#[tauri::command]
+fn peer_download(app: AppHandle, dl: State<'_, Arc<peer::Downloads>>, peer: String, game: String, name: String, into: String) -> Result<(), String> {
+    dl.start(app, &peer, &game, &name, &into)
+}
+
+#[tauri::command]
+fn peer_cancel(dl: State<'_, Arc<peer::Downloads>>, peer: String, game: String) {
+    dl.cancel(&peer, &game);
+}
+
+#[tauri::command]
+fn peer_downloads(dl: State<'_, Arc<peer::Downloads>>) -> Vec<peer::Progress> {
+    dl.list()
+}
+
+/// The game folders a download can go into (the first is the default).
+#[tauri::command]
+fn peer_targets() -> Vec<String> {
+    library::folder_names()
 }
 
 /// AzotoTV from the start (after a service changed: each reads its file once).
@@ -972,6 +1030,7 @@ pub fn run() {
         .manage(songs)
         .manage(tv::Tv::load())
         .manage(phone::Phone::new())
+        .manage(peer::Downloads::new())
         .manage(controllers::Controllers::new())
         // jf://localhost/Items/<id>/Images/Primary?maxWidth=400 -> Jellyfin, cached on disk
         .register_asynchronous_uri_scheme_protocol("jf", move |_ctx, request, responder| {
@@ -998,7 +1057,12 @@ pub fn run() {
             let path = request.uri().path().to_string();
             tauri::async_runtime::spawn_blocking(move || responder.respond(image_response(games::art(&path))));
         })
-        // yt://localhost/vi/<video id>/<file> and /av/<avatar URL> -> YouTube, cached on disk
+        // peer://localhost/<peer>/<game id>/<kind> -> a linked AzotoTV's game art
+        .register_asynchronous_uri_scheme_protocol("peer", move |_ctx, request, responder| {
+            let path = request.uri().path().to_string();
+            tauri::async_runtime::spawn(async move { responder.respond(image_response(peer::art(&path).await)) });
+        })
+                // yt://localhost/vi/<video id>/<file> and /av/<avatar URL> -> YouTube, cached on disk
         .register_asynchronous_uri_scheme_protocol("yt", move |_ctx, request, responder| {
             let yt = yt_proto.clone();
             let path = request.uri().path().to_string();
@@ -1076,6 +1140,16 @@ pub fn run() {
             services_test,
             services_save,
             services_remove,
+            services_setup_found,
+            peer_find,
+            peer_link,
+            peer_unlink,
+            peer_status,
+            peer_games,
+            peer_download,
+            peer_cancel,
+            peer_downloads,
+            peer_targets,
             app_restart,
             tv::tv_power,
             tv::tv_unpaired,

@@ -33,6 +33,11 @@ use crate::games::data_dir;
 
 const FLATPAK: &str = "org.DolphinEmu.dolphin-emu";
 
+/// Dolphin is here (its flatpak, or `$AZOTOTV_DOLPHIN`).
+pub fn installed() -> bool {
+    std::env::var_os("AZOTOTV_DOLPHIN").is_some() || crate::games::flatpak_installed(FLATPAK)
+}
+
 fn user_dir() -> PathBuf {
     data_dir().join("dolphin")
 }

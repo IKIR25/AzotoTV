@@ -81,6 +81,8 @@ pub enum Kind {
     N3ds,
     /// a Prism Launcher instance (`exe` = its folder)
     Minecraft,
+    /// installed with Steam on this machine, started through it (`steam_appid`; see `steam.rs`)
+    Steam,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -339,8 +341,23 @@ pub(crate) fn player_dir(user: &str) -> PathBuf {
     data_dir().join("players").join(user)
 }
 
+/// A flatpak app installed for this user or the whole system.
+pub(crate) fn flatpak_installed(app: &str) -> bool {
+    [home().join(".local/share/flatpak/app").join(app), PathBuf::from("/var/lib/flatpak/app").join(app)].iter().any(|p| p.is_dir())
+}
+
+pub(crate) fn has_proton() -> bool {
+    proton_path().is_some()
+}
+
+/// "GE-Proton11-12" -> [11, 12], to sort versions as numbers (11-12 after 11-9).
+fn version_key(name: &str) -> Vec<u32> {
+    name.split(|c: char| !c.is_ascii_digit()).filter_map(|n| n.parse().ok()).collect()
+}
+
 /// Proton for umu: $AZOTOTV_PROTON, else the distro's proton-cachyos, else the
-/// newest GE-Proton in Steam's compatibilitytools.d.
+/// newest GE-Proton in Steam's compatibilitytools.d, else a Proton Steam
+/// installed for its own games (on a computer with Steam).
 fn proton_path() -> Option<PathBuf> {
     if let Some(p) = std::env::var_os("AZOTOTV_PROTON") {
         return Some(p.into());
@@ -349,14 +366,19 @@ fn proton_path() -> Option<PathBuf> {
     if distro.join("proton").exists() {
         return Some(distro);
     }
-    let mut ge: Vec<PathBuf> = std::fs::read_dir(home().join(".local/share/Steam/compatibilitytools.d"))
-        .ok()?
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("GE-Proton")))
-        .collect();
-    ge.sort();
-    ge.pop()
+    let steam = home().join(".local/share/Steam");
+    let newest = |dir: PathBuf, prefix: &str| {
+        let mut v: Vec<PathBuf> = std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.join("proton").exists() && p.file_name().is_some_and(|n| n.to_string_lossy().starts_with(prefix)))
+            .collect();
+        v.sort_by_key(|p| version_key(&p.file_name().unwrap_or_default().to_string_lossy()));
+        v.pop()
+    };
+    newest(steam.join("compatibilitytools.d"), "GE-Proton").or_else(|| newest(steam.join("steamapps/common"), "Proton"))
 }
 
 fn valid_id(id: &str) -> bool {
@@ -437,6 +459,9 @@ pub fn list(user: &str) -> Vec<GameInfo> {
             let m = read_manifest(&id).ok()?;
             if m.added.as_deref() == Some("rom") && !Path::new(&m.exe).exists() {
                 return None; // its ROM is gone (another disk, deleted)
+            }
+            if m.kind == Kind::Steam && !m.steam_appid.is_some_and(crate::steam::is_installed) {
+                return None; // uninstalled from Steam
             }
             let info = read_info(&id);
             // the pad as the first chapter has it (chapters may override the game's)
@@ -1227,7 +1252,10 @@ impl Games {
             (Some(_), _) => return Err(t!("applet: only for Switch games")),
             _ => None,
         };
-        if applet.is_none() && !exe.exists() {
+        if m.kind == Kind::Steam && !m.steam_appid.is_some_and(crate::steam::is_installed) {
+            return Err(t!("Steam doesn't have this game installed"));
+        }
+        if applet.is_none() && m.kind != Kind::Steam && !exe.exists() {
             return Err(t!("executable not found: {a}", a = exe.display()));
         }
         let cwd = exe.parent().unwrap_or(&dir).to_path_buf();
@@ -1293,6 +1321,9 @@ impl Games {
             Kind::N3ds => {
                 cmd = crate::azahar::command(&player, user_name, &exe, split_tv.is_some())?;
             }
+            Kind::Steam => {
+                cmd = crate::steam::command(m.steam_appid.unwrap_or_default());
+            }
             Kind::Minecraft => {
                 cmd = crate::minecraft::command(&player, user_name, &exe, world)?;
                 let (p, i) = (player.clone(), exe.clone());
@@ -1304,7 +1335,7 @@ impl Games {
             crate::steamemu::prepare(m.kind, user, user_name, id)?;
         }
         cmd.args(&m.args).current_dir(&cwd).stdin(Stdio::null());
-        if let Some(a) = m.steam_appid {
+        if let Some(a) = m.steam_appid.filter(|_| m.kind != Kind::Steam) {
             // tells Steamworks the game was started by Steam, so it doesn't try to restart through it
             cmd.env("SteamAppId", a.to_string()).env("SteamGameId", a.to_string());
         }
@@ -1359,12 +1390,15 @@ impl Games {
         let (pg, q) = (pgid.clone(), quit.clone());
         // a one-player game listens to player 1 only: every pad switched on drives it
         let players = m.players.max(1) as usize;
-        let session = azotopad::Session::start(&profile, settings(user).cursor_sensitivity.clamp(0.2, 3.0), players, move || {
-            eprintln!("[games] Home held: closing the game");
-            q.store(true, Ordering::Relaxed);
-            terminate(&pg);
+        // a Steam game's controllers are Steam's (Steam Input), not azotopad's
+        let session = (m.kind != Kind::Steam).then(|| {
+            azotopad::Session::start(&profile, settings(user).cursor_sensitivity.clamp(0.2, 3.0), players, move || {
+                eprintln!("[games] Home held: closing the game");
+                q.store(true, Ordering::Relaxed);
+                terminate(&pg);
+            })
         });
-        let mut session = match session {
+        let mut session = match session.transpose() {
             Ok(s) => s,
             Err(e) => {
                 crate::pad::set_paused(false);
@@ -1373,13 +1407,13 @@ impl Games {
         };
         // let udev publish the virtual devices before the game looks for pads
         std::thread::sleep(Duration::from_millis(300));
-        if matches!(m.kind, Kind::Switch | Kind::Wii | Kind::N3ds) {
+        if let (Some(session), Kind::Switch | Kind::Wii | Kind::N3ds) = (session.as_mut(), m.kind) {
             // the Joy-Cons' motion (the emulator reads it over DSU)
             if let Err(e) = session.serve_motion() {
                 eprintln!("[games] motion: {e}");
             }
         }
-        if matches!(m.kind, Kind::Switch | Kind::Wii) {
+        if let (Some(session), Kind::Switch | Kind::Wii) = (session.as_ref(), m.kind) {
             // one player per controller switched on now (the Controller screen
             // came first): a connected Wii Remote nobody holds still shows
             // its pointer (Galaxy's player 2 star)
@@ -1398,7 +1432,7 @@ impl Games {
                 eprintln!("[games] players: {e}");
             }
         }
-        let ignore: Vec<String> = session.pads().iter().map(|(v, p)| format!("0x{v:04x}/0x{p:04x}")).collect();
+        let ignore: Vec<String> = session.iter().flat_map(|s| s.pads()).map(|(v, p)| format!("0x{v:04x}/0x{p:04x}")).collect();
         if !ignore.is_empty() {
             cmd.env("SDL_GAMECONTROLLER_IGNORE_DEVICES", ignore.join(","));
         }
@@ -1430,7 +1464,9 @@ impl Games {
                     crate::phonescreen::set_second_screen(false);
                 }
                 set_panel(true);
-                session.stop();
+                if let Some(s) = session.take() {
+                    s.stop();
+                }
                 crate::pad::set_paused(false);
                 return Err(format!("{}: {e}", exe.display()));
             }
@@ -1438,11 +1474,11 @@ impl Games {
         pgid.store(child.id() as i32, Ordering::Relaxed);
         eprintln!("[games] started {id} (pid {})", child.id());
         set_turbo(true);
-        if let Some(key) = fullscreen_key {
+        if let (Some(key), Some(session)) = (fullscreen_key, &session) {
             let (tapper, pid) = (session.tapper(), child.id());
             std::thread::spawn(move || make_fullscreen(pid, key, tapper));
         }
-        if let Some(a) = applet {
+        if let (Some(a), Some(session)) = (applet, &session) {
             let (tapper, pid) = (session.tapper(), child.id());
             std::thread::spawn(move || open_applet(pid, a, tapper));
         }
@@ -1478,7 +1514,9 @@ impl Games {
                     crate::phonescreen::set_second_screen(false);
                 }
                 set_panel(true);
-                session.stop();
+                if let Some(s) = session.take() {
+                    s.stop();
+                }
                 crate::pad::set_paused(false);
                 *hidden.lock().unwrap() = true;
                 set_ui_visible(&app, true);

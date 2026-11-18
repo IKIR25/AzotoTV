@@ -14,6 +14,9 @@
   } from '$lib/games.svelte';
   import { gamePin, worldPin } from '$lib/pins.svelte';
   import { admin, checkAdmin } from '$lib/admin.svelte';
+  import { download, loadRemote, peers, remoteArt, size, watchDownloads, type Remote } from '$lib/peers.svelte';
+  import { listen } from '@tauri-apps/api/event';
+  import { onMount } from 'svelte';
 
   // The Giochi app: a tab per console (PC, Mobile, Switch, 3DS, Wii, N64, NES, Arcade; only those
   // with games), switched with LB / RB from anywhere on the page or with A on
@@ -27,11 +30,34 @@
   ];
   let sort = $state(0);
   let failed = $state(false);
-  const tabs = $derived(PLATFORMS.filter((p) => library.games.some((g) => platform(g) === p)));
+  // games on linked AzotoTVs (peer.rs) not downloaded here yet, under their own heading in each tab
+  const remote = $derived(peers.remote.filter((r) => !r.here));
+  const tabs = $derived(PLATFORMS.filter((p) => library.games.some((g) => platform(g) === p) || remote.some((r) => platform(r) === p)));
   const tab = $derived(tabs.includes(giochiTab.platform) ? giochiTab.platform : (tabs[0] ?? 'PC'));
   const inTab = $derived(library.games.filter((g) => platform(g) === tab));
   const games = $derived(SORTS[sort].order(inTab.filter((g) => g.type !== 'minecraft')));
   const minecraft = $derived(inTab.filter((g) => g.type === 'minecraft'));
+  /** this tab's remote games, by the AzotoTV they're on */
+  const elsewhere = $derived.by(() => {
+    const by = new Map<string, Remote[]>();
+    for (const r of SORTS[sort].order(remote.filter((r) => platform(r) === tab) as unknown as Game[]) as unknown as Remote[])
+      by.set(r.peer_name, [...(by.get(r.peer_name) ?? []), r]);
+    return [...by];
+  });
+
+  onMount(() => {
+    watchDownloads();
+    void loadRemote().catch(() => {});
+    // a download finished: it's a game of this library now
+    const un = listen('games-changed', () => void loadRemote().catch(() => {}));
+    return () => void un.then((f) => f());
+  });
+
+  function remoteSub(r: Remote) {
+    const d = download(r);
+    if (d?.state === 'running') return t('Downloading · {pct}%', { pct: d.total ? Math.floor((d.done / d.total) * 100) : 0 });
+    return r.missing ? t('{size} · needs {what}', { size: size(r.size), what: r.missing }) : size(r.size);
+  }
 
   /** Opens tab `p`. From the covers, focus goes to the new tab's first cover; else it stays on the tabs. */
   async function open(p: Platform) {
@@ -123,7 +149,7 @@
 
   {#if failed && !library.games.length}
     <p class="msg">{t('Couldn\'t read the game library.')}</p>
-  {:else if library.user === auth.id && !library.games.length}
+  {:else if library.user === auth.id && !library.games.length && !remote.length}
     <p class="msg">{admin.is ? t('No games yet: add one, or put Switch, Wii and 3DS files in a ROM folder (Game folders).') : t('No games installed.')}</p>
   {/if}
 
@@ -136,6 +162,26 @@
       {/each}
     </div>
   {/if}
+
+  {#each elsewhere as [name, rs] (name)}
+    <section>
+      <h2>{t('On {name}', { name })}<small>{t('Download a game to play it here')}</small></h2>
+      <div class="grid">
+        {#each rs as r (`${r.peer}/${r.id}`)}
+          <Card
+            tile={{
+              key: `p-${r.peer}-${r.id}`,
+              src: remoteArt(r, 'cover'),
+              title: r.name,
+              sub: remoteSub(r),
+              progress: download(r)?.state === 'running' ? (download(r)!.done / Math.max(1, download(r)!.total)) : undefined,
+              open: () => goto(`/peer/${r.peer}/${encodeURIComponent(r.id)}`),
+            }}
+          />
+        {/each}
+      </div>
+    </section>
+  {/each}
 
   {#each minecraft as g (g.id)}
     <section>
@@ -199,6 +245,7 @@
   .chip.sel:focus { background: var(--focus-bg); }
   .msg { padding: 2rem 6rem; font-size: 1.8rem; color: var(--muted); }
   h2 { font-size: 1.9rem; font-weight: 600; margin: 1.6rem 6rem 0; }
+  h2 small { font-size: 1.3rem; font-weight: 400; color: var(--muted); margin-left: 1.4rem; }
   .grid {
     display: grid; grid-template-columns: repeat(7, 14rem); gap: 2.2rem 1.4rem;
     padding: 1.4rem 6rem 2rem; justify-content: start;

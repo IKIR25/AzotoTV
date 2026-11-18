@@ -253,6 +253,19 @@
     </span>
     <span class="txt">{t('Services')}<small>{t('Seerr, Immich, Radarr / Sonarr…')}</small></span>
   </button>
+  <button
+    class="opt"
+    data-focusable
+    onclick={() => {
+      close();
+      goto('/peers');
+    }}
+  >
+    <span class="ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="9" height="6.5" rx="1.2" /><rect x="12.5" y="12.5" width="9" height="6.5" rx="1.2" /><path d="M7 11.5v4h5.5M17 12.5v-4h-5.5" /></svg>
+    </span>
+    <span class="txt">{t('Linked AzotoTVs')}<small>{t('Games from the TV on a computer, and back')}</small></span>
+  </button>
   {/if}
 
   <button
