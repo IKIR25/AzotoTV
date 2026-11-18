@@ -56,7 +56,7 @@
   function remoteSub(r: Remote) {
     const d = download(r);
     if (d?.state === 'running') return t('Downloading · {pct}%', { pct: d.total ? Math.floor((d.done / d.total) * 100) : 0 });
-    return r.missing ? t('{size} · needs {what}', { size: size(r.size), what: r.missing }) : size(r.size);
+    return r.missing && !r.brings ? t('{size} · needs {what}', { size: size(r.size), what: r.missing }) : size(r.size);
   }
 
   /** Opens tab `p`. From the covers, focus goes to the new tab's first cover; else it stays on the tabs. */

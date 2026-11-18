@@ -36,8 +36,12 @@ export interface Remote {
   size: number;
   /** downloaded here already: the local game's id */
   here: string | null;
+  /** bytes: the emulator and what it needs, for a machine without it */
+  runner_size: number;
   /** what this machine lacks to play it ("Eden"), when something */
   missing: string | null;
+  /** it comes along with the download (else it's to install by hand) */
+  brings: boolean;
 }
 
 export interface Progress {
@@ -50,6 +54,8 @@ export interface Progress {
   state: 'running' | 'done' | 'error' | 'cancelled';
   error: string | null;
   id: string | null;
+  /** after the files: "Installing Dolphin" */
+  step: string | null;
 }
 
 export const peers = $state({ remote: [] as Remote[], downloads: {} as Record<string, Progress> });

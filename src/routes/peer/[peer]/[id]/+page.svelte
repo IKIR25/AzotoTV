@@ -81,20 +81,23 @@
       </div>
       {#if r.description}<p>{r.description}</p>{/if}
 
-      {#if r.missing}
-        <p class="warn">{t('To play it here, this computer also needs {what}: not installed yet.', { what: r.missing })}</p>
+      {#if r.missing && r.brings}
+        <p class="note">{t('This computer doesn\'t have {what} yet: it comes along with the game', { what: r.missing })}{#if r.runner_size}{' '}({size(r.runner_size)}){/if}</p>
+      {:else if r.missing}
+        <p class="warn">{t('To play it here, this computer also needs {what}: install it with the system\'s packages.', { what: r.missing })}</p>
       {/if}
 
       {#if r.here || d?.state === 'done'}
         <div class="actions">
           <button class="btn primary" data-focusable data-key="download" onclick={() => goto(`/game/${r.here ?? d?.id}`)}>{t('▶ Play|game')}</button>
         </div>
+        {#if d?.error}<p class="warn">{d.error}</p>{/if}
         <div class="hint">{t('Downloaded: it is a game of this library now')}</div>
       {:else if d?.state === 'running'}
         <div class="progress">
           <div class="bar"><span style="width:{pct}%"></span></div>
           <div class="nums">
-            <span>{pct}% · {size(d.done)} / {size(d.total)}</span>
+            <span>{d.step ?? `${pct}% · ${size(d.done)} / ${size(d.total)}`}</span>
             {#if d.speed}<span>{speed(d.speed)}{#if left !== null} · {left < 1 ? t('less than a minute') : t('about {m} min', { m: left })}{/if}</span>{/if}
           </div>
         </div>
@@ -148,6 +151,7 @@
     display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
   }
   .warn { color: var(--danger-text); font-size: 1.4rem; }
+  .note { color: var(--muted); font-size: 1.4rem; }
   .err { color: var(--danger-text); font-size: 1.4rem; }
   .where { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 2rem; }
   .where .k { font-size: 1.3rem; color: var(--muted); margin-right: 0.4rem; }

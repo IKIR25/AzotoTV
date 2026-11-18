@@ -107,8 +107,13 @@ Games are added from the TV (Jellyfin administrators):
   they are. AzotoTV listens on port 8686 (the phones' port): on a computer
   with a firewall, open it to the home network, e.g. `sudo ufw allow from
   192.168.0.0/16 to any port 8686 proto tcp`, or the other machine can't
-  see its games. Emulators are not sent along yet: the game page says when
-  this machine lacks one.
+  see its games. What a game needs comes along when this machine lacks it:
+  Eden with the keys and firmware (Switch), the game's updates and DLC from
+  `~/Eden/Extra`, its mods (also the ones switched on, which sit in the
+  emulator's folders), Dolphin's HD packs for that disc, a Proton; Dolphin
+  and Azahar are installed from Flathub. Files already on this machine (your
+  own keys, say) are never replaced. MAME and umu-launcher are system
+  packages: the game page says when one is missing.
 
 Pictures come from Steam for Steam games, from SteamGridDB for everything when
 it has a key (START › Services), and from GameTDB for Wii and 3DS boxes;

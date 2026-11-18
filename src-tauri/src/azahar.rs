@@ -38,7 +38,7 @@ use std::{
 
 use crate::games::{data_dir, home};
 
-const FLATPAK: &str = "org.azahar_emu.Azahar";
+pub(crate) const FLATPAK: &str = "org.azahar_emu.Azahar";
 
 /// Azahar's flatpak is here.
 pub fn installed() -> bool {

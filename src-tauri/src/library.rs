@@ -276,6 +276,11 @@ fn disc_header(path: &Path) -> Option<Disc> {
     parse_disc(&h)
 }
 
+/// A Wii / GameCube disc's 6-letter ID ("RMGP01").
+pub(crate) fn disc_id(path: &Path) -> Option<String> {
+    disc_header(path).map(|d| d.id)
+}
+
 fn parse_disc(h: &[u8; 0x60]) -> Option<Disc> {
     let wii = h[0x18..0x1c] == [0x5D, 0x1C, 0x9E, 0xA3];
     let gc = h[0x1c..0x20] == [0xC2, 0x33, 0x9F, 0x3D];

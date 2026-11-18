@@ -31,7 +31,7 @@ use std::{
 
 use crate::games::data_dir;
 
-const FLATPAK: &str = "org.DolphinEmu.dolphin-emu";
+pub(crate) const FLATPAK: &str = "org.DolphinEmu.dolphin-emu";
 
 /// Dolphin is here (its flatpak, or `$AZOTOTV_DOLPHIN`).
 pub fn installed() -> bool {

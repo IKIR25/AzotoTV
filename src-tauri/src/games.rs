@@ -350,6 +350,11 @@ pub(crate) fn has_proton() -> bool {
     proton_path().is_some()
 }
 
+/// The Proton this machine runs Windows games with (its folder).
+pub(crate) fn proton_dir() -> Option<PathBuf> {
+    proton_path()
+}
+
 /// "GE-Proton11-12" -> [11, 12], to sort versions as numbers (11-12 after 11-9).
 fn version_key(name: &str) -> Vec<u32> {
     name.split(|c: char| !c.is_ascii_digit()).filter_map(|n| n.parse().ok()).collect()

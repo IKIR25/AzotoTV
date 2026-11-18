@@ -235,6 +235,18 @@ fn ini_set(lines: &mut Vec<String>, group: &str, key: &str, value: &str) {
     }
 }
 
+/// Adds `dir` to Eden's external content folders (updates, DLC), unless
+/// it's there (`[UI]` `Paths\external_content_dirs\<n>\path`).
+fn add_external_dir(lines: &mut Vec<String>, dir: &str) {
+    let get = |lines: &[String], k: &str| lines.iter().find_map(|l| l.strip_prefix(&format!("Paths\\{k}=")).map(str::to_string));
+    let n: usize = get(lines, "external_content_dirs\\size").and_then(|v| v.parse().ok()).unwrap_or(0);
+    if (1..=n).any(|i| get(lines, &format!("external_content_dirs\\{i}\\path")).as_deref() == Some(dir)) {
+        return;
+    }
+    ini_set(lines, "UI", &format!("Paths\\external_content_dirs\\{}\\path", n + 1), dir);
+    ini_set(lines, "UI", "Paths\\external_content_dirs\\size", &(n + 1).to_string());
+}
+
 fn prepare_config() -> Result<PathBuf, String> {
     let dir = config_home().join("eden");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -262,6 +274,11 @@ fn prepare_config() -> Result<PathBuf, String> {
         ("firstStart", "false"),
     ] {
         ini_set(&mut lines, "UI", k, v);
+    }
+    // updates and DLC brought by another AzotoTV (peer.rs) land in ~/Eden/Extra
+    let extra = home().join("Eden/Extra");
+    if extra.is_dir() {
+        add_external_dir(&mut lines, &extra.to_string_lossy());
     }
     ini_set(&mut lines, "Controls", "motion_enabled", "true");
     ini_set(&mut lines, "Controls", "udp_input_servers", &format!("127.0.0.1:{}", azotopad::motion::PORT));
@@ -389,6 +406,19 @@ pub fn command(player: &Path, user_name: &str, game: &Path) -> Result<Command, S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extra_folder_added_once() {
+        let mut l: Vec<String> = ["[UI]", "Paths\\external_content_dirs\\1\\path=/a", "Paths\\external_content_dirs\\size=1"].map(String::from).to_vec();
+        add_external_dir(&mut l, "/a");
+        assert_eq!(l.len(), 3);
+        add_external_dir(&mut l, "/b");
+        assert!(l.contains(&"Paths\\external_content_dirs\\2\\path=/b".to_string()));
+        assert!(l.contains(&"Paths\\external_content_dirs\\size=2".to_string()));
+        let mut empty = Vec::new();
+        add_external_dir(&mut empty, "/b");
+        assert!(empty.contains(&"Paths\\external_content_dirs\\1\\path=/b".to_string()));
+    }
 
     #[test]
     fn ini_set_replaces_and_inserts() {

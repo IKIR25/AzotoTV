@@ -221,8 +221,11 @@ pub struct Offer {
     pub art: Vec<String>,
     pub art_stamp: u64,
     pub players: u32,
-    /// bytes, everything that goes
+    /// bytes: the game (with its mods, updates, DLC)
     pub size: u64,
+    /// bytes: the emulator and what it needs, for a machine that has none
+    #[serde(default)]
+    pub runner_size: u64,
 }
 
 async fn games_out(State(ctx): State<Ctx>, ConnectInfo(from): ConnectInfo<SocketAddr>, h: HeaderMap) -> Response {
@@ -236,7 +239,8 @@ async fn games_out(State(ctx): State<Ctx>, ConnectInfo(from): ConnectInfo<Socket
             .filter_map(|g| {
                 let files = cached_files(&lists, &g.id).ok()?;
                 Some(Offer {
-                    size: files.iter().map(|e| e.size).sum(),
+                    size: files.iter().filter(|e| e.runner.is_none()).map(|e| e.size).sum(),
+                    runner_size: files.iter().filter(|e| e.runner.is_some()).map(|e| e.size).sum(),
                     id: g.id,
                     name: g.name,
                     kind: g.kind,
@@ -271,10 +275,14 @@ async fn art_out(ConnectInfo(from): ConnectInfo<SocketAddr>, h: HeaderMap, UrlPa
 /// folder) and where it is here.
 #[derive(Clone)]
 struct Entry {
+    /// relative to the new game folder, or `~/…` (relative to the home:
+    /// an emulator, its keys, a Switch game's updates)
     path: String,
     src: Source,
     size: u64,
     exec: bool,
+    /// part of an emulator rather than of the game ("eden", "proton"…)
+    runner: Option<&'static str>,
 }
 
 #[derive(Clone)]
@@ -282,6 +290,9 @@ enum Source {
     File(PathBuf),
     /// the changed game.json
     Bytes(Arc<Vec<u8>>),
+    /// a symbolic link to something in the same game folder: its target,
+    /// relative to the link's own folder (so it still works after the move)
+    Link(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -290,6 +301,11 @@ struct FileInfo {
     size: u64,
     #[serde(default)]
     exec: bool,
+    /// a link to make instead of a file to fetch
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    link: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    runner: Option<String>,
 }
 
 fn cached_files(lists: &Mutex<HashMap<String, (Instant, Arc<Vec<Entry>>)>>, game: &str) -> Result<Arc<Vec<Entry>>, String> {
@@ -315,6 +331,35 @@ fn files(game: &str) -> Result<Vec<Entry>, String> {
     }
     let mut out = Vec::new();
     walk(&dir, &dir, &mut out);
+    let orig_exe = m["exe"].as_str().filter(|e| !e.is_empty()).map(|e| if e.starts_with('/') || e.starts_with("~/") { crate::games::expand_home(e) } else { dir.join(e) });
+    // mods (and their loader) that are switched on sit where the emulator
+    // finds them, not in the game folder (mods.rs moves them): they go from
+    // there, to their place in the folder
+    let mut taken: Vec<PathBuf> = Vec::new();
+    let places = m["mods"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|md| md["files"].as_array().into_iter().flatten())
+        .chain(m["mod_loader"].as_array().into_iter().flatten());
+    for pl in places {
+        let (Some(stored), Some(active)) = (pl["stored"].as_str(), pl["active"].as_str()) else { continue };
+        let stored = stored.trim_end_matches('/');
+        if !Path::new(stored).components().all(|c| matches!(c, Component::Normal(_))) || dir.join(stored).exists() {
+            continue;
+        }
+        let a = crate::games::expand_home(active);
+        if a.exists() {
+            taken.extend(fs::canonicalize(&a));
+            add_tree(&a, stored, None, &mut out);
+        }
+    }
+    if kind == Kind::Switch {
+        if let Some(exe) = &orig_exe {
+            switch_extras(exe, &taken, &mut out);
+        }
+    }
+    runner_files(kind, orig_exe.as_deref(), &mut out);
     // an executable or ROM elsewhere goes into ext/, and the game.json that goes points there
     let ext = |m: &mut Value, out: &mut Vec<Entry>| -> Result<(), String> {
         let Some(e) = m["exe"].as_str().filter(|e| !e.is_empty()) else { return Ok(()) };
@@ -330,13 +375,14 @@ fn files(game: &str) -> Result<Vec<Entry>, String> {
         let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "game".into());
         let rel = format!("ext/{name}");
         if !out.iter().any(|x: &Entry| x.path == rel) {
-            out.push(Entry { path: rel.clone(), size: meta.len(), exec: is_exec(&meta), src: Source::File(p) });
+            out.push(Entry { path: rel.clone(), size: meta.len(), exec: is_exec(&meta), src: Source::File(p), runner: None });
         }
         m["exe"] = json!(rel);
         Ok(())
     };
     ext(&mut m, &mut out)?;
-    if let Some(chapters) = m["chapters"].as_array_mut() {
+    // (get_mut: indexing would add "chapters": null to a game without them)
+    if let Some(chapters) = m.get_mut("chapters").and_then(Value::as_array_mut) {
         for c in chapters {
             ext(c, &mut out)?;
         }
@@ -347,8 +393,76 @@ fn files(game: &str) -> Result<Vec<Entry>, String> {
     }
     let bytes = Arc::new(serde_json::to_string_pretty(&m).unwrap_or_default().into_bytes());
     out.retain(|e| e.path != "game.json");
-    out.push(Entry { path: "game.json".into(), size: bytes.len() as u64, exec: false, src: Source::Bytes(bytes) });
+    out.push(Entry { path: "game.json".into(), size: bytes.len() as u64, exec: false, src: Source::Bytes(bytes), runner: None });
     Ok(out)
+}
+
+/// A file or a whole folder, landing at `dest` (relative to the game folder, or `~/…`).
+fn add_tree(src: &Path, dest: &str, runner: Option<&'static str>, out: &mut Vec<Entry>) {
+    let Ok(meta) = fs::metadata(src) else { return };
+    if meta.is_file() {
+        out.push(Entry { path: dest.to_string(), size: meta.len(), exec: is_exec(&meta), src: Source::File(src.to_path_buf()), runner });
+        return;
+    }
+    let mut inner = Vec::new();
+    walk(src, src, &mut inner);
+    out.extend(inner.into_iter().map(|e| Entry { path: format!("{dest}/{}", e.path), runner, ..e }));
+}
+
+/// A Switch game's updates and DLC: what's in `~/Eden/Extra` (Eden's
+/// external content folder) under the game's name ("Mario Kart 8 Deluxe
+/// [0100…][v…][Update].nsp", a folder "Tomodachi Life" for "Tomodachi Life
+/// Living the Dream.nsp"). They land in the same folder on the other side.
+fn switch_extras(exe: &Path, taken: &[PathBuf], out: &mut Vec<Entry>) {
+    let Some(stem) = exe.file_stem().map(|s| s.to_string_lossy().to_string()) else { return };
+    let base = stem.split(" [").next().unwrap_or(&stem).trim().to_lowercase();
+    let extra = crate::games::home().join("Eden/Extra");
+    for e in fs::read_dir(&extra).into_iter().flatten().flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        let is_dir = e.path().is_dir();
+        let n = if is_dir { name.to_lowercase() } else { Path::new(&name).file_stem().map(|s| s.to_string_lossy().to_lowercase()).unwrap_or_default() };
+        let ours = n.starts_with(&base) || (is_dir && n.len() >= 6 && base.starts_with(&n));
+        let canon = fs::canonicalize(e.path()).unwrap_or(e.path());
+        if ours && !taken.iter().any(|t| canon.starts_with(t) || t.starts_with(&canon)) {
+            add_tree(&e.path(), &format!("~/Eden/Extra/{name}"), None, out);
+        }
+    }
+}
+
+/// What a kind of game needs besides itself, when the other machine lacks it
+/// (it skips whatever it has): Eden with the keys and firmware; Dolphin's HD
+/// texture packs and settings for this disc; Azahar's 3DS template; a Proton.
+fn runner_files(kind: Kind, exe: Option<&Path>, out: &mut Vec<Entry>) {
+    match kind {
+        Kind::Switch => {
+            let data = crate::eden::eden_data();
+            add_tree(&crate::eden::appimage(), "~/Eden/Eden.appimage", Some("eden"), out);
+            add_tree(&data.join("keys"), "~/.local/share/eden/keys", Some("eden"), out);
+            add_tree(&data.join("nand/system/Contents/registered"), "~/.local/share/eden/nand/system/Contents/registered", Some("eden"), out);
+        }
+        Kind::Wii => {
+            let Some(id) = exe.and_then(crate::library::disc_id) else { return };
+            let user = data_dir().join("dolphin");
+            // packs and settings are named by the disc's ID or its first 3 letters
+            let fits = |name: &str| name.len() >= 3 && id.starts_with(name.split('.').next().unwrap_or(name));
+            for sub in ["Load/Textures", "GameSettings"] {
+                for e in fs::read_dir(user.join(sub)).into_iter().flatten().flatten() {
+                    let name = e.file_name().to_string_lossy().to_string();
+                    if fits(&name) {
+                        add_tree(&e.path(), &format!("~/.local/share/azototv/dolphin/{sub}/{name}"), None, out);
+                    }
+                }
+            }
+        }
+        Kind::N3ds => add_tree(&data_dir().join("azahar"), "~/.local/share/azototv/azahar", Some("azahar"), out),
+        Kind::Proton => {
+            if let Some(p) = crate::games::proton_dir() {
+                let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "proton".into());
+                add_tree(&p, &format!("~/.local/share/Steam/compatibilitytools.d/{name}"), Some("proton"), out);
+            }
+        }
+        _ => {}
+    }
 }
 
 fn is_exec(m: &fs::Metadata) -> bool {
@@ -356,17 +470,41 @@ fn is_exec(m: &fs::Metadata) -> bool {
     m.permissions().mode() & 0o111 != 0
 }
 
-/// The files under `dir` (symbolic links left out).
+/// `to` as seen from the folder `from` ("../../game/x"); both inside the same root.
+fn relative(from: &Path, to: &Path) -> PathBuf {
+    let (f, t): (Vec<_>, Vec<_>) = (from.components().collect(), to.components().collect());
+    let common = f.iter().zip(&t).take_while(|(a, b)| a == b).count();
+    let mut out = PathBuf::new();
+    for _ in common..f.len() {
+        out.push("..");
+    }
+    for c in &t[common..] {
+        out.push(c);
+    }
+    out
+}
+
+/// The files under `dir`. Symbolic links come along when they point at a
+/// file inside the game folder (a data file shared into `home-seed/`);
+/// the others (a player's saves, see `games::link_player_dirs`) stay here.
 fn walk(root: &Path, dir: &Path, out: &mut Vec<Entry>) {
     let Ok(rd) = fs::read_dir(dir) else { return };
     for e in rd.flatten() {
         let Ok(meta) = fs::symlink_metadata(e.path()) else { continue };
-        if meta.is_dir() {
+        if meta.is_symlink() {
+            let (Ok(target), Ok(root_c)) = (fs::canonicalize(e.path()), fs::canonicalize(root)) else { continue };
+            let Ok(rel) = e.path().strip_prefix(root).map(Path::to_path_buf) else { continue };
+            if target.is_file() && target.starts_with(&root_c) {
+                let inside = target.strip_prefix(&root_c).unwrap_or(&target);
+                let link = relative(rel.parent().unwrap_or(Path::new("")), inside);
+                out.push(Entry { path: rel.to_string_lossy().to_string(), size: 0, exec: false, src: Source::Link(link.to_string_lossy().to_string()), runner: None });
+            }
+        } else if meta.is_dir() {
             walk(root, &e.path(), out);
         } else if meta.is_file() {
             let rel = e.path().strip_prefix(root).map(|r| r.to_string_lossy().to_string()).unwrap_or_default();
             if !rel.is_empty() && !rel.ends_with(".log") {
-                out.push(Entry { path: rel, size: meta.len(), exec: is_exec(&meta), src: Source::File(e.path()) });
+                out.push(Entry { path: rel, size: meta.len(), exec: is_exec(&meta), src: Source::File(e.path()), runner: None });
             }
         }
     }
@@ -385,7 +523,21 @@ async fn files_out(State(ctx): State<Ctx>, ConnectInfo(from): ConnectInfo<Socket
     })
     .await
     {
-        Ok(Ok(l)) => Json(l.iter().map(|e| FileInfo { path: e.path.clone(), size: e.size, exec: e.exec }).collect::<Vec<_>>()).into_response(),
+        Ok(Ok(l)) => Json(
+            l.iter()
+                .map(|e| FileInfo {
+                    path: e.path.clone(),
+                    size: e.size,
+                    exec: e.exec,
+                    link: match &e.src {
+                        Source::Link(t) => Some(t.clone()),
+                        _ => None,
+                    },
+                    runner: e.runner.map(str::to_string),
+                })
+                .collect::<Vec<_>>(),
+        )
+        .into_response(),
         Ok(Err(e)) => err(StatusCode::NOT_FOUND, e),
         Err(e) => err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     }
@@ -419,6 +571,7 @@ async fn file_out(
         .min(e.size);
     let status = if start > 0 { StatusCode::PARTIAL_CONTENT } else { StatusCode::OK };
     let body = match &e.src {
+        Source::Link(_) => return err(StatusCode::NOT_FOUND, "a link, not a file"),
         Source::Bytes(b) => Body::from(b[start as usize..].to_vec()),
         Source::File(p) => {
             use tokio::io::AsyncSeekExt;
@@ -565,6 +718,8 @@ pub struct Remote {
     pub here: Option<String>,
     /// what this machine lacks to play it ("Eden"), when something
     pub missing: Option<String>,
+    /// and whether it comes along with the download (else: install it yourself)
+    pub brings: bool,
 }
 
 /// Where each local game came from: (peer, game) -> local id.
@@ -594,9 +749,11 @@ pub async fn games() -> Vec<Remote> {
     let mut out = Vec::new();
     for (p, offers) in futures_util::future::join_all(lists).await.into_iter().flatten() {
         for o in offers {
+            let lack = missing(o.kind, o.platform.as_deref());
             out.push(Remote {
                 here: from.get(&(p.id.clone(), o.id.clone())).cloned(),
-                missing: missing(o.kind),
+                brings: lack.as_ref().is_some_and(|(_, b)| *b),
+                missing: lack.map(|(n, _)| n),
                 peer: p.id.clone(),
                 peer_name: p.name.clone(),
                 offer: o,
@@ -606,17 +763,23 @@ pub async fn games() -> Vec<Remote> {
     out
 }
 
-/// What this machine lacks to run a kind of game, in words.
-pub fn missing(kind: Kind) -> Option<String> {
+/// What this machine lacks to run a kind of game, and whether the download
+/// brings it (Eden and Proton from the other AzotoTV, Dolphin and Azahar from
+/// Flathub) or it's a system package to install by hand.
+pub fn missing(kind: Kind, platform: Option<&str>) -> Option<(String, bool)> {
     let have = |cmd: &str| std::env::var_os("PATH").is_some_and(|p| std::env::split_paths(&p).any(|d| d.join(cmd).is_file()));
-    match kind {
-        Kind::Proton if !have("umu-run") => Some("umu-launcher".into()),
-        Kind::Proton if !crate::games::has_proton() => Some("Proton".into()),
-        Kind::Switch if !crate::eden::appimage().exists() => Some("Eden".into()),
-        Kind::Wii if !crate::dolphin::installed() => Some("Dolphin".into()),
-        Kind::N3ds if !crate::azahar::installed() => Some("Azahar".into()),
-        _ => None,
+    if platform == Some("arcade") && !Path::new("/usr/lib/mame/mame").exists() {
+        return Some(("MAME".into(), false));
     }
+    let (name, brings) = match kind {
+        Kind::Proton if !have("umu-run") => ("umu-launcher", false),
+        Kind::Proton if !crate::games::has_proton() => ("Proton", true),
+        Kind::Switch if !crate::eden::appimage().exists() => ("Eden", true),
+        Kind::Wii if !crate::dolphin::installed() => ("Dolphin", true),
+        Kind::N3ds if !crate::azahar::installed() => ("Azahar", true),
+        _ => return None,
+    };
+    Some((name.into(), brings))
 }
 
 /// `peer://localhost/<peer>/<game>/<kind>`: another AzotoTV's game art.
@@ -648,6 +811,8 @@ pub struct Progress {
     pub error: Option<String>,
     /// the new game's id, once done
     pub id: Option<String>,
+    /// what's happening after the files ("Installing Dolphin")
+    pub step: Option<String>,
 }
 
 struct Job {
@@ -707,6 +872,7 @@ impl Downloads {
                 state: "running".into(),
                 error: None,
                 id: None,
+                step: None,
             };
             jobs.insert(key.clone(), Job { cancel: cancel.clone(), progress });
         }
@@ -739,11 +905,12 @@ impl Downloads {
             return Err(v["error"].as_str().unwrap_or("can't be downloaded").to_string());
         }
         let list: Vec<FileInfo> = r.json().await.map_err(|e| e.to_string())?;
-        let total: u64 = list.iter().map(|f| f.size).sum();
         // the same folder each time, so a download that stopped picks up again
         let part = into.join(format!(".azototv-download-{}-{game}", &p.id));
         fs::create_dir_all(&part).map_err(|e| format!("{}: {e}", part.display()))?;
-        let have: u64 = list.iter().map(|f| fs::metadata(part.join(&f.path)).map_or(0, |m| m.len().min(f.size))).sum();
+        let plan = plan(&list, &part)?;
+        let total: u64 = plan.iter().map(|x| x.f.size).sum();
+        let have: u64 = plan.iter().map(|x| fs::metadata(&x.tmp).map_or(0, |m| m.len().min(x.f.size))).sum();
         if let Some(free) = free_space(into) {
             if total.saturating_sub(have) + (256 << 20) > free {
                 return Err(t!("Not enough space: it needs {need}, there are {free}", need = gb(total - have), free = gb(free)));
@@ -754,50 +921,53 @@ impl Downloads {
             pr.done = have;
         });
         let (mut done, mut mark, mut last) = (have, have, Instant::now());
-        for f in &list {
-            let rel = Path::new(&f.path);
-            if rel.is_absolute() || rel.components().any(|c| !matches!(c, Component::Normal(_))) {
-                return Err(format!("bad path from the other AzotoTV: {}", f.path));
-            }
-            let dest = part.join(rel);
-            let got = fs::metadata(&dest).map_or(0, |m| m.len());
-            if got == f.size {
-                continue;
-            }
-            if let Some(d) = dest.parent() {
+        for x in &plan {
+            let f = x.f;
+            if let Some(d) = x.tmp.parent() {
                 fs::create_dir_all(d).map_err(|e| e.to_string())?;
             }
-            let from = if got < f.size { got } else { 0 };
-            let path: String = f.path.split('/').map(urlencode).collect::<Vec<_>>().join("/");
-            let mut req = authed(&c, p, &format!("/api/peer/file/{game}/{path}"));
-            if from > 0 {
-                req = req.header(header::RANGE, format!("bytes={from}-"));
+            if let Some(target) = &f.link {
+                let _ = fs::remove_file(&x.tmp);
+                std::os::unix::fs::symlink(target, &x.tmp).map_err(|e| format!("{}: {e}", x.tmp.display()))?;
+                continue;
             }
-            let mut r = req.send().await.map_err(|_| t!("{name} doesn't answer", name = p.name))?;
-            if !r.status().is_success() {
-                return Err(format!("{}: HTTP {}", f.path, r.status()));
-            }
-            let resumed = r.status() == StatusCode::PARTIAL_CONTENT;
-            let mut out = fs::OpenOptions::new().create(true).write(true).append(resumed).truncate(!resumed).open(&dest).map_err(|e| e.to_string())?;
-            done -= if resumed { 0 } else { got.min(f.size) };
-            while let Some(chunk) = r.chunk().await.map_err(|_| t!("{name} stopped answering", name = p.name))? {
-                if cancel.load(Ordering::Relaxed) {
-                    return Err("cancelled".into());
+            let got = fs::metadata(&x.tmp).map_or(0, |m| m.len());
+            if got != f.size {
+                let from = if got < f.size { got } else { 0 };
+                let path: String = f.path.split('/').map(urlencode).collect::<Vec<_>>().join("/");
+                let mut req = authed(&c, p, &format!("/api/peer/file/{game}/{path}"));
+                if from > 0 {
+                    req = req.header(header::RANGE, format!("bytes={from}-"));
                 }
-                std::io::Write::write_all(&mut out, &chunk).map_err(|e| e.to_string())?;
-                done += chunk.len() as u64;
-                if last.elapsed() >= Duration::from_millis(700) {
-                    let speed = ((done - mark) as f64 / last.elapsed().as_secs_f64()) as u64;
-                    (mark, last) = (done, Instant::now());
-                    self.update(app, key, |pr| {
-                        pr.done = done;
-                        pr.speed = speed;
-                    });
+                let mut r = req.send().await.map_err(|_| t!("{name} doesn't answer", name = p.name))?;
+                if !r.status().is_success() {
+                    return Err(format!("{}: HTTP {}", f.path, r.status()));
+                }
+                let resumed = r.status() == StatusCode::PARTIAL_CONTENT;
+                let mut out = fs::OpenOptions::new().create(true).write(true).append(resumed).truncate(!resumed).open(&x.tmp).map_err(|e| e.to_string())?;
+                done -= if resumed { 0 } else { got.min(f.size) };
+                while let Some(chunk) = r.chunk().await.map_err(|_| t!("{name} stopped answering", name = p.name))? {
+                    if cancel.load(Ordering::Relaxed) {
+                        return Err("cancelled".into());
+                    }
+                    std::io::Write::write_all(&mut out, &chunk).map_err(|e| e.to_string())?;
+                    done += chunk.len() as u64;
+                    if last.elapsed() >= Duration::from_millis(700) {
+                        let speed = ((done - mark) as f64 / last.elapsed().as_secs_f64()) as u64;
+                        (mark, last) = (done, Instant::now());
+                        self.update(app, key, |pr| {
+                            pr.done = done;
+                            pr.speed = speed;
+                        });
+                    }
                 }
             }
             if f.exec {
                 use std::os::unix::fs::PermissionsExt;
-                let _ = fs::set_permissions(&dest, fs::Permissions::from_mode(0o755));
+                let _ = fs::set_permissions(&x.tmp, fs::Permissions::from_mode(0o755));
+            }
+            if x.tmp != x.dest {
+                fs::rename(&x.tmp, &x.dest).map_err(|e| format!("{}: {e}", x.dest.display()))?;
             }
         }
         // whole: it becomes a game of the library
@@ -807,7 +977,110 @@ impl Downloads {
         crate::library::add_library(into)?;
         eprintln!("[peer] {} downloaded from {} into {}", game, p.name, dest.display());
         self.update(app, key, |pr| pr.done = total);
+        // an emulator that comes from Flathub rather than from the other machine
+        let kind: Option<Kind> = fs::read_to_string(dest.join("game.json"))
+            .ok()
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+            .and_then(|v| serde_json::from_value(v["type"].clone()).ok());
+        let flatpak = match kind {
+            Some(Kind::Wii) if !crate::dolphin::installed() => Some(("Dolphin", crate::dolphin::FLATPAK)),
+            Some(Kind::N3ds) if !crate::azahar::installed() => Some(("Azahar", crate::azahar::FLATPAK)),
+            _ => None,
+        };
+        if let Some((name, app_id)) = flatpak {
+            self.update(app, key, |pr| pr.step = Some(t!("Installing {name}", name = name)));
+            if let Err(e) = flatpak_install(app_id).await {
+                // the game is here all the same: only the emulator is missing
+                eprintln!("[peer] installing {app_id}: {e}");
+                self.update(app, key, |pr| pr.error = Some(t!("The game is here, but {name} couldn't be installed: {e}", name = name, e = e)));
+            }
+            self.update(app, key, |pr| pr.step = None);
+        }
         Ok(id)
+    }
+}
+
+/// Where the home folder may receive files from another AzotoTV: emulators,
+/// their keys and firmware, packs and updates. Nothing else, and nothing
+/// that's there already gets replaced.
+const HOME_OK: [&str; 8] = [
+    "Eden/Eden.appimage",
+    "Eden/Extra/",
+    ".local/share/eden/keys/",
+    ".local/share/eden/nand/system/Contents/registered/",
+    ".local/share/azototv/dolphin/Load/",
+    ".local/share/azototv/dolphin/GameSettings/",
+    ".local/share/azototv/azahar/",
+    ".local/share/Steam/compatibilitytools.d/",
+];
+
+struct Step<'a> {
+    f: &'a FileInfo,
+    /// where it ends up
+    dest: PathBuf,
+    /// where it's written meanwhile (the same, inside the download's folder)
+    tmp: PathBuf,
+}
+
+/// What to fetch and where: the game into `part`, the rest into the home,
+/// minus what this machine has already (a Proton, a key, Eden).
+fn plan<'a>(list: &'a [FileInfo], part: &Path) -> Result<Vec<Step<'a>>, String> {
+    let home = crate::games::home();
+    let proton_here = crate::games::has_proton();
+    let mut out = Vec::new();
+    for f in list {
+        let (home_rel, rel) = match f.path.strip_prefix("~/") {
+            Some(r) => (true, Path::new(r)),
+            None => (false, Path::new(&f.path)),
+        };
+        if rel.as_os_str().is_empty() || rel.components().any(|c| !matches!(c, Component::Normal(_))) {
+            return Err(format!("bad path from the other AzotoTV: {}", f.path));
+        }
+        if !home_rel {
+            if let Some(target) = &f.link {
+                // only links that stay inside the game folder
+                let mut depth = 0i32;
+                for c in rel.parent().unwrap_or(Path::new("")).join(target).components() {
+                    depth += match c {
+                        Component::ParentDir => -1,
+                        Component::Normal(_) => 1,
+                        _ => -100,
+                    };
+                    if depth < 0 {
+                        return Err(format!("bad link from the other AzotoTV: {}", f.path));
+                    }
+                }
+            }
+            out.push(Step { f, dest: part.join(rel), tmp: part.join(rel) });
+            continue;
+        }
+        let r = rel.to_string_lossy();
+        if !HOME_OK.iter().any(|ok| if ok.ends_with('/') { r.starts_with(ok) } else { r == *ok }) {
+            return Err(format!("not a place for it: {}", f.path));
+        }
+        let dest = home.join(rel);
+        let skip = f.link.is_some() || (f.runner.as_deref() == Some("proton") && proton_here) || fs::symlink_metadata(&dest).is_ok();
+        if !skip {
+            let mut tmp = dest.clone().into_os_string();
+            tmp.push(".azototv-part");
+            out.push(Step { f, dest, tmp: tmp.into() });
+        }
+    }
+    Ok(out)
+}
+
+async fn flatpak_install(app_id: &str) -> Result<(), String> {
+    let run = |args: &[&str]| {
+        let mut c = tokio::process::Command::new("flatpak");
+        c.args(args).stdin(std::process::Stdio::null());
+        c
+    };
+    let _ = run(&["remote-add", "--user", "--if-not-exists", "flathub", "https://dl.flathub.org/repo/flathub.flatpakrepo"]).output().await;
+    let o = run(&["install", "--user", "-y", "--noninteractive", "flathub", app_id]).output().await.map_err(|e| e.to_string())?;
+    if o.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&o.stderr).lines().last().unwrap_or("flatpak failed").to_string())
     }
 }
 
@@ -843,6 +1116,12 @@ fn urlencode(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn links_inside_the_game() {
+        assert_eq!(relative(Path::new("home-seed/.local/share/ghostship"), Path::new("game/sm64.o2r")), PathBuf::from("../../../../game/sm64.o2r"));
+        assert_eq!(relative(Path::new("game"), Path::new("game/x")), PathBuf::from("x"));
+    }
 
     #[test]
     fn addresses() {
