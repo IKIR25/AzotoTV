@@ -16,6 +16,14 @@ export const input = $state<{ remote: boolean; style: PadStyle; desk: boolean; p
   pointer: false,
 });
 
+// in a window on a computer, the keyboard and mouse until a controller speaks up
+import('@tauri-apps/api/core')
+  .then(({ invoke }) => invoke<boolean>('tv_mode'))
+  .then((tv) => {
+    if (!tv) input.desk = true;
+  })
+  .catch(() => {});
+
 listen<PadStyle>('pad-style', (e) => (input.style = e.payload)).catch(() => {});
 // a controller's battery is low (controllers.rs), when the overlay toast isn't available
 listen<string>('controller-battery', (e) => showToast(e.payload, 5000)).catch(() => {});

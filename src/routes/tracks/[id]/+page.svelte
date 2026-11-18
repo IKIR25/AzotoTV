@@ -153,7 +153,7 @@
     </header>
 
     <ol class="songs">
-      {#each items as it, i (it.PlaylistItemId ?? i)}
+      {#each items as it, i (`${it.PlaylistItemId ?? it.Id}:${i}`)}
         <li>
           <button class="song" data-focusable data-key={`s${i}`} onclick={() => playTracks(items, i)}>
             <span class="n">{#if playing === it.Id}<b class="eq">♪</b>{:else}{i + 1}{/if}</span>

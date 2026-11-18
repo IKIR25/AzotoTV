@@ -127,7 +127,9 @@
         </button>
       </div>
       <p class="hint">
-        {#if input.remote}
+        {#if input.desk}
+          {t('Enter pause · ⇧Tab / Tab previous / next song · [ ] −15 / +15 s · the buttons also take a click')}
+        {:else if input.remote}
           {t('OK pause · ■ stop · ≡+ to a playlist · ⏮ ⏭ previous / next song · ⏪ ⏩ −15 / +15 s')}
         {:else}
           {t('A pause · ■ stop · ≡+ to a playlist · LB / RB previous / next song · LT / RT −15 / +15 s')}

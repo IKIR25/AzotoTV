@@ -2,8 +2,9 @@
 -- skip-intro / next-episode prompts, volume + pause feedback. Live TV
 -- (info.live): the bar shows the programme on air, ▲ ▼ change channel.
 -- Controller-first: every action arrives as `script-message azoto-input <key>`
--- (see mpv-input.conf). Drawn with mpv's ASS overlay at a fixed 1920x1080
--- virtual resolution, so it scales to any output.
+-- (see mpv-input.conf). Drawn with mpv's ASS overlay at a virtual resolution
+-- 1080 high and as wide as the screen's shape (1920 on 16:9, 1728 on 16:10),
+-- so it scales to any output without stretching.
 
 local mp = require 'mp'
 local utils = require 'mp.utils'
@@ -523,6 +524,16 @@ local function on_input(key, src)
 end
 
 mp.register_script_message('azoto-input', on_input)
+
+-- the screen's shape: 16:9 TV, 16:10 monitor...
+mp.observe_property('osd-dimensions', 'native', function(_, d)
+  if not d or not d.w or not d.h or d.w <= 0 or d.h <= 0 then return end
+  local w = math.floor(H * d.w / d.h + 0.5)
+  if w == W then return end
+  W = w
+  overlay.res_x = W
+  render()
+end)
 
 -- ---- data from the app ----------------------------------------------------------
 

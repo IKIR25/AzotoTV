@@ -77,6 +77,14 @@
   }
 
   onMount(() => {
+    // script errors into the app's log (run.log on the TV): a page that stays
+    // empty otherwise leaves no trace
+    const jsError = (what: string) => void invoke('dev_log', { line: `js: ${what} (${location.pathname})` }).catch(() => {});
+    const onError = (e: ErrorEvent) => jsError(`${e.message} at ${e.filename}:${e.lineno}`);
+    const onReject = (e: PromiseRejectionEvent) =>
+      jsError(`unhandled: ${e.reason instanceof Error ? `${e.reason.message} ${e.reason.stack ?? ''}` : String(e.reason)}`);
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onReject);
     try {
       localStorage.removeItem('azoto.lite'); // the old "lite effects" toggle is gone
     } catch {}
@@ -114,6 +122,10 @@
         ['.ph', 1.08],
       ]),
     ];
+    stops.push(() => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onReject);
+    });
     stops.push(initPlayer(), initYoutube(), initSongs(), initMusic(), initLive(), initGames(), initNotify(), initPhone(), initTvLink());
     initDebug().then(() => {
       const onFocus = (e: FocusEvent) => {

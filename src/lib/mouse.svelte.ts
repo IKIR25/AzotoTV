@@ -57,11 +57,16 @@ export function startMouse(press: (action: string) => void) {
     wake();
   };
 
-  // hovering focuses (no scrolling: the page stays where the mouse put it)
+  // hovering focuses (no scrolling: the page stays where the mouse put it).
+  // The focused element may keep the focus by cancelling `navhover` (detail:
+  // the hovered element), e.g. a Home tile being moved follows the mouse.
   const hover = (e: Event) => {
     if (!input.pointer) return;
     const el = target(e);
-    if (el && el !== document.activeElement) el.focus({ preventScroll: true });
+    if (!el || el === document.activeElement) return;
+    const a = document.activeElement;
+    if (a instanceof HTMLElement && !a.dispatchEvent(new CustomEvent('navhover', { detail: el, cancelable: true }))) return;
+    el.focus({ preventScroll: true });
   };
 
   // a press that woke the screensaver does nothing else

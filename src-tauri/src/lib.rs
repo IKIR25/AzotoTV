@@ -586,6 +586,12 @@ fn system_exit(app: AppHandle) {
     app.exit(0);
 }
 
+/// TV mode (AZOTOTV_FULLSCREEN, the machine under the TV) rather than a window on a computer.
+#[tauri::command]
+fn tv_mode() -> bool {
+    std::env::var_os("AZOTOTV_FULLSCREEN").is_some()
+}
+
 /// F11 on a computer: full screen on / off. Not in TV mode (AZOTOTV_FULLSCREEN),
 /// where the window always fills the TV.
 #[tauri::command]
@@ -1163,6 +1169,7 @@ pub fn run() {
             display_power,
             system_exit,
             window_fullscreen,
+            tv_mode,
             dev_credentials,
             dev_route,
             dev_saver_secs,

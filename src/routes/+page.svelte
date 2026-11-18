@@ -17,6 +17,7 @@
   import { modal, refresh, stage } from '$lib/stage.svelte';
   import { restoreFocus, reveal } from '$lib/nav';
   import { liftOnFocus, tween } from '$lib/tween';
+  import { input } from '$lib/input.svelte';
 
   // AzotoTV home, tvOS-style: a row of apps at the bottom, and above it the
   // "top shelf" of the focused app filling the screen (see $lib/apps). Up from
@@ -38,7 +39,13 @@
   let editing = $state(false);
 
   const app = $derived(APPS.find((a) => a.key === shelfApp && order.includes(a.key)) ?? APPS.find((a) => a.key === order[0]) ?? APPS[0]);
-  const slides = $derived(app.slides());
+  // an app with nothing to show (no games on this computer yet...): its name and what it is
+  const slides = $derived.by(() => {
+    const own = app.slides();
+    if (own.length) return own;
+    const a = app;
+    return [{ key: `about:${a.key}`, title: a.name, meta: [], overview: a.description, backdrop: null, ambient: false, action: t('Open'), open: () => goto(a.route) }];
+  });
   const index = $derived(slides.length ? (idx[shelfApp] ?? 0) % slides.length : 0);
   const cur = $derived(slides[index] ?? null);
 
@@ -195,15 +202,44 @@
       const d = (e as CustomEvent<string>).detail;
       if (d === 'left' || d === 'right') shift(a.key, d === 'left' ? -1 : 1);
     };
+    // the mouse while picked: the tile follows it along the row (focus stays on it)
+    const onHover = async (e: Event) => {
+      if (!editing) return;
+      e.preventDefault();
+      // only another tile counts (not the shelf or a pin the mouse passes over)
+      const key = (e as CustomEvent<HTMLElement>).detail.dataset.key ?? '';
+      const to = key.startsWith('app:') ? key.slice(4) : '';
+      if (!order.includes(to) || moving) return;
+      moving = true;
+      try {
+        // into that tile's place, one swap at a time (each swap moves the
+        // neighbour too, so aim at the place, not at the tile); stops if a
+        // step doesn't move it
+        const goal = pos(to);
+        while (pos(a.key) !== goal) {
+          const was = pos(a.key);
+          await shift(a.key, Math.sign(goal - was));
+          if (pos(a.key) === was) break;
+        }
+        // until the tiles have slid into place: the one moved aside passes
+        // under the mouse on its way and would otherwise swap straight back
+        await new Promise((r) => setTimeout(r, 240));
+      } finally {
+        moving = false;
+      }
+    };
     node.addEventListener('navhold', onHold);
     node.addEventListener('navmove', onMove);
+    node.addEventListener('navhover', onHover);
     return {
       destroy() {
         node.removeEventListener('navhold', onHold);
         node.removeEventListener('navmove', onMove);
+        node.removeEventListener('navhover', onHover);
       },
     };
   }
+  let moving = false;
 
   // ---- pins ------------------------------------------------------------------
 
@@ -317,7 +353,7 @@
           >
             <svg viewBox="0 0 48 48" aria-hidden="true">{@html a.icon}</svg>
           </button>
-          <span class="label" class:on={focusedApp === a.key}>{picked ? t('◀ ▶ move · A done') : a.name}</span>
+          <span class="label" class:on={focusedApp === a.key}>{picked ? (input.pointer ? t('move the mouse · click: done') : input.desk ? t('← → move · Enter: done') : t('◀ ▶ move · A done')) : a.name}</span>
         </div>
       </div>
     {/each}
