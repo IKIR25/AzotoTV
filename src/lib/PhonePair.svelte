@@ -107,7 +107,7 @@
         </div>
       {/if}
       <button class="btn primary" data-focusable bind:this={done} onclick={close}>{t('Done')}</button>
-      <div class="hint">{#if phones.length}<kbd>{key('A')}</kbd> {t('on a phone: disconnects it from {name} ·', { name: auth.name })} {/if}<kbd>{key('B')}</kbd> {t('close')}</div>
+      <div class="hint">{#if phones.length}<kbd data-btn="A">{key('A')}</kbd> {t('on a phone: disconnects it from {name} ·', { name: auth.name })} {/if}<kbd data-btn="B">{key('B')}</kbd> {t('close')}</div>
     </div>
   </section>
 </div>

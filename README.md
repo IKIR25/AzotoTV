@@ -2,7 +2,8 @@
 
 A TV interface for a home server. It turns a Linux machine plugged into the
 television into something that works like a console: you pick a profile and
-move around with a controller, a TV remote or a phone.
+move around with a controller, a TV remote or a phone. On a computer it works
+with the keyboard and mouse too (see [Keyboard and mouse](#keyboard-and-mouse)).
 
 It started as one family's project and it still is, so some corners are
 rougher than others, but it is meant to run on your machine too: it looks at
@@ -41,6 +42,29 @@ Nitro laptop.
   iPhone app (a separate project for now) is listed in
   [docs/SETUP.md](docs/SETUP.md#phones).
 - **The TV itself**: power and input on Hisense / VIDAA televisions.
+
+
+## Keyboard and mouse
+
+The mouse pointer appears when the mouse moves and hides again when a
+controller is used. Hovering highlights, a click opens, a right click does
+what holding A does (pin to the Home, move a tile), the side "back" button
+goes back, the wheel scrolls and the ‹ › arrows on a row's edges scroll it
+sideways. The button hints on screen can be clicked. Text fields take real
+typing (no on-screen keyboard).
+
+| Key | Does |
+| --- | --- |
+| Arrows | move |
+| Enter / Space | A (held: A held) |
+| Esc / Backspace | back |
+| Tab / Shift+Tab | next / previous tab |
+| F1 | the START menu |
+| [ ] | LT / RT (seek in the music player) |
+| F11 | full screen on / off |
+
+In the film player: click pauses, double click switches full screen, the
+wheel sets the volume, right click shows the bar, Esc stops.
 
 ## Screenshots
 

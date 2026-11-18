@@ -4,7 +4,7 @@
   import { page } from '$app/state';
   import { auth } from '$lib/session.svelte';
   import { refresh, showToast, stage } from '$lib/stage.svelte';
-  import { key } from '$lib/input.svelte';
+  import { input, key } from '$lib/input.svelte';
   import { restoreFocus } from '$lib/nav';
   import Picker from '$lib/Picker.svelte';
   import PinButton from '$lib/PinButton.svelte';
@@ -164,7 +164,11 @@
           {t('To leave: Pause › Save and quit › Quit game. Holding {a} closes it at once, without saving the last few minutes.', { a: key('HOME') })}
         </div>
       {:else}
-        <div class="hint">{t('While playing: hold {a} to go back to AzotoTV', { a: key('HOME') })}</div>
+        <div class="hint">
+          {input.desk
+            ? t('While playing: close the game (or its window) to go back to AzotoTV; on a controller, hold {a}', { a: key('HOME') })
+            : t('While playing: hold {a} to go back to AzotoTV', { a: key('HOME') })}
+        </div>
       {/if}
     </section>
     {#if g.chapters.length}

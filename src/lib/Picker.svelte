@@ -46,7 +46,7 @@
       </button>
     {/each}
   </div>
-  <div class="hint"><kbd>{key('A')}</kbd> {t('select ·')} <kbd>{key('B')}</kbd> {t('close')}</div>
+  <div class="hint"><kbd data-btn="A">{key('A')}</kbd> {t('select ·')} <kbd data-btn="B">{key('B')}</kbd> {t('close')}</div>
 </aside>
 
 <style>

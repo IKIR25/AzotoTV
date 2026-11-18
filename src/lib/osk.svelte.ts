@@ -5,6 +5,7 @@
 import { tick } from 'svelte';
 import { backToTrap, move, reveal } from './nav';
 import type { PadExtra, RemoteExtra } from './pad';
+import { input } from './input.svelte';
 
 export type Shift = 'off' | 'once' | 'lock';
 
@@ -17,6 +18,11 @@ export const osk = $state<{
 }>({ target: null, value: '', caret: 0, shift: 'off', mode: 'abc' });
 
 export function openKeyboard(el: HTMLInputElement) {
+  // the computer's keyboard / mouse in use: type into the field itself
+  if (input.desk) {
+    el.focus({ preventScroll: true });
+    return;
+  }
   osk.target = el;
   osk.value = el.value;
   osk.caret = el.value.length;

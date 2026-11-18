@@ -124,6 +124,14 @@
     fade(() => (idx[key] = saved.index[key] = to));
   }
 
+  /** A dot clicked with the mouse: that slide (the click doesn't open the slide on screen). */
+  function jump(e: MouseEvent, to: number) {
+    e.stopPropagation();
+    if (editing || to === index) return;
+    const key = shelfApp;
+    fade(() => (idx[key] = saved.index[key] = to));
+  }
+
   /** the app the shelf shows, or is fading to (the switch lands after the fade-out) */
   let shelfTarget = saved.app;
 
@@ -280,7 +288,8 @@
           <span class="count">{index + 1} / {slides.length}</span>
         {:else if slides.length > 1}
           <span class="dots">
-            {#each slides as s, i (s.key)}<i class:on={i === index}></i>{/each}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+            {#each slides as s, i (s.key)}<i class:on={i === index} onclick={(e) => jump(e, i)}></i>{/each}
           </span>
         {/if}
       </div>
@@ -392,6 +401,8 @@
   .dots { display: flex; gap: 0.6rem; }
   .dots i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: rgb(var(--fg-rgb) / 0.3); }
   .dots i.on { background: var(--fg); width: 2rem; border-radius: 0.35rem; }
+  /* with the mouse: a bigger target around each dot (the dot itself stays small) */
+  :global(html.pointer) .dots i { cursor: pointer; background-clip: content-box; padding: 0.5rem 0.2rem; margin: -0.5rem -0.2rem; box-sizing: content-box; }
   .count { font-size: 1.3rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* ---- apps ---- */

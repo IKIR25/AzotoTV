@@ -346,7 +346,7 @@
       {#if body && !liveOn}<img src={body} alt="" />{/if}
       <div class="live" bind:this={box}></div>
       {#if liveOn}
-        <p class="hint">{t('Right stick or')} <kbd>{key('LB')}</kbd> <kbd>{key('RB')}</kbd> {t('to turn it')}</p>
+        <p class="hint">{t('Right stick or')} <kbd data-btn="LB">{key('LB')}</kbd> <kbd data-btn="RB">{key('RB')}</kbd> {t('to turn it')}</p>
       {/if}
     </aside>
 

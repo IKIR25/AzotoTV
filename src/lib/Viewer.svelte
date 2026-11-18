@@ -190,9 +190,9 @@
       <div class="hint">
         <span>{t('{a} of {length}', { a: i + 1, length: assets.length })}</span>
         <span><kbd>◀</kbd><kbd>▶</kbd> {t('browse')}</span>
-        <span><kbd>{key('A')}</kbd> {cur.video ? t('watch the video') : t('hide')}</span>
-        {#if !cur.video}<span><kbd>{key('A')}</kbd> {isWall ? t('hold: remove the wallpaper') : t('hold: use as wallpaper')}</span>{/if}
-        <span><kbd>{key('B')}</kbd> {t('close')}</span>
+        <span><kbd data-btn="A">{key('A')}</kbd> {cur.video ? t('watch the video') : t('hide')}</span>
+        {#if !cur.video}<span><kbd data-btn="A">{key('A')}</kbd> {isWall ? t('hold: remove the wallpaper') : t('hold: use as wallpaper')}</span>{/if}
+        <span><kbd data-btn="B">{key('B')}</kbd> {t('close')}</span>
       </div>
     </div>
   {:else if cur && running}

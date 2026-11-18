@@ -409,11 +409,11 @@
       <header>
         <h1>{title}</h1>
         <nav class="tabs">
-          <kbd>{key('LB')}</kbd>
+          <kbd data-btn="LB">{key('LB')}</kbd>
           {#each TABS as t, i (t.key)}
             <button class="tab" class:on={i === tab} onclick={() => goTab(i)}>{t.name}</button>
           {/each}
-          <kbd>{key('RB')}</kbd>
+          <kbd data-btn="RB">{key('RB')}</kbd>
         </nav>
       </header>
 

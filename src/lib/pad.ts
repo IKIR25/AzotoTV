@@ -14,16 +14,23 @@ export type RemoteExtra = 'home' | 'play' | 'stop' | 'ff' | 'rew' | 'next' | 'pr
  * everything else goes to `onExtra`. While `blocked()` is true (mpv owns the
  * screen) events are ignored.
  */
-let handler: ((action: string, remote: boolean) => void) | null = null;
+let handler: ((action: string, remote: boolean, desk?: boolean) => void) | null = null;
 
 /** An action from a phone (see phone.svelte.ts), handled like the TV remote's. */
 export function inject(action: string) {
   handler?.(action, true);
 }
 
+/** An action from the computer's keyboard or mouse (see nav.ts startKeyboard, mouse.ts). */
+export function press(action: string) {
+  handler?.(action, false, true);
+}
+
 export function startPad(onExtra: (a: PadExtra | RemoteExtra) => void, blocked: () => boolean) {
-  const handle = (action: string, remote: boolean) => {
+  const handle = (action: string, remote: boolean, desk = false) => {
     input.remote = remote;
+    input.desk = desk;
+    if (!desk) input.pointer = false;
     if (blocked()) return;
     switch (action) {
       case 'up':

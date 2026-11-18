@@ -92,11 +92,11 @@
     <span class="count">{inTab.length ? tn(inTab.length, '{n} game', '{n} games', { n: inTab.length }) : ''}</span>
     {#if tabs.length > 1}
       <div class="tabs">
-        <kbd>{key('LB')}</kbd>
+        <kbd data-btn="LB">{key('LB')}</kbd>
         {#each tabs as p}
           <button class="tab" class:on={p === tab} data-focusable data-key="tab-{p}" data-scroll-top onclick={() => open(p)}>{p}</button>
         {/each}
-        <kbd>{key('RB')}</kbd>
+        <kbd data-btn="RB">{key('RB')}</kbd>
       </div>
     {/if}
     <div class="row">

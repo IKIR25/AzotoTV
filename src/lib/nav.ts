@@ -5,6 +5,7 @@
 // any `data-nav-peer` element (the results next to the docked search keyboard).
 import { openKeyboard } from './osk.svelte';
 import { uiSound } from './sounds.svelte';
+import { input } from './input.svelte';
 
 export type Dir = 'up' | 'down' | 'left' | 'right';
 
@@ -95,7 +96,14 @@ const axis = (d: Dir) => (d === 'up' || d === 'down' ? 'v' : 'h');
 function navRoots(): HTMLElement[] {
   const trap = document.querySelector<HTMLElement>('[data-nav-trap]');
   if (!trap) return [document.body];
+  // peers sit next to the on-screen keyboard only, never next to a menu
+  if (!trap.classList.contains('osk')) return [trap];
   return [trap, ...document.querySelectorAll<HTMLElement>('[data-nav-peer]')];
+}
+
+/** `el` can be reached now (not behind an open keyboard / menu). */
+export function reachable(el: HTMLElement): boolean {
+  return navRoots().some((r) => r.contains(el));
 }
 
 // the trap's element last moved away from (the key you left the keyboard on)
@@ -242,22 +250,95 @@ export function focusFirst() {
 
 // --- Keyboard ---------------------------------------------------------------
 
-export function startKeyboard(onBack: () => void) {
-  const map: Record<string, Dir> = {
-    ArrowUp: 'up',
-    ArrowDown: 'down',
-    ArrowLeft: 'left',
-    ArrowRight: 'right',
+/** A text field the computer's keyboard types into for real (no on-screen keyboard). */
+function textField(el: Element | null): el is HTMLInputElement | HTMLTextAreaElement {
+  return (
+    el instanceof HTMLTextAreaElement ||
+    (el instanceof HTMLInputElement && !['button', 'checkbox', 'radio', 'range', 'submit'].includes(el.type))
+  );
+}
+
+// Enter / Space held this long = A held (pin to the Home, move a tile...)
+const HOLD_MS = 500;
+
+/**
+ * The computer's keyboard, as a controller: arrows move, Enter / Space = A
+ * (held = A held), Esc / Backspace = B, Tab / Shift+Tab = RB / LB (tabs),
+ * F1 = START, [ ] = LT / RT, the Menu key = A held, media keys like the
+ * remote's, F11 = full screen. In a text field the keys type: Enter goes on
+ * (submits the form, or moves down), Tab moves between fields, Up / Down
+ * leave it, Esc goes back. `fullscreen` toggles the window's full screen.
+ */
+export function startKeyboard(press: (action: string) => void, fullscreen: () => void) {
+  const ARROWS: Record<string, Dir> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+  const KEYS: Record<string, string> = {
+    Escape: 'b',
+    Backspace: 'b',
+    F1: 'start',
+    '[': 'lt',
+    ']': 'rt',
+    ContextMenu: 'a-hold',
+    MediaPlayPause: 'play',
+    MediaStop: 'stop',
+    MediaTrackNext: 'next',
+    MediaTrackPrevious: 'prev',
   };
-  const h = (e: KeyboardEvent) => {
-    const d = map[e.key];
-    if (d) {
+  let held: { key: string; timer: ReturnType<typeof setTimeout> | null } | null = null;
+
+  const down = (e: KeyboardEvent) => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    input.desk = true;
+    input.pointer = false; // the keyboard leads now: hovering doesn't move the focus
+    if (e.key === 'F11') {
       e.preventDefault();
-      move(d);
-    } else if (e.key === 'Escape' || e.key === 'Backspace') {
-      onBack();
+      if (!e.repeat) fullscreen();
+      return;
     }
+    const a = document.activeElement;
+    if (textField(a)) {
+      if (e.key === 'Escape') press('b');
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') press(ARROWS[e.key]);
+      else if (e.key === 'Tab') press(e.shiftKey ? 'up' : 'down');
+      else if (e.key === 'Enter') {
+        if (a.form && 'oskSubmit' in a.dataset) a.form.requestSubmit();
+        else press('down');
+      } else if (/^F\d+$/.test(e.key) || e.key.startsWith('Media')) press(KEYS[e.key] ?? '');
+      else return; // letters, Backspace, [ ], Left / Right, Home / End: typing
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); // no native click: A fires on release, or as a hold
+      if (e.repeat || held) return;
+      const key = e.key;
+      held = {
+        key,
+        timer: setTimeout(() => {
+          if (held?.key !== key) return;
+          held.timer = null;
+          press('a-hold');
+        }, HOLD_MS),
+      };
+      return;
+    }
+    const action = ARROWS[e.key] ?? (e.key === 'Tab' ? (e.shiftKey ? 'lb' : 'rb') : KEYS[e.key]);
+    if (!action) return;
+    e.preventDefault();
+    press(action);
   };
-  window.addEventListener('keydown', h);
-  return () => window.removeEventListener('keydown', h);
+  const up = (e: KeyboardEvent) => {
+    if (!held || e.key !== held.key) return;
+    e.preventDefault();
+    const short = held.timer !== null;
+    if (held.timer) clearTimeout(held.timer);
+    held = null;
+    if (short) press('a');
+  };
+  window.addEventListener('keydown', down);
+  window.addEventListener('keyup', up);
+  return () => {
+    window.removeEventListener('keydown', down);
+    window.removeEventListener('keyup', up);
+    if (held?.timer) clearTimeout(held.timer);
+  };
 }

@@ -111,12 +111,12 @@
       <span><kbd>{t('Back')}</kbd> {t('erase')}</span>
       <span>{t('space, caps and Done are keys up here')}</span>
     {:else}
-      <span><kbd>{key('A')}</kbd> {t('type')}</span>
-      <span><kbd>{key('B')}</kbd> {t('erase')}</span>
-      <span><kbd>{key('Y')}</kbd> {t('space')}</span>
-      <span><kbd>{key('X')}</kbd> {t('caps')}</span>
-      <span><kbd>{key('LB')}</kbd><kbd>{key('RB')}</kbd> {t('cursor')}</span>
-      <span><kbd>{key('START')}</kbd> {t('done')}</span>
+      <span><kbd data-btn="A">{key('A')}</kbd> {t('type')}</span>
+      <span><kbd data-btn="B">{key('B')}</kbd> {t('erase')}</span>
+      <span><kbd data-btn="Y">{key('Y')}</kbd> {t('space')}</span>
+      <span><kbd data-btn="X">{key('X')}</kbd> {t('caps')}</span>
+      <span><kbd data-btn="LB">{key('LB')}</kbd><kbd data-btn="RB">{key('RB')}</kbd> {t('cursor')}</span>
+      <span><kbd data-btn="START">{key('START')}</kbd> {t('done')}</span>
     {/if}
   </div>
 </div>

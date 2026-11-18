@@ -469,6 +469,11 @@ end
 
 local function on_input(key, src)
   remote_ui = src == 'remote'
+  -- the mouse wheel: moves in a menu, else the volume (never zaps or seeks)
+  if key == 'wheelup' or key == 'wheeldown' then
+    if not menu then return change_volume(key == 'wheelup' and 5 or -5) end
+    key = key == 'wheelup' and 'up' or 'down'
+  end
   if menu then
     if key == 'up' then menu.cur = (menu.cur - 2) % #menu.items + 1; menu_clamp()
     elseif key == 'down' then menu.cur = menu.cur % #menu.items + 1; menu_clamp()

@@ -86,7 +86,7 @@
       <p class="empty">{mode === 'file' ? t('Nothing here looks like a game') : t('No folders in here')}</p>
     {/if}
   </div>
-  <div class="hint"><kbd>{key('A')}</kbd> {t('open ·')} <kbd>{key('B')}</kbd> {t('close')}</div>
+  <div class="hint"><kbd data-btn="A">{key('A')}</kbd> {t('open ·')} <kbd data-btn="B">{key('B')}</kbd> {t('close')}</div>
 </aside>
 
 <style>

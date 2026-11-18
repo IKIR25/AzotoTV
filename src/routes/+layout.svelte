@@ -17,7 +17,9 @@
   import { initNotify, loadNotes, notes } from '$lib/notify.svelte';
   import { initTvLink } from '$lib/tvlink.svelte';
   import { startKeyboard, rememberFocus } from '$lib/nav';
-  import { startPad } from '$lib/pad';
+  import { press, startPad } from '$lib/pad';
+  import { startMouse } from '$lib/mouse.svelte';
+  import RowArrows from '$lib/RowArrows.svelte';
   import { dlog, initDebug, timeline } from '$lib/debug';
   import { emit, listen } from '@tauri-apps/api/event';
   import { initPlayer, play, player } from '$lib/player.svelte';
@@ -84,7 +86,8 @@
     const clockTimer = setInterval(tick, 10_000);
 
     const stops: (() => void)[] = [
-      startKeyboard(back),
+      startKeyboard(press, () => invoke('window_fullscreen').catch(() => {})),
+      startMouse(press),
       startPad(
         (a) => {
           if (osk.target && oskPad(a)) return;
@@ -351,7 +354,7 @@
     <header class="topbar">
       <h1>TV</h1>
       <nav>
-        <kbd>{key('LB')}</kbd>
+        <kbd data-btn="LB">{key('LB')}</kbd>
         <button class="tab" class:on={path === '/tv'} aria-current={path === '/tv' ? 'page' : undefined} data-focusable data-scroll-top onclick={() => goto('/tv')}>
           Home
         </button>
@@ -373,7 +376,7 @@
           data-scroll-top
           onclick={() => goto('/search')}>{t('Search')}</button
         >
-        <kbd>{key('RB')}</kbd>
+        <kbd data-btn="RB">{key('RB')}</kbd>
       </nav>
       {@render corner()}
     </header>
@@ -388,6 +391,7 @@
     {/if}
   </main>
 
+  <RowArrows />
   {#if osk.target}<Keyboard />{/if}
   {#if control.open}<ControlMenu />{/if}
   {#if control.notes}<Notifications />{/if}

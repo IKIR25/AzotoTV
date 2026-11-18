@@ -18,6 +18,12 @@ html {
 body { overflow: hidden; -webkit-user-select: none; user-select: none; cursor: none; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: none; }
 button:focus { outline: none; }
+/* the computer's mouse (mouse.svelte.ts): a pointer only while it's in use */
+html.pointer body, html.pointer button { cursor: default; }
+html.pointer [data-focusable], html.pointer kbd[data-btn] { cursor: pointer; }
+html.pointer input[data-focusable] { cursor: text; }
+html.pointer.still, html.pointer.still * { cursor: none !important; }
+html.pointer kbd[data-btn]:hover { background: var(--focus-bg); color: var(--focus-text); }
 
 .glass {
   background: var(--glass-bg);

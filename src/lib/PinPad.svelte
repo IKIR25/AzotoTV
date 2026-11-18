@@ -60,7 +60,7 @@
   {/each}
 </div>
 
-<div class="hint"><kbd>{key('A')}</kbd> {t('type ·')} <kbd>{key('B')}</kbd> {t('erase')}</div>
+<div class="hint"><kbd data-btn="A">{key('A')}</kbd> {t('type ·')} <kbd data-btn="B">{key('B')}</kbd> {t('erase')}</div>
 
 <style>
   .dots { display: flex; gap: 1.6rem; justify-content: center; margin: 0.6rem 0 1rem; }

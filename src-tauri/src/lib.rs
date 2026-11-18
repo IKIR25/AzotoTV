@@ -586,6 +586,19 @@ fn system_exit(app: AppHandle) {
     app.exit(0);
 }
 
+/// F11 on a computer: full screen on / off. Not in TV mode (AZOTOTV_FULLSCREEN),
+/// where the window always fills the TV.
+#[tauri::command]
+fn window_fullscreen(app: AppHandle) {
+    if std::env::var_os("AZOTOTV_FULLSCREEN").is_some() {
+        return;
+    }
+    if let Some(w) = app.get_webview_window("main") {
+        let on = w.is_fullscreen().unwrap_or(false);
+        let _ = w.set_fullscreen(!on);
+    }
+}
+
 /// Dev convenience: credentials from the environment (never from source).
 #[tauri::command]
 fn dev_credentials() -> Option<(String, String, String)> {
@@ -1033,10 +1046,13 @@ pub fn run() {
                     }
                 });
             }
-            // Kiosk / TV mode: AZOTOTV_FULLSCREEN=1 fills the output.
-            if std::env::var_os("AZOTOTV_FULLSCREEN").is_some() {
-                if let Some(w) = app.get_webview_window("main") {
+            // Kiosk / TV mode: AZOTOTV_FULLSCREEN=1 fills the output. On a
+            // computer it's a normal window with a title bar (F11: full screen).
+            if let Some(w) = app.get_webview_window("main") {
+                if std::env::var_os("AZOTOTV_FULLSCREEN").is_some() {
                     let _ = w.set_fullscreen(true);
+                } else {
+                    let _ = w.set_decorations(true);
                 }
             }
             Ok(())
@@ -1146,6 +1162,7 @@ pub fn run() {
             system_reboot,
             display_power,
             system_exit,
+            window_fullscreen,
             dev_credentials,
             dev_route,
             dev_saver_secs,
