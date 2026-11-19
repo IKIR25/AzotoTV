@@ -1218,6 +1218,10 @@ impl Games {
         world: Option<String>,
         phone: bool,
     ) -> Result<(), String> {
+        // its files are being replaced (an update from a linked AzotoTV)
+        if app.try_state::<Arc<crate::peer::Downloads>>().is_some_and(|d| d.updating(id)) {
+            return Err(t!("It's updating: it can start once the update is done"));
+        }
         let m = read_manifest(id)?;
         if phone && m.phone.as_ref().is_none_or(|p| p.args.is_empty() && p.env.is_empty()) {
             return Err(t!("this game has no phone version"));

@@ -696,6 +696,21 @@ fn peer_download(app: AppHandle, dl: State<'_, Arc<peer::Downloads>>, peer: Stri
     dl.start(app, &peer, &game, &name, &into)
 }
 
+/// What an update from the linked AzotoTV it came from would bring to a
+/// downloaded game (None: nothing, or it didn't come from one).
+#[tauri::command]
+async fn peer_update_info(id: String) -> Result<Option<peer::Update>, String> {
+    peer::update_info(&id).await
+}
+
+#[tauri::command]
+fn peer_update(app: AppHandle, dl: State<'_, Arc<peer::Downloads>>, g: State<'_, Arc<Games>>, id: String) -> Result<(), String> {
+    if g.running().as_deref() == Some(id.as_str()) {
+        return Err(t!("Close the game first: its files can't change while it runs"));
+    }
+    dl.start_update(app, &id)
+}
+
 #[tauri::command]
 fn peer_cancel(dl: State<'_, Arc<peer::Downloads>>, peer: String, game: String) {
     dl.cancel(&peer, &game);
@@ -1164,6 +1179,8 @@ pub fn run() {
             peer_status,
             peer_games,
             peer_download,
+            peer_update_info,
+            peer_update,
             peer_cancel,
             peer_downloads,
             peer_targets,

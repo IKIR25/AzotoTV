@@ -56,6 +56,20 @@ export interface Progress {
   id: string | null;
   /** after the files: "Installing Dolphin" */
   step: string | null;
+  /** an update of this local game, rather than a new one */
+  update: string | null;
+}
+
+/** What an update from the AzotoTV a downloaded game came from would bring. */
+export interface Update {
+  peer: string;
+  peer_name: string;
+  /** the game's id there */
+  game: string;
+  files: number;
+  /** bytes to fetch */
+  bytes: number;
+  removed: number;
 }
 
 export const peers = $state({ remote: [] as Remote[], downloads: {} as Record<string, Progress> });
@@ -83,7 +97,10 @@ export const linkPeer = (url: string) => invoke<PeerState>('peer_link', { url })
 export const unlinkPeer = (id: string) => invoke<void>('peer_unlink', { id });
 export const peerTargets = () => invoke<string[]>('peer_targets');
 export const startDownload = (r: Remote, into: string) => invoke<void>('peer_download', { peer: r.peer, game: r.id, name: r.name, into });
-export const cancelDownload = (r: Remote) => invoke<void>('peer_cancel', { peer: r.peer, game: r.id });
+export const cancelDownload = (r: { peer: string; id: string }) => invoke<void>('peer_cancel', { peer: r.peer, game: r.id });
+/** null: up to date, or not a game from another AzotoTV; throws when that one doesn't answer */
+export const updateInfo = (id: string) => invoke<Update | null>('peer_update_info', { id });
+export const startUpdate = (id: string) => invoke<void>('peer_update', { id });
 
 export const remoteArt = (r: Remote, kind: string) =>
   r.art.includes(kind) ? `peer://localhost/${r.peer}/${encodeURIComponent(r.id)}/${kind}?v=${r.art_stamp}` : null;

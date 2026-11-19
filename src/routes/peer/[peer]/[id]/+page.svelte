@@ -7,7 +7,8 @@
   import { platform } from '$lib/games.svelte';
   import DiskPicker from '$lib/DiskPicker.svelte';
   import {
-    cancelDownload, download, loadRemote, peers, peerTargets, remoteArt, size, speed, startDownload, watchDownloads,
+    cancelDownload, download, loadRemote, peers, peerTargets, remoteArt, size, speed, startDownload, startUpdate, updateInfo,
+    watchDownloads, type Update,
   } from '$lib/peers.svelte';
 
   // A game on a linked AzotoTV (peer.rs): what it is, how big, and Download
@@ -22,6 +23,24 @@
   let into = $state('');
   let picking = $state(false);
   let gone = $state(false);
+  // here already, and changed there since: Update brings only what changed
+  let upd = $state<Update | null>(null);
+  const local = $derived(r?.here ?? (d?.state === 'done' ? d.id : null));
+  $effect(() => {
+    const l = local;
+    void d?.state;
+    upd = null;
+    if (l && d?.state !== 'running') updateInfo(l).then((u) => local === l && (upd = u), () => {});
+  });
+
+  async function update() {
+    if (!local) return;
+    try {
+      await startUpdate(local);
+    } catch (e) {
+      showToast(String(e), 4000);
+    }
+  }
 
   onMount(() => {
     watchDownloads();
@@ -87,13 +106,7 @@
         <p class="warn">{t('To play it here, this computer also needs {what}: install it with the system\'s packages.', { what: r.missing })}</p>
       {/if}
 
-      {#if r.here || d?.state === 'done'}
-        <div class="actions">
-          <button class="btn primary" data-focusable data-key="download" onclick={() => goto(`/game/${r.here ?? d?.id}`)}>{t('▶ Play|game')}</button>
-        </div>
-        {#if d?.error}<p class="warn">{d.error}</p>{/if}
-        <div class="hint">{t('Downloaded: it is a game of this library now')}</div>
-      {:else if d?.state === 'running'}
+      {#if d?.state === 'running'}
         <div class="progress">
           <div class="bar"><span style="width:{pct}%"></span></div>
           <div class="nums">
@@ -105,6 +118,17 @@
           <button class="btn" data-focusable data-key="download" onclick={() => r && cancelDownload(r)}>{t('Stop')}</button>
         </div>
         <div class="hint">{t('Stopped or interrupted, it picks up where it was next time')}</div>
+      {:else if local}
+        <div class="actions">
+          <button class="btn primary" data-focusable data-key="download" onclick={() => goto(`/game/${local}`)}>{t('▶ Play|game')}</button>
+          {#if upd}
+            <button class="btn" data-focusable data-key="update" onclick={update}>{t('↓ Update')}{upd.bytes ? ` · ${size(upd.bytes)}` : ''}</button>
+          {/if}
+        </div>
+        {#if d?.error}<p class="warn">{d.error}</p>{/if}
+        <div class="hint">
+          {upd ? t('Changed on {name} since it came here', { name: r.peer_name }) : t('Downloaded: it is a game of this library now')}
+        </div>
       {:else}
         <div class="where">
           <span class="k">{t('Into')}</span>

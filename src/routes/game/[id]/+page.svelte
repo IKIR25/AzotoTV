@@ -11,6 +11,7 @@
   import { gamePin } from '$lib/pins.svelte';
   import { admin, checkAdmin } from '$lib/admin.svelte';
   import { goto } from '$app/navigation';
+  import { cancelDownload, download, size, speed, startUpdate, updateInfo, watchDownloads, type Progress, type Update } from '$lib/peers.svelte';
   import {
     achievementIcon, artUrl, chapterArt, findGame, getAchievements, getSettings, heroUrl, lastPlayed, launch, library, loadGames,
     modArt, platform, playTrailer, playtime, saveSettings, savesInfo, setMod, setSavesMode, worldMode,
@@ -37,6 +38,11 @@
   // from its title screen
   const world = $derived(g?.worlds[0] ?? null);
   let achievements = $state<Achievement[]>([]);
+  // a game downloaded from a linked AzotoTV that changed there since (an
+  // update, a new mod): Update fetches only what changed
+  let upd = $state<Update | null>(null);
+  const ud = $derived(upd ? download({ peer: upd.peer, id: upd.game }) : null);
+  let seenDone: Progress | null = null;
 
   $effect(() => {
     const cur = id;
@@ -46,6 +52,9 @@
     achievements = [];
     saves = null;
     savesInfo(cur).then((s) => cur === id && (saves = s), () => {});
+    upd = null;
+    watchDownloads();
+    updateInfo(cur).then((u) => cur === id && (upd = u), () => {});
     loadGames(user).then(async () => {
       if (cur !== id) return;
       const found = findGame(cur);
@@ -62,6 +71,42 @@
   $effect(() => {
     stage.backdrop = g ? heroUrl(g) : null;
   });
+
+  // an update that just finished: the game as it is now, and anything left
+  $effect(() => {
+    if (ud?.state !== 'done' || ud === seenDone) return;
+    seenDone = ud;
+    const cur = id;
+    const focused = document.activeElement?.getAttribute('data-key');
+    void loadGames(auth.id);
+    updateInfo(cur).then(
+      async (u) => {
+        if (cur !== id) return;
+        upd = u;
+        await tick();
+        // the button it was on went away
+        if (!u && (focused === 'update' || document.activeElement === document.body))
+          document.querySelector<HTMLElement>('[data-key="play"]')?.focus({ preventScroll: true });
+      },
+      () => {},
+    );
+  });
+
+  async function update() {
+    try {
+      await startUpdate(id);
+    } catch (e) {
+      showToast(String(e), 4000);
+    }
+  }
+
+  const updPct = $derived(ud && ud.total ? Math.floor((ud.done / ud.total) * 100) : 0);
+  const updWhat = (u: Update) =>
+    [
+      u.files === 1 ? t('1 file to fetch') : u.files ? t('{n} files to fetch', { n: u.files }) : '',
+      u.bytes ? size(u.bytes) : '',
+      u.removed === 1 ? t('1 to remove') : u.removed ? t('{n} to remove', { n: u.removed }) : '',
+    ].filter(Boolean).join(' · ');
 
   $effect(() => {
     void auth.id;
@@ -171,11 +216,30 @@
             {t('▷ Trailer')}
           </button>
         {/if}
+        {#if upd && ud?.state === 'running'}
+          <button class="btn icon" data-focusable data-key="update" data-scroll-top onclick={() => upd && cancelDownload({ peer: upd.peer, id: upd.game })}>
+            {t('Stop the update')}
+          </button>
+        {:else if upd}
+          <button class="btn icon" data-focusable data-key="update" data-scroll-top onclick={update}>{t('↓ Update')}</button>
+        {/if}
         <PinButton pin={gamePin(g)} />
         {#if admin.is}
           <button class="btn icon" data-focusable data-key="edit" data-scroll-top onclick={() => goto(`/game/${g!.id}/edit`)}>{t('Edit')}</button>
         {/if}
       </div>
+      {#if upd && ud?.state === 'running'}
+        <div class="upd">
+          <div class="upd-bar"><span style="width:{updPct}%"></span></div>
+          <div class="nums">
+            <span>{ud.step ?? `${t('Updating from {name}', { name: upd.peer_name })} · ${updPct}% · ${size(ud.done)} / ${size(ud.total)}`}</span>
+            {#if ud.speed}<span>{speed(ud.speed)}</span>{/if}
+          </div>
+        </div>
+      {:else if upd}
+        <div class="note">{t('Changed on {name} since it came here', { name: upd.peer_name })}: {updWhat(upd)}</div>
+      {/if}
+      {#if upd && ud?.state === 'error'}<div class="err">{ud.error}</div>{/if}
       {#if g.cursor || saves}
         <div class="tracks">
           {#if g.cursor}
@@ -339,6 +403,12 @@
   .chip { font-size: 1.3rem; font-weight: 500; padding: 0.8rem 1.6rem; border-radius: 1.4rem; background: rgb(var(--fg-rgb) / 0.1); }
   .chip .k { font-weight: 700; margin-right: 0.3rem; }
   .hint { margin-top: 2.4rem; font-size: 1.15rem; color: var(--muted); }
+  .note { margin-top: 1.2rem; font-size: 1.3rem; color: var(--muted); }
+  .err { margin-top: 1.2rem; font-size: 1.3rem; color: var(--danger-text); }
+  .upd { margin-top: 1.6rem; max-width: 60rem; }
+  .upd-bar { height: 0.8rem; border-radius: 0.4rem; background: rgb(var(--fg-rgb) / 0.16); overflow: hidden; }
+  .upd-bar span { display: block; height: 100%; background: var(--accent); transition: width 0.6s; }
+  .nums { display: flex; justify-content: space-between; margin-top: 0.8rem; font-size: 1.3rem; color: var(--muted); }
   /* chapters: the same list as a series' episodes (item page) */
   h2 { font-size: 1.9rem; font-weight: 600; margin: 0 6rem 1rem; position: relative; }
   .eps { position: relative; display: grid; gap: 1.2rem; padding: 0 6rem 8rem; max-width: 120rem; }

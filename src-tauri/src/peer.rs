@@ -20,6 +20,15 @@
 //! when it lives elsewhere (it lands in `ext/` and the `game.json` that goes
 //! is changed to point there). Steam games and Minecraft stay where they are.
 //! The new folder's `game.json` says where it came from (`"from"`).
+//! Never: logs, build leftovers, `*.prev` folders, and what the game's
+//! `"peer": {"skip": [...]}` lists (paths in its folder). Caches, and what
+//! `"peer": {"local": [...]}` lists, go once and then stay each machine's own.
+//!
+//! Updates: the folder keeps a record of what came (`.azototv-from.json`,
+//! each file's size and time there). When the other side's copy changes (an
+//! update, a new mod), the game page offers Update, which fetches only the
+//! files that changed there, removes what it no longer has, and leaves alone
+//! what changed only here.
 
 use std::{
     collections::HashMap,
@@ -284,6 +293,11 @@ struct Entry {
     exec: bool,
     /// part of an emulator rather than of the game ("eden", "proton"…)
     runner: Option<&'static str>,
+    /// last changed (ms since the epoch), for a file
+    mtime: Option<u64>,
+    /// comes with the download, then each machine keeps its own (a shader
+    /// cache, settings): never part of an update
+    once: bool,
 }
 
 #[derive(Clone)]
@@ -307,6 +321,47 @@ struct FileInfo {
     link: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     runner: Option<String>,
+    /// this version of the file: same stamp, same file (see [`Entry::stamp`])
+    #[serde(default)]
+    stamp: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    mtime: Option<u64>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    once: bool,
+}
+
+impl Entry {
+    fn stamp(&self) -> String {
+        match &self.src {
+            Source::File(_) => format!("{}-{}", self.size, self.mtime.unwrap_or(0)),
+            Source::Bytes(b) => {
+                use md5::{Digest, Md5};
+                format!("{:x}", Md5::digest(b.as_slice()))
+            }
+            Source::Link(t) => format!("link:{t}"),
+        }
+    }
+}
+
+fn mtime_ms(m: &fs::Metadata) -> Option<u64> {
+    m.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok().map(|d| d.as_millis() as u64)
+}
+
+/// Folders that never go to the other machine: logs, build leftovers, the
+/// copy kept from before an update.
+fn never_goes(name: &str) -> bool {
+    matches!(name.to_lowercase().as_str(), "log" | "logs" | "crash_dumps" | "zig-cache" | ".zig-cache" | "art.old") || name.ends_with(".prev")
+}
+
+/// Folders that go once and then stay each machine's own: caches change with every game played.
+fn goes_once(name: &str) -> bool {
+    matches!(name.to_lowercase().as_str(), "cache" | "shader_cache" | "shadercache" | "pipeline_cache")
+}
+
+/// `rel` is `p` or inside it ("data/x" is in "data", not in "dat").
+fn under(rel: &str, p: &str) -> bool {
+    let p = p.trim_end_matches('/');
+    !p.is_empty() && (rel == p || rel.strip_prefix(p).is_some_and(|r| r.starts_with('/')))
 }
 
 fn cached_files(lists: &Mutex<HashMap<String, (Instant, Arc<Vec<Entry>>)>>, game: &str) -> Result<Arc<Vec<Entry>>, String> {
@@ -376,7 +431,7 @@ fn files(game: &str) -> Result<Vec<Entry>, String> {
         let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "game".into());
         let rel = format!("ext/{name}");
         if !out.iter().any(|x: &Entry| x.path == rel) {
-            out.push(Entry { path: rel.clone(), size: meta.len(), exec: is_exec(&meta), src: Source::File(p), runner: None });
+            out.push(Entry { path: rel.clone(), size: meta.len(), exec: is_exec(&meta), src: Source::File(p), runner: None, mtime: mtime_ms(&meta), once: false });
         }
         m["exe"] = json!(rel);
         Ok(())
@@ -392,9 +447,22 @@ fn files(game: &str) -> Result<Vec<Entry>, String> {
         o.remove("added");
         o.insert("from".into(), json!({ "peer": my_id(), "game": game }));
     }
+    // what stays here (`"peer": {"skip": [...]}`, paths in the game folder: an
+    // archive the game was made from) and what each machine keeps its own
+    // after the first download (`"local"`: settings the game rewrites)
+    let list = |k: &str| -> Vec<String> { m["peer"][k].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(str::to_string)).collect() };
+    let (skip, local) = (list("skip"), list("local"));
+    out.retain(|e| {
+        let names = || e.path.trim_start_matches("~/").split('/');
+        e.path != "game.json" && !skip.iter().any(|p| under(&e.path, p)) && !names().any(never_goes)
+    });
+    for e in &mut out {
+        let names = || e.path.trim_start_matches("~/").split('/');
+        e.once = e.runner.is_none() && (local.iter().any(|p| under(&e.path, p)) || names().any(goes_once));
+    }
     let bytes = Arc::new(serde_json::to_string_pretty(&m).unwrap_or_default().into_bytes());
-    out.retain(|e| e.path != "game.json");
-    out.push(Entry { path: "game.json".into(), size: bytes.len() as u64, exec: false, src: Source::Bytes(bytes), runner: None });
+    // last: a download or update that stops halfway leaves the old one
+    out.push(Entry { path: "game.json".into(), size: bytes.len() as u64, exec: false, src: Source::Bytes(bytes), runner: None, mtime: None, once: false });
     Ok(out)
 }
 
@@ -402,7 +470,7 @@ fn files(game: &str) -> Result<Vec<Entry>, String> {
 fn add_tree(src: &Path, dest: &str, runner: Option<&'static str>, out: &mut Vec<Entry>) {
     let Ok(meta) = fs::metadata(src) else { return };
     if meta.is_file() {
-        out.push(Entry { path: dest.to_string(), size: meta.len(), exec: is_exec(&meta), src: Source::File(src.to_path_buf()), runner });
+        out.push(Entry { path: dest.to_string(), size: meta.len(), exec: is_exec(&meta), src: Source::File(src.to_path_buf()), runner, mtime: mtime_ms(&meta), once: false });
         return;
     }
     let mut inner = Vec::new();
@@ -491,6 +559,10 @@ fn relative(from: &Path, to: &Path) -> PathBuf {
 fn walk(root: &Path, dir: &Path, out: &mut Vec<Entry>) {
     let Ok(rd) = fs::read_dir(dir) else { return };
     for e in rd.flatten() {
+        // what AzotoTV itself keeps in there (where a game came from, a file half downloaded)
+        if e.file_name().to_string_lossy().starts_with(".azototv-") {
+            continue;
+        }
         let Ok(meta) = fs::symlink_metadata(e.path()) else { continue };
         if meta.is_symlink() {
             let (Ok(target), Ok(root_c)) = (fs::canonicalize(e.path()), fs::canonicalize(root)) else { continue };
@@ -498,14 +570,22 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<Entry>) {
             if target.is_file() && target.starts_with(&root_c) {
                 let inside = target.strip_prefix(&root_c).unwrap_or(&target);
                 let link = relative(rel.parent().unwrap_or(Path::new("")), inside);
-                out.push(Entry { path: rel.to_string_lossy().to_string(), size: 0, exec: false, src: Source::Link(link.to_string_lossy().to_string()), runner: None });
+                out.push(Entry {
+                    path: rel.to_string_lossy().to_string(),
+                    size: 0,
+                    exec: false,
+                    src: Source::Link(link.to_string_lossy().to_string()),
+                    runner: None,
+                    mtime: None,
+                    once: false,
+                });
             }
         } else if meta.is_dir() {
             walk(root, &e.path(), out);
         } else if meta.is_file() {
             let rel = e.path().strip_prefix(root).map(|r| r.to_string_lossy().to_string()).unwrap_or_default();
             if !rel.is_empty() && !rel.ends_with(".log") {
-                out.push(Entry { path: rel, size: meta.len(), exec: is_exec(&meta), src: Source::File(e.path()), runner: None });
+                out.push(Entry { path: rel, size: meta.len(), exec: is_exec(&meta), src: Source::File(e.path()), runner: None, mtime: mtime_ms(&meta), once: false });
             }
         }
     }
@@ -535,6 +615,9 @@ async fn files_out(State(ctx): State<Ctx>, ConnectInfo(from): ConnectInfo<Socket
                         _ => None,
                     },
                     runner: e.runner.map(str::to_string),
+                    stamp: e.stamp(),
+                    mtime: e.mtime,
+                    once: e.once,
                 })
                 .collect::<Vec<_>>(),
         )
@@ -842,6 +925,8 @@ pub struct Progress {
     pub id: Option<String>,
     /// what's happening after the files ("Installing Dolphin")
     pub step: Option<String>,
+    /// an update of this local game, rather than a new one
+    pub update: Option<String>,
 }
 
 struct Job {
@@ -881,9 +966,26 @@ impl Downloads {
 
     /// Starts downloading `game` from `peer` into the library folder `into`.
     pub fn start(self: &Arc<Self>, app: AppHandle, peer_id: &str, game: &str, name: &str, into: &str) -> Result<(), String> {
-        let p = peer(peer_id)?;
         let into = crate::games::expand_home(into);
         fs::create_dir_all(&into).map_err(|e| format!("{}: {e}", into.display()))?;
+        self.spawn(app, peer_id, game, name, Target::New(into))
+    }
+
+    /// Brings the local game `id` (downloaded from another AzotoTV) up to
+    /// date with the other side's copy: only what changed comes.
+    pub fn start_update(self: &Arc<Self>, app: AppHandle, id: &str) -> Result<(), String> {
+        let (peer_id, game) = origin(id).ok_or_else(|| t!("This game didn't come from another AzotoTV"))?;
+        let name = crate::games::read_manifest(id).map(|m| m.name).unwrap_or_else(|_| id.to_string());
+        self.spawn(app, &peer_id, &game, &name, Target::Update(id.to_string()))
+    }
+
+    /// The local game being updated now, if `id` is.
+    pub fn updating(&self, id: &str) -> bool {
+        self.jobs.lock().unwrap().values().any(|j| j.progress.state == "running" && j.progress.update.as_deref() == Some(id))
+    }
+
+    fn spawn(self: &Arc<Self>, app: AppHandle, peer_id: &str, game: &str, name: &str, target: Target) -> Result<(), String> {
+        let p = peer(peer_id)?;
         let key = (peer_id.to_string(), game.to_string());
         let cancel = Arc::new(AtomicBool::new(false));
         {
@@ -902,12 +1004,16 @@ impl Downloads {
                 error: None,
                 id: None,
                 step: None,
+                update: match &target {
+                    Target::Update(id) => Some(id.clone()),
+                    Target::New(_) => None,
+                },
             };
             jobs.insert(key.clone(), Job { cancel: cancel.clone(), progress });
         }
         let me = self.clone();
         tauri::async_runtime::spawn(async move {
-            let r = me.run(&app, &key, &p, &into, &cancel).await;
+            let r = me.run(&app, &key, &p, &target, &cancel).await;
             let cancelled = cancel.load(Ordering::Relaxed);
             me.update(&app, &key, |pr| match r {
                 Ok(id) => {
@@ -925,22 +1031,31 @@ impl Downloads {
         Ok(())
     }
 
-    async fn run(&self, app: &AppHandle, key: &(String, String), p: &Peer, into: &Path, cancel: &AtomicBool) -> Result<String, String> {
+    async fn run(&self, app: &AppHandle, key: &(String, String), p: &Peer, target: &Target, cancel: &AtomicBool) -> Result<String, String> {
         let game = &key.1;
         let c = client(Duration::from_secs(60 * 60 * 6));
-        let r = authed(&c, p, &format!("/api/peer/files/{game}")).send().await.map_err(|_| t!("{name} doesn't answer", name = p.name))?;
-        if !r.status().is_success() {
-            let v: Value = r.json().await.unwrap_or_default();
-            return Err(v["error"].as_str().unwrap_or("can't be downloaded").to_string());
-        }
-        let list: Vec<FileInfo> = r.json().await.map_err(|e| e.to_string())?;
-        // the same folder each time, so a download that stopped picks up again
-        let part = into.join(format!(".azototv-download-{}-{game}", &p.id));
-        fs::create_dir_all(&part).map_err(|e| format!("{}: {e}", part.display()))?;
-        let plan = plan(&list, &part)?;
-        let total: u64 = plan.iter().map(|x| x.f.size).sum();
-        let have: u64 = plan.iter().map(|x| fs::metadata(&x.tmp).map_or(0, |m| m.len().min(x.f.size))).sum();
-        if let Some(free) = free_space(into) {
+        let list = file_list(&c, p, game).await?;
+        // where the game's files go: a folder of its own until the download is
+        // whole (the same each time, so one that stopped picks up again), or
+        // the game's folder when it's here already
+        let (dir, space_on) = match target {
+            Target::New(into) => (into.join(format!(".azototv-download-{}-{game}", p.id)), into.clone()),
+            Target::Update(id) => (crate::library::game_dir(id), crate::library::game_dir(id)),
+        };
+        fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        let todo = match target {
+            Target::New(_) => changes(&list, &dir, &[], None, true)?,
+            Target::Update(id) => {
+                // switched-on mods back in the folder, where the update finds them
+                if let Ok(m) = crate::games::read_manifest(id) {
+                    crate::mods::park(&dir, &m.mods, &m.mod_loader)?;
+                }
+                changes(&list, &dir, &[], read_record(&dir).as_ref(), false)?
+            }
+        };
+        let total: u64 = todo.steps.iter().map(|x| x.f.size).sum();
+        let have: u64 = todo.steps.iter().map(|x| fs::metadata(&x.tmp).map_or(0, |m| m.len().min(x.f.size))).sum();
+        if let Some(free) = free_space(&space_on) {
             if total.saturating_sub(have) + (256 << 20) > free {
                 return Err(t!("Not enough space: it needs {need}, there are {free}", need = gb(total - have), free = gb(free)));
             }
@@ -950,7 +1065,7 @@ impl Downloads {
             pr.done = have;
         });
         let (mut done, mut mark, mut last) = (have, have, Instant::now());
-        for x in &plan {
+        for x in &todo.steps {
             let f = x.f;
             if let Some(d) = x.tmp.parent() {
                 fs::create_dir_all(d).map_err(|e| e.to_string())?;
@@ -991,6 +1106,12 @@ impl Downloads {
                     }
                 }
             }
+            // the other side's time: the next update tells it's the same file
+            if let Some(ms) = f.mtime {
+                if let Ok(h) = fs::OpenOptions::new().write(true).open(&x.tmp) {
+                    let _ = h.set_modified(std::time::UNIX_EPOCH + Duration::from_millis(ms));
+                }
+            }
             if f.exec {
                 use std::os::unix::fs::PermissionsExt;
                 let _ = fs::set_permissions(&x.tmp, fs::Permissions::from_mode(0o755));
@@ -999,15 +1120,40 @@ impl Downloads {
                 fs::rename(&x.tmp, &x.dest).map_err(|e| format!("{}: {e}", x.dest.display()))?;
             }
         }
-        // whole: it becomes a game of the library
-        let id = free_id(into, game);
-        let dest = into.join(&id);
-        fs::rename(&part, &dest).map_err(|e| format!("{}: {e}", dest.display()))?;
-        crate::library::add_library(into)?;
-        eprintln!("[peer] {} downloaded from {} into {}", game, p.name, dest.display());
-        // so its saves can follow (saves.rs)
-        crate::saves::tell_pair(p, game, &id).await;
+        for gone in &todo.removed {
+            match fs::remove_file(gone) {
+                Ok(()) => eprintln!("[peer] removed {}", gone.display()),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => eprintln!("[peer] removing {}: {e}", gone.display()),
+            }
+            // and the folders it leaves empty, inside the game's folder
+            let mut d = gone.parent();
+            while let Some(x) = d.filter(|x| x.starts_with(&dir) && *x != dir.as_path()) {
+                if fs::remove_dir(x).is_err() {
+                    break;
+                }
+                d = x.parent();
+            }
+        }
+        write_record(&dir, &list);
         self.update(app, key, |pr| pr.done = total);
+        let (id, dest) = match target {
+            Target::New(into) => {
+                // whole: it becomes a game of the library
+                let id = free_id(into, game);
+                let dest = into.join(&id);
+                fs::rename(&dir, &dest).map_err(|e| format!("{}: {e}", dest.display()))?;
+                crate::library::add_library(into)?;
+                eprintln!("[peer] {} downloaded from {} into {}", game, p.name, dest.display());
+                // so its saves can follow (saves.rs)
+                crate::saves::tell_pair(p, game, &id).await;
+                (id, dest)
+            }
+            Target::Update(id) => {
+                eprintln!("[peer] {id} updated from {} ({} files, {} removed)", p.name, todo.steps.len(), todo.removed.len());
+                (id.clone(), dir)
+            }
+        };
         // an emulator that comes from Flathub rather than from the other machine
         let kind: Option<Kind> = fs::read_to_string(dest.join("game.json"))
             .ok()
@@ -1031,9 +1177,53 @@ impl Downloads {
     }
 }
 
+enum Target {
+    /// a new game, into this library folder
+    New(PathBuf),
+    /// this local game, from where it came
+    Update(String),
+}
+
+async fn file_list(c: &reqwest::Client, p: &Peer, game: &str) -> Result<Vec<FileInfo>, String> {
+    let r = authed(c, p, &format!("/api/peer/files/{game}")).send().await.map_err(|_| t!("{name} doesn't answer", name = p.name))?;
+    if !r.status().is_success() {
+        let v: Value = r.json().await.unwrap_or_default();
+        return Err(v["error"].as_str().unwrap_or("can't be downloaded").to_string());
+    }
+    r.json().await.map_err(|e| e.to_string())
+}
+
+/// Where a local game came from: (peer id, its id there).
+fn origin(id: &str) -> Option<(String, String)> {
+    let v: Value = serde_json::from_str(&fs::read_to_string(crate::library::game_dir(id).join("game.json")).ok()?).ok()?;
+    Some((v["from"]["peer"].as_str()?.to_string(), v["from"]["game"].as_str()?.to_string()))
+}
+
+/// In a downloaded game's folder: what came with it, path -> stamp, so an
+/// update knows what changed there and what's gone, and leaves alone what
+/// changed only here.
+const RECORD: &str = ".azototv-from.json";
+
+fn read_record(dir: &Path) -> Option<HashMap<String, String>> {
+    let v: Value = serde_json::from_str(&fs::read_to_string(dir.join(RECORD)).ok()?).ok()?;
+    serde_json::from_value(v["files"].clone()).ok()
+}
+
+fn write_record(dir: &Path, list: &[FileInfo]) {
+    // an AzotoTV from before updates sends no stamps: no record (the next
+    // check goes by size and writes one)
+    if list.iter().any(|f| f.stamp.is_empty()) {
+        return;
+    }
+    let files: std::collections::BTreeMap<&str, &str> = list.iter().filter(|f| f.runner.is_none() && !f.once).map(|f| (f.path.as_str(), f.stamp.as_str())).collect();
+    if let Err(e) = fs::write(dir.join(RECORD), serde_json::to_string_pretty(&json!({ "files": files })).unwrap_or_default()) {
+        eprintln!("[peer] {}: {e}", dir.join(RECORD).display());
+    }
+}
+
 /// Where the home folder may receive files from another AzotoTV: emulators,
 /// their keys and firmware, packs and updates. Nothing else, and nothing
-/// that's there already gets replaced.
+/// that's there already gets replaced, unless it came with this game.
 const HOME_OK: [&str; 8] = [
     "Eden/Eden.appimage",
     "Eden/Extra/",
@@ -1049,24 +1239,46 @@ struct Step<'a> {
     f: &'a FileInfo,
     /// where it ends up
     dest: PathBuf,
-    /// where it's written meanwhile (the same, inside the download's folder)
+    /// where it's written meanwhile (the same, inside a new download's folder)
     tmp: PathBuf,
 }
 
-/// What to fetch and where: the game into `part`, the rest into the home,
-/// minus what this machine has already (a Proton, a key, Eden).
-fn plan<'a>(list: &'a [FileInfo], part: &Path) -> Result<Vec<Step<'a>>, String> {
+struct Changes<'a> {
+    steps: Vec<Step<'a>>,
+    /// what came last time and the other side doesn't have any more
+    removed: Vec<PathBuf>,
+}
+
+/// A path from the other side, checked: (in the home, relative path).
+fn checked(path: &str) -> Result<(bool, &Path), String> {
+    let (home_rel, rel) = match path.strip_prefix("~/") {
+        Some(r) => (true, Path::new(r)),
+        None => (false, Path::new(path)),
+    };
+    if rel.as_os_str().is_empty() || rel.components().any(|c| !matches!(c, Component::Normal(_))) {
+        return Err(format!("bad path from the other AzotoTV: {path}"));
+    }
+    if home_rel {
+        let r = rel.to_string_lossy();
+        if !HOME_OK.iter().any(|ok| if ok.ends_with('/') { r.starts_with(ok) } else { r == *ok }) {
+            return Err(format!("not a place for it: {path}"));
+        }
+    }
+    Ok((home_rel, rel))
+}
+
+/// What to fetch and where, for a game going into `dir` (a new download's
+/// folder when `fresh`, else the game's own folder, `record` saying what came
+/// last time): what this machine lacks or has in another version. Left
+/// alone: what changed only here, an emulator or Proton it has already, a
+/// file in the home this game didn't bring. `places`: the game's mods
+/// (see [`crate::mods::whereabouts`]).
+fn changes<'a>(list: &'a [FileInfo], dir: &Path, places: &[(PathBuf, PathBuf)], record: Option<&HashMap<String, String>>, fresh: bool) -> Result<Changes<'a>, String> {
     let home = crate::games::home();
     let proton_here = crate::games::has_proton();
-    let mut out = Vec::new();
+    let mut steps = Vec::new();
     for f in list {
-        let (home_rel, rel) = match f.path.strip_prefix("~/") {
-            Some(r) => (true, Path::new(r)),
-            None => (false, Path::new(&f.path)),
-        };
-        if rel.as_os_str().is_empty() || rel.components().any(|c| !matches!(c, Component::Normal(_))) {
-            return Err(format!("bad path from the other AzotoTV: {}", f.path));
-        }
+        let (home_rel, rel) = checked(&f.path)?;
         if !home_rel {
             if let Some(target) = &f.link {
                 // only links that stay inside the game folder
@@ -1082,22 +1294,88 @@ fn plan<'a>(list: &'a [FileInfo], part: &Path) -> Result<Vec<Step<'a>>, String> 
                     }
                 }
             }
-            out.push(Step { f, dest: part.join(rel), tmp: part.join(rel) });
+        } else if f.link.is_some() {
             continue;
         }
-        let r = rel.to_string_lossy();
-        if !HOME_OK.iter().any(|ok| if ok.ends_with('/') { r.starts_with(ok) } else { r == *ok }) {
-            return Err(format!("not a place for it: {}", f.path));
+        if f.runner.as_deref() == Some("proton") && proton_here {
+            continue;
         }
-        let dest = home.join(rel);
-        let skip = f.link.is_some() || (f.runner.as_deref() == Some("proton") && proton_here) || fs::symlink_metadata(&dest).is_ok();
-        if !skip {
-            let mut tmp = dest.clone().into_os_string();
-            tmp.push(".azototv-part");
-            out.push(Step { f, dest, tmp: tmp.into() });
+        let dest = if home_rel { home.join(rel) } else { dir.join(rel) };
+        let now = if home_rel { dest.clone() } else { crate::mods::whereabouts(&dest, places) };
+        let came = record.and_then(|r| r.get(&f.path));
+        if let Ok(m) = fs::symlink_metadata(&now) {
+            let same = f.once
+                || f.runner.is_some()
+                || match &f.link {
+                    Some(t) => fs::read_link(&now).is_ok_and(|l| l == Path::new(t)),
+                    // the other side didn't change it since (whatever happened to it here)
+                    None if came == Some(&f.stamp) => true,
+                    None => m.is_file() && m.len() == f.size && ((f.mtime.is_some() && mtime_ms(&m) == f.mtime) || record.is_none()),
+                };
+            // a file in the home is replaced only when it came with this game
+            if same || (home_rel && came.is_none()) {
+                continue;
+            }
+        }
+        let tmp = if (fresh && !home_rel) || f.link.is_some() {
+            dest.clone()
+        } else {
+            let mut t = dest.clone().into_os_string();
+            t.push(".azototv-part");
+            t.into()
+        };
+        steps.push(Step { f, dest, tmp });
+    }
+    let mut removed = Vec::new();
+    for path in record.into_iter().flat_map(|r| r.keys()) {
+        if list.iter().any(|f| &f.path == path) {
+            continue;
+        }
+        let Ok((home_rel, rel)) = checked(path) else { continue };
+        let p = if home_rel { home.join(rel) } else { crate::mods::whereabouts(&dir.join(rel), places) };
+        if fs::symlink_metadata(&p).is_ok() {
+            removed.push(p);
         }
     }
-    Ok(out)
+    Ok(Changes { steps, removed })
+}
+
+/// What an update of the local game `id` would bring, when there's something.
+#[derive(Serialize)]
+pub struct Update {
+    pub peer: String,
+    pub peer_name: String,
+    /// its id there
+    pub game: String,
+    pub files: usize,
+    pub bytes: u64,
+    pub removed: usize,
+}
+
+pub async fn update_info(id: &str) -> Result<Option<Update>, String> {
+    let Some((peer_id, game)) = origin(id) else { return Ok(None) };
+    let Ok(p) = peer(&peer_id) else { return Ok(None) };
+    let list = file_list(&client(Duration::from_secs(60)), &p, &game).await?;
+    let dir = crate::library::game_dir(id);
+    let m = crate::games::read_manifest(id)?;
+    let places = crate::mods::places(&dir, &m.mods, &m.mod_loader);
+    let record = read_record(&dir);
+    let todo = changes(&list, &dir, &places, record.as_ref(), false)?;
+    if todo.steps.is_empty() && todo.removed.is_empty() {
+        // a copy from before the records: now it has one
+        if record.is_none() {
+            write_record(&dir, &list);
+        }
+        return Ok(None);
+    }
+    Ok(Some(Update {
+        peer: p.id.clone(),
+        peer_name: p.name.clone(),
+        game,
+        files: todo.steps.len(),
+        bytes: todo.steps.iter().map(|x| x.f.size).sum(),
+        removed: todo.removed.len(),
+    }))
 }
 
 async fn flatpak_install(app_id: &str) -> Result<(), String> {
@@ -1152,6 +1430,79 @@ mod tests {
     fn links_inside_the_game() {
         assert_eq!(relative(Path::new("home-seed/.local/share/ghostship"), Path::new("game/sm64.o2r")), PathBuf::from("../../../../game/sm64.o2r"));
         assert_eq!(relative(Path::new("game"), Path::new("game/x")), PathBuf::from("x"));
+    }
+
+    fn info(path: &str, size: u64, mtime: u64) -> FileInfo {
+        FileInfo { path: path.into(), size, exec: false, link: None, runner: None, stamp: format!("{size}-{mtime}"), mtime: Some(mtime), once: false }
+    }
+
+    fn put(dir: &Path, rel: &str, body: &str, mtime: u64) {
+        let p = dir.join(rel);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(&p, body).unwrap();
+        let f = fs::OpenOptions::new().write(true).open(&p).unwrap();
+        f.set_modified(std::time::UNIX_EPOCH + Duration::from_millis(mtime)).unwrap();
+    }
+
+    fn fetched(c: &Changes) -> Vec<String> {
+        let mut v: Vec<String> = c.steps.iter().map(|s| s.f.path.clone()).collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn updates_bring_only_what_changed_there() {
+        let dir = std::env::temp_dir().join(format!("azototv-peer-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        put(&dir, "game/a.bin", "aaaa", 1000);
+        put(&dir, "game/b.bin", "bbbb", 1000);
+        put(&dir, "config/settings.ini", "mine, longer than theirs", 5000);
+        put(&dir, "cache/shaders", "x", 7000);
+        put(&dir, "mods/old/x.txt", "old", 1000);
+        let rec: HashMap<String, String> = [("game/a.bin", "4-1000"), ("game/b.bin", "4-1000"), ("config/settings.ini", "5-1000"), ("mods/old/x.txt", "3-1000")]
+            .into_iter()
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .collect();
+        let mut cache = info("cache/shaders", 9, 9000);
+        cache.once = true;
+        let list = vec![
+            info("game/a.bin", 4, 1000),                   // the same
+            info("game/b.bin", 6, 2000),                   // changed there
+            info("config/settings.ini", 5, 1000),          // changed only here
+            info("mods/new/y.txt", 3, 3000),               // new there
+            cache,                                         // each keeps its own
+        ];
+        let c = changes(&list, &dir, &[], Some(&rec), false).unwrap();
+        assert_eq!(fetched(&c), ["game/b.bin", "mods/new/y.txt"]);
+        assert_eq!(c.removed, [dir.join("mods/old/x.txt")]);
+        // written next to the file, then moved over it
+        assert!(c.steps.iter().all(|s| s.tmp.to_string_lossy().ends_with(".azototv-part")));
+
+        // a copy from before the records: the same size is the same file
+        let c = changes(&list, &dir, &[], None, false).unwrap();
+        assert_eq!(fetched(&c), ["config/settings.ini", "game/b.bin", "mods/new/y.txt"]);
+        assert!(c.removed.is_empty());
+
+        // a file that came with the time from there is the same, record or not
+        put(&dir, "game/b.bin", "bbbbbb", 2000);
+        let c = changes(&list, &dir, &[], Some(&rec), false).unwrap();
+        assert_eq!(fetched(&c), ["mods/new/y.txt"]);
+
+        // a switched-on mod's files are where the emulator finds them
+        let active = dir.join("emu/load/new");
+        put(&dir, "emu/load/new/y.txt", "yyy", 3000);
+        let places = vec![(dir.join("mods/new"), active)];
+        let c = changes(&list, &dir, &places, Some(&rec), false).unwrap();
+        assert!(fetched(&c).is_empty());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn what_never_goes() {
+        assert!(under("data/x", "data") && under("data", "data/") && !under("database", "data") && !under("x", ""));
+        assert!(never_goes("logs") && never_goes("runtime.prev") && !never_goes("data"));
+        assert!(goes_once("Cache") && goes_once("shader_cache") && !goes_once("caches"));
+        assert!(checked("../x").is_err() && checked("~/.ssh/id").is_err() && checked("~/Eden/Extra/u.nsp").is_ok());
     }
 
     #[test]

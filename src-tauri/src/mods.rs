@@ -193,6 +193,41 @@ pub fn apply(game_dir: &Path, specs: &[ModSpec], loader: &[Place], on: &[String]
     Ok(())
 }
 
+/// Every (stored, active) pair of the game's mods and loader, as paths.
+pub fn places(game_dir: &Path, specs: &[ModSpec], loader: &[Place]) -> Vec<(PathBuf, PathBuf)> {
+    specs
+        .iter()
+        .flat_map(|s| s.files.iter())
+        .chain(loader)
+        .map(|p| (path(game_dir, p.stored.trim_end_matches('/')), path(game_dir, &p.active)))
+        .collect()
+}
+
+/// Where `p` (a path in the game folder) is now: in the emulator's place when
+/// it belongs to a mod that's switched on.
+pub fn whereabouts(p: &Path, places: &[(PathBuf, PathBuf)]) -> PathBuf {
+    for (stored, active) in places {
+        if let Ok(rest) = p.strip_prefix(stored) {
+            if !exists(stored) && exists(active) {
+                return if rest.as_os_str().is_empty() { active.clone() } else { active.join(rest) };
+            }
+        }
+    }
+    p.to_path_buf()
+}
+
+/// Every mod file back in the game folder (before the folder changes: an
+/// update from another AzotoTV); the next start puts them in place again.
+pub fn park(game_dir: &Path, specs: &[ModSpec], loader: &[Place]) -> Result<(), String> {
+    for (stored, active) in places(game_dir, specs, loader) {
+        if !exists(&stored) && exists(&active) {
+            mv(&active, &stored)?;
+            eprintln!("[mods] {} -> {} (parked)", active.display(), stored.display());
+        }
+    }
+    Ok(())
+}
+
 fn file_name(p: &Path) -> String {
     p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
 }
