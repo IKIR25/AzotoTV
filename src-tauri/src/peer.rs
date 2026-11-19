@@ -1076,7 +1076,11 @@ impl Downloads {
                 continue;
             }
             let got = fs::metadata(&x.tmp).map_or(0, |m| m.len());
-            if got != f.size {
+            if f.size == 0 {
+                // nothing to fetch, but it must be there (mods use empty
+                // marker files): a missing file also reads as 0 bytes
+                fs::File::create(&x.tmp).map_err(|e| format!("{}: {e}", x.tmp.display()))?;
+            } else if got != f.size {
                 let from = if got < f.size { got } else { 0 };
                 let path: String = f.path.split('/').map(urlencode).collect::<Vec<_>>().join("/");
                 let mut req = authed(&c, p, &format!("/api/peer/file/{game}/{path}"));
