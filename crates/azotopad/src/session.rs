@@ -91,6 +91,8 @@ impl Session {
     /// `players`: how many play together (1 = every pad drives player 1).
     pub fn start(profile: &Profile, sensitivity: f32, players: usize, on_quit: impl Fn() + Send + 'static) -> io::Result<Session> {
         let mut out = Output::new(profile, sensitivity)?;
+        // across a stream Home is the other machine's (it closes its own game)
+        let guide_through = matches!(profile, Profile::Stream);
         let stop = Arc::new(AtomicBool::new(false));
         let pads = Arc::new(Mutex::new(Vec::new()));
         let own = out.nodes();
@@ -134,7 +136,9 @@ impl Session {
                     if let Some(i) = p.slot {
                         let st = p.map.state(&p.raw);
                         // real pads alone can quit the game (Home held), not phones
-                        quit |= !p.external && (st.pressed(Btn::Guide) || (!p.guide && st.pressed(Btn::Back) && st.pressed(Btn::Start)));
+                        quit |= !guide_through
+                            && !p.external
+                            && (st.pressed(Btn::Guide) || (!p.guide && st.pressed(Btn::Back) && st.pressed(Btn::Start)));
                         s[i].merge(&st);
                     }
                 }
@@ -145,7 +149,7 @@ impl Session {
                 let now = Instant::now();
                 let dt = (now - last).as_secs_f32().min(0.05);
                 last = now;
-                if let Err(e) = out.update(&prev, &s, dt) {
+                if let Err(e) = out.update(&prev, &s, dt, guide_through) {
                     eprintln!("[azotopad] output: {e}");
                 }
                 while let Ok((keys, combo)) = tap_rx.try_recv() {
@@ -689,7 +693,7 @@ impl ExternalPad {
     }
 
     pub fn set(&mut self, s: State) -> io::Result<()> {
-        xbox_update(&mut self.pad.lock().unwrap().dev, &self.state, &s)?;
+        xbox_update(&mut self.pad.lock().unwrap().dev, &self.state, &s, false)?;
         self.state = s;
         Ok(())
     }
@@ -821,7 +825,7 @@ impl Output {
         match profile {
             // player 1's pad exists from the start, so the game finds a pad
             // even if none is switched on yet
-            Profile::Xbox => Ok(Output::Xbox(vec![xbox_pad()?], keyboard()?)),
+            Profile::Xbox | Profile::Stream => Ok(Output::Xbox(vec![xbox_pad()?], keyboard()?)),
             Profile::Keys { map, mouse_speed } => {
                 let map = KeyMap::parse(map, mouse_speed * sensitivity)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -876,12 +880,12 @@ impl Output {
         active(k.map.left, Ax::LX, Ax::LY) || active(k.map.right, Ax::RX, Ax::RY)
     }
 
-    /// `prev`/`s`: one state per player.
-    fn update(&mut self, prev: &[State], s: &[State], dt: f32) -> io::Result<()> {
+    /// `prev`/`s`: one state per player. `guide`: Home goes to the virtual pads too.
+    fn update(&mut self, prev: &[State], s: &[State], dt: f32, guide: bool) -> io::Result<()> {
         match self {
             Output::Xbox(pads, _) => {
                 for (i, pad) in pads.iter_mut().enumerate() {
-                    xbox_update(&mut pad.dev, &prev[i], &s[i])?;
+                    xbox_update(&mut pad.dev, &prev[i], &s[i], guide)?;
                 }
                 Ok(())
             }
@@ -890,8 +894,11 @@ impl Output {
     }
 }
 
-fn xbox_update(dev: &mut VirtualDevice, prev: &State, s: &State) -> io::Result<()> {
+fn xbox_update(dev: &mut VirtualDevice, prev: &State, s: &State, guide: bool) -> io::Result<()> {
     let mut evs = Vec::new();
+    if guide && prev.pressed(Btn::Guide) != s.pressed(Btn::Guide) {
+        evs.push(InputEvent::new(EventType::KEY.0, Key::BTN_MODE.0, s.pressed(Btn::Guide) as i32));
+    }
     for (b, k) in XBOX_BUTTONS {
         if prev.pressed(b) != s.pressed(b) {
             evs.push(InputEvent::new(EventType::KEY.0, k.0, s.pressed(b) as i32));

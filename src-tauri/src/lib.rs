@@ -1155,6 +1155,11 @@ pub fn run() {
                     let _ = w.set_fullscreen(true);
                 } else {
                     let _ = w.set_decorations(true);
+                    // streamed to a TV (tools/pc-stream): still a computer's
+                    // AzotoTV (its START can't restart the machine), full screen
+                    if std::env::var_os("AZOTOTV_STREAMED").is_some() {
+                        let _ = w.set_fullscreen(true);
+                    }
                 }
             }
             Ok(())

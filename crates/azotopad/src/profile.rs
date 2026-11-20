@@ -12,7 +12,7 @@
 //! ("z", "enter", "esc", "space", "shift", "f1", or any `KEY_*`), mouse_left,
 //! mouse_right, mouse_middle, wheel_up, wheel_down. Stick targets: mouse,
 //! scroll, arrows, wasd. The guide button is never mapped: holding it asks
-//! AzotoTV to close the game.
+//! AzotoTV to close the game (except `{"mode": "stream"}`, which passes it on).
 
 use std::{collections::HashMap, str::FromStr};
 
@@ -26,6 +26,10 @@ use crate::mapping::{Ax, Btn};
 pub enum Profile {
     /// The game sees a virtual Xbox 360 pad.
     Xbox,
+    /// An Xbox 360 pad with its Guide button, for a game stream to another
+    /// machine (`{"mode": "stream"}`): holding Home is that machine's (it
+    /// closes its own game there), so it doesn't close the stream here.
+    Stream,
     /// The game sees a keyboard and a mouse.
     Keys {
         #[serde(default)]
