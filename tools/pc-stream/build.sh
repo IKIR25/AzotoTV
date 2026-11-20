@@ -6,7 +6,8 @@
 #   ~/.local/bin/azototv-stream-app   Sunshine app: this AzotoTV, full screen
 #   ~/.local/share/applications/azoto-vscreen.desktop  (KWin's permission for virtual screens)
 # and with --sunshine, the Sunshine settings that use them (sunshine.conf,
-# apps.json; the old ones are kept as *.before-azototv).
+# apps.json; the old ones are kept as *.before-azototv). Sunshine then runs
+# from when AzotoTV opens on this computer, not from login.
 set -e
 cd "$(dirname "$0")"
 out=${XDG_CACHE_HOME:-$HOME/.cache}/azoto-vscreen-build
@@ -63,4 +64,7 @@ with open(tmp, "w") as f:
     json.dump(data, f, indent=2)
 os.replace(tmp, path)
 EOF
-echo "Sunshine set up: restart it (systemctl --user restart app-dev.lizardbyte.app.Sunshine.service)"
+# not from login: AzotoTV starts Sunshine when it opens (stream.rs start_pc_host)
+systemctl --user disable app-dev.lizardbyte.app.Sunshine.service 2>/dev/null || true
+echo "Sunshine set up: restart it (systemctl --user restart app-dev.lizardbyte.app.Sunshine.service);"
+echo "from now on AzotoTV starts it when it opens, not the login"

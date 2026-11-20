@@ -297,11 +297,38 @@ fn follow(app: &AppHandle, path: &PathBuf, pos: &mut u64, ino: &mut u64) {
     }
 }
 
+/// Sunshine's user unit (Arch / Fedora / Debian packages).
+const SUNSHINE_UNIT: &str = "app-dev.lizardbyte.app.Sunshine.service";
+
+/// A computer that streams to a TV (tools/pc-stream installed): Sunshine
+/// runs from the moment AzotoTV opens here instead of from login, so the TV
+/// can reach it. It stays on when AzotoTV closes: the TV's stream itself
+/// closes this AzotoTV to open a full-screen one.
+fn start_pc_host() {
+    let Some(home) = std::env::var_os("HOME") else { return };
+    if !PathBuf::from(home).join(".local/bin/azoto-stream-prep").exists() {
+        return;
+    }
+    std::thread::spawn(|| {
+        let r = Command::new("systemctl")
+            .args(["--user", "--no-block", "start", SUNSHINE_UNIT])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        if !r.is_ok_and(|s| s.success()) {
+            eprintln!("[stream] couldn't start Sunshine ({SUNSHINE_UNIT})");
+        }
+    });
+}
+
 /// Follows Sunshine's log (TV mode only). The first read happens here, before
 /// the UI loads: a restart during a stream must know about it before the UI's
 /// "screens on" at start (which would take the sound back to the TV).
+/// On a computer: starts Sunshine instead ([`start_pc_host`]).
 pub fn spawn(app: AppHandle) {
     if !kiosk() {
+        start_pc_host();
         return;
     }
     let Some(home) = std::env::var_os("HOME") else { return };
