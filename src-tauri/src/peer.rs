@@ -13,7 +13,9 @@
 //! The API is on the phones' port (phone.rs, 8686), under `/api/peer/`:
 //! `hello` (who is this, no secret), `link`, `unlink`, `games` (what can be
 //! downloaded), `art/<game>/<kind>`, `files/<game>` and `file/<game>/<path>`
-//! (with Range, so a download picks up where it stopped).
+//! (with Range, so a download picks up where it stopped), and `pack/<game>`
+//! (many small files in one answer: a folder of thousands of 20 KB files
+//! would otherwise cost a request each, and crawl).
 //!
 //! What goes: a game's whole folder (symbolic links left out: those are the
 //! players' saves, see `games::link_player_dirs`), plus its executable or ROM
@@ -143,6 +145,7 @@ pub fn routes(app: AppHandle) -> Router {
         .route("/api/peer/art/{game}/{kind}", get(art_out))
         .route("/api/peer/files/{game}", get(files_out))
         .route("/api/peer/file/{game}/{*path}", get(file_out))
+        .route("/api/peer/pack/{game}", post(pack_out))
         .with_state(Ctx { app: app.clone(), lists: Default::default() })
         .merge(crate::saves::routes(app))
 }
@@ -677,6 +680,64 @@ async fn file_out(
         .unwrap_or_else(|_| err(StatusCode::INTERNAL_SERVER_ERROR, "response"))
 }
 
+/// Small files go many to an answer (see [`pack_out`]); bigger ones on their own.
+const PACK_SMALL: u64 = 1 << 20;
+/// At most this many files, or this many bytes, in one answer.
+const PACK_FILES: usize = 2000;
+const PACK_BYTES: u64 = 32 << 20;
+/// In a pack, the length that says "not this one": the client then asks for it on its own.
+const PACK_NONE: u64 = u64::MAX;
+
+/// The files asked for (a JSON list of paths from `files/<game>`), one after
+/// the other, each as its length (8 bytes, little-endian) and then its bytes.
+/// One the list doesn't have, a link, a big one or one that can't be read:
+/// [`PACK_NONE`] and no bytes.
+async fn pack_out(
+    State(ctx): State<Ctx>,
+    ConnectInfo(from): ConnectInfo<SocketAddr>,
+    h: HeaderMap,
+    UrlPath(game): UrlPath<String>,
+    Json(paths): Json<Vec<String>>,
+) -> Response {
+    if let Err(r) = caller(&h, from) {
+        return r;
+    }
+    if paths.len() > PACK_FILES {
+        return err(StatusCode::BAD_REQUEST, "too many files");
+    }
+    let lists = ctx.lists.clone();
+    let g = game.clone();
+    let list = match tauri::async_runtime::spawn_blocking(move || cached_files(&lists, &g)).await {
+        Ok(Ok(l)) => l,
+        Ok(Err(e)) => return err(StatusCode::NOT_FOUND, e),
+        Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    };
+    // only what the list has: no path from outside ever reaches the disk
+    let by_path: HashMap<&str, &Entry> = list.iter().map(|e| (e.path.as_str(), e)).collect();
+    let srcs: Vec<Option<Source>> = paths.iter().map(|p| by_path.get(p.as_str()).filter(|e| e.size <= PACK_SMALL).map(|e| e.src.clone())).collect();
+    let stream = futures_util::stream::unfold(srcs.into_iter(), |mut it| async move {
+        let src = it.next()?;
+        let bytes = match src {
+            Some(Source::File(p)) => tokio::fs::read(&p).await.ok().filter(|b| b.len() as u64 <= PACK_SMALL),
+            Some(Source::Bytes(b)) => Some(b.to_vec()),
+            Some(Source::Link(_)) | None => None,
+        };
+        let mut out = Vec::with_capacity(8 + bytes.as_ref().map_or(0, Vec::len));
+        match bytes {
+            Some(b) => {
+                out.extend_from_slice(&(b.len() as u64).to_le_bytes());
+                out.extend_from_slice(&b);
+            }
+            None => out.extend_from_slice(&PACK_NONE.to_le_bytes()),
+        }
+        Some((Ok::<_, std::io::Error>(out), it))
+    });
+    Response::builder()
+        .header(header::CONTENT_TYPE, "application/octet-stream")
+        .body(Body::from_stream(stream))
+        .unwrap_or_else(|_| err(StatusCode::INTERNAL_SERVER_ERROR, "response"))
+}
+
 // ---- calling the others -------------------------------------------------------------------
 
 pub(crate) fn client(timeout: Duration) -> reqwest::Client {
@@ -1065,7 +1126,98 @@ impl Downloads {
             pr.done = have;
         });
         let (mut done, mut mark, mut last) = (have, have, Instant::now());
-        for x in &todo.steps {
+        let mut speed_now = |done: u64, force: bool| {
+            if force || last.elapsed() >= Duration::from_millis(700) {
+                let speed = ((done - mark) as f64 / last.elapsed().as_secs_f64().max(0.001)) as u64;
+                (mark, last) = (done, Instant::now());
+                self.update(app, key, |pr| {
+                    pr.done = done;
+                    pr.speed = speed;
+                });
+            }
+        };
+        // small files first, many to a request; what's left (big ones, links,
+        // empty ones, or all of them when the other side is too old for
+        // packs) one by one below
+        let mut fetched = vec![false; todo.steps.len()];
+        let small: Vec<usize> = (0..todo.steps.len())
+            .filter(|&i| {
+                let x = &todo.steps[i];
+                x.f.link.is_none() && x.f.size > 0 && x.f.size <= PACK_SMALL && fs::metadata(&x.tmp).map_or(0, |m| m.len()) != x.f.size
+            })
+            .collect();
+        let mut packs = Vec::new();
+        let (mut pack, mut bytes) = (Vec::new(), 0u64);
+        for i in small {
+            let size = todo.steps[i].f.size;
+            if !pack.is_empty() && (pack.len() >= PACK_FILES || bytes + size > PACK_BYTES) {
+                packs.push(std::mem::take(&mut pack));
+                bytes = 0;
+            }
+            pack.push(i);
+            bytes += size;
+        }
+        if !pack.is_empty() {
+            packs.push(pack);
+        }
+        for pack in packs {
+            let paths: Vec<&str> = pack.iter().map(|&i| todo.steps[i].f.path.as_str()).collect();
+            let r = call(&c, reqwest::Method::POST, p, &format!("/api/peer/pack/{game}")).json(&paths).send().await.map_err(|_| t!("{name} doesn't answer", name = p.name))?;
+            if matches!(r.status(), StatusCode::NOT_FOUND | StatusCode::METHOD_NOT_ALLOWED) {
+                // an AzotoTV from before packs: one by one
+                eprintln!("[peer] {} can't send packs: one file at a time", p.name);
+                break;
+            }
+            if !r.status().is_success() {
+                return Err(format!("{}: HTTP {}", p.name, r.status()));
+            }
+            let mut r = r;
+            let (mut buf, mut next) = (Vec::<u8>::new(), 0usize);
+            loop {
+                // whole files out of what came so far
+                while next < pack.len() && buf.len() >= 8 {
+                    let len = u64::from_le_bytes(buf[..8].try_into().unwrap());
+                    if len == PACK_NONE {
+                        buf.drain(..8);
+                        next += 1;
+                        continue;
+                    }
+                    let i = pack[next];
+                    let x = &todo.steps[i];
+                    if len != x.f.size {
+                        return Err(t!("{path} changed on {name} during the download: start it again", path = x.f.path, name = p.name));
+                    }
+                    if (buf.len() as u64) < 8 + len {
+                        break;
+                    }
+                    if let Some(d) = x.tmp.parent() {
+                        fs::create_dir_all(d).map_err(|e| e.to_string())?;
+                    }
+                    let got = fs::metadata(&x.tmp).map_or(0, |m| m.len());
+                    fs::write(&x.tmp, &buf[8..8 + len as usize]).map_err(|e| format!("{}: {e}", x.tmp.display()))?;
+                    buf.drain(..8 + len as usize);
+                    finish(x)?;
+                    fetched[i] = true;
+                    done = done - got.min(len) + len;
+                    next += 1;
+                    speed_now(done, false);
+                }
+                if cancel.load(Ordering::Relaxed) {
+                    return Err("cancelled".into());
+                }
+                match r.chunk().await.map_err(|_| t!("{name} stopped answering", name = p.name))? {
+                    Some(chunk) => buf.extend_from_slice(&chunk),
+                    None => break,
+                }
+            }
+            if next < pack.len() {
+                return Err(t!("{name} stopped answering", name = p.name));
+            }
+        }
+        for (i, x) in todo.steps.iter().enumerate() {
+            if fetched[i] {
+                continue;
+            }
             let f = x.f;
             if let Some(d) = x.tmp.parent() {
                 fs::create_dir_all(d).map_err(|e| e.to_string())?;
@@ -1100,29 +1252,10 @@ impl Downloads {
                     }
                     std::io::Write::write_all(&mut out, &chunk).map_err(|e| e.to_string())?;
                     done += chunk.len() as u64;
-                    if last.elapsed() >= Duration::from_millis(700) {
-                        let speed = ((done - mark) as f64 / last.elapsed().as_secs_f64()) as u64;
-                        (mark, last) = (done, Instant::now());
-                        self.update(app, key, |pr| {
-                            pr.done = done;
-                            pr.speed = speed;
-                        });
-                    }
+                    speed_now(done, false);
                 }
             }
-            // the other side's time: the next update tells it's the same file
-            if let Some(ms) = f.mtime {
-                if let Ok(h) = fs::OpenOptions::new().write(true).open(&x.tmp) {
-                    let _ = h.set_modified(std::time::UNIX_EPOCH + Duration::from_millis(ms));
-                }
-            }
-            if f.exec {
-                use std::os::unix::fs::PermissionsExt;
-                let _ = fs::set_permissions(&x.tmp, fs::Permissions::from_mode(0o755));
-            }
-            if x.tmp != x.dest {
-                fs::rename(&x.tmp, &x.dest).map_err(|e| format!("{}: {e}", x.dest.display()))?;
-            }
+            finish(x)?;
         }
         for gone in &todo.removed {
             match fs::remove_file(gone) {
@@ -1179,6 +1312,24 @@ impl Downloads {
         }
         Ok(id)
     }
+}
+
+/// A fetched file made like the other side's: its time (so the next update
+/// tells it's the same file), executable or not, and in its place.
+fn finish(x: &Step) -> Result<(), String> {
+    if let Some(ms) = x.f.mtime {
+        if let Ok(h) = fs::OpenOptions::new().write(true).open(&x.tmp) {
+            let _ = h.set_modified(std::time::UNIX_EPOCH + Duration::from_millis(ms));
+        }
+    }
+    if x.f.exec {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&x.tmp, fs::Permissions::from_mode(0o755));
+    }
+    if x.tmp != x.dest {
+        fs::rename(&x.tmp, &x.dest).map_err(|e| format!("{}: {e}", x.dest.display()))?;
+    }
+    Ok(())
 }
 
 enum Target {

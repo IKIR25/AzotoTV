@@ -1244,6 +1244,7 @@
  "{name} refused the key": "{name} ha rifiutato la chiave",
  "{name} removed from Home": "{name} tolta dalla Home",
  "{name} stopped answering": "{name} ha smesso di rispondere",
+ "{path} changed on {name} during the download: start it again": "{path} è cambiato su {name} durante il download: fallo ripartire",
  "{name} · up to {players} players": "{name} · fino a {players} giocatori",
  "{name}'s Miis": "I Mii di {name}",
  "{name}'s PIN": "PIN di {name}",
