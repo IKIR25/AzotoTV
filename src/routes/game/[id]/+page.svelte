@@ -11,7 +11,7 @@
   import { gamePin } from '$lib/pins.svelte';
   import { admin, checkAdmin } from '$lib/admin.svelte';
   import { goto } from '$app/navigation';
-  import { cancelDownload, download, size, speed, startUpdate, updateInfo, watchDownloads, type Progress, type Update } from '$lib/peers.svelte';
+  import { cancelDownload, download, peers, size, speed, startUpdate, updateInfo, watchDownloads, type Progress, type Update } from '$lib/peers.svelte';
   import {
     achievementIcon, artUrl, chapterArt, findGame, getAchievements, getSettings, heroUrl, lastPlayed, launch, library, loadGames,
     modArt, platform, playTrailer, playtime, saveSettings, savesInfo, setMod, setSavesMode, worldMode,
@@ -41,7 +41,19 @@
   // a game downloaded from a linked AzotoTV that changed there since (an
   // update, a new mod): Update fetches only what changed
   let upd = $state<Update | null>(null);
-  const ud = $derived(upd ? download({ peer: upd.peer, id: upd.game }) : null);
+  // the check takes a moment for a big game: say so, rather than nothing
+  let checking = $state(false);
+  // ...or the update running now, also once there's nothing left to fetch
+  // (getting the game ready after the files, a page opened again meanwhile)
+  const ud = $derived(
+    upd ? download({ peer: upd.peer, id: upd.game }) : (Object.values(peers.downloads).find((p) => p.update === id && p.state === 'running') ?? null),
+  );
+  const updating = $derived(ud?.state === 'running');
+  function play() {
+    // its files are changing: the game would start half old, half new
+    if (updating) return showToast(t("It's updating: it can start once the update is done"), 4000);
+    launch(g!.id, current, world);
+  }
   let seenDone: Progress | null = null;
 
   $effect(() => {
@@ -53,8 +65,15 @@
     saves = null;
     savesInfo(cur).then((s) => cur === id && (saves = s), () => {});
     upd = null;
+    checking = false;
     watchDownloads();
-    updateInfo(cur).then((u) => cur === id && (upd = u), () => {});
+    const slow = setTimeout(() => cur === id && (checking = true), 800);
+    updateInfo(cur)
+      .then((u) => cur === id && (upd = u), () => {})
+      .finally(() => {
+        clearTimeout(slow);
+        if (cur === id) checking = false;
+      });
     loadGames(user).then(async () => {
       if (cur !== id) return;
       const found = findGame(cur);
@@ -205,7 +224,7 @@
         </div>
       {/if}
       <div class="actions">
-        <button class="btn primary" data-focusable data-key="play" data-scroll-top onclick={() => launch(g!.id, current, world)}>
+        <button class="btn primary" class:off={updating} aria-disabled={updating} data-focusable data-key="play" data-scroll-top onclick={play}>
           {t('▶ Play|game')}{#if current !== null && g.chapters[current]}{' · '}{g.chapters[current].name}{:else if world}{' · '}{world.name}{/if}
         </button>
         {#if world}
@@ -216,8 +235,8 @@
             {t('▷ Trailer')}
           </button>
         {/if}
-        {#if upd && ud?.state === 'running'}
-          <button class="btn icon" data-focusable data-key="update" data-scroll-top onclick={() => upd && cancelDownload({ peer: upd.peer, id: upd.game })}>
+        {#if ud && updating}
+          <button class="btn icon" data-focusable data-key="update" data-scroll-top onclick={() => ud && cancelDownload({ peer: ud.peer, id: ud.game })}>
             {t('Stop the update')}
           </button>
         {:else if upd}
@@ -228,16 +247,24 @@
           <button class="btn icon" data-focusable data-key="edit" data-scroll-top onclick={() => goto(`/game/${g!.id}/edit`)}>{t('Edit')}</button>
         {/if}
       </div>
-      {#if upd && ud?.state === 'running'}
+      {#if ud && updating}
         <div class="upd">
           <div class="upd-bar"><span style="width:{updPct}%"></span></div>
           <div class="nums">
-            <span>{ud.step ?? `${t('Updating from {name}', { name: upd.peer_name })} · ${updPct}% · ${size(ud.done)} / ${size(ud.total)}`}</span>
+            <span>
+              {ud.step
+                ? ud.total
+                  ? `${ud.step} · ${updPct}%`
+                  : ud.step
+                : `${t('Updating from {name}', { name: ud.peer_name })} · ${updPct}% · ${size(ud.done)} / ${size(ud.total)}`}
+            </span>
             {#if ud.speed}<span>{speed(ud.speed)}</span>{/if}
           </div>
         </div>
       {:else if upd}
         <div class="note">{t('Changed on {name} since it came here', { name: upd.peer_name })}: {updWhat(upd)}</div>
+      {:else if checking}
+        <div class="note">{t('Looking for changes on the other AzotoTV…')}</div>
       {/if}
       {#if upd && ud?.state === 'error'}<div class="err">{ud.error}</div>{/if}
       {#if g.cursor || saves}
@@ -406,6 +433,7 @@
   .note { margin-top: 1.2rem; font-size: 1.3rem; color: var(--muted); }
   .err { margin-top: 1.2rem; font-size: 1.3rem; color: var(--danger-text); }
   .upd { margin-top: 1.6rem; max-width: 60rem; }
+  .btn.off { opacity: 0.45; }
   .upd-bar { height: 0.8rem; border-radius: 0.4rem; background: rgb(var(--fg-rgb) / 0.16); overflow: hidden; }
   .upd-bar span { display: block; height: 100%; background: var(--accent); transition: width 0.6s; }
   .nums { display: flex; justify-content: space-between; margin-top: 0.8rem; font-size: 1.3rem; color: var(--muted); }

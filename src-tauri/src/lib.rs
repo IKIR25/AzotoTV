@@ -700,7 +700,15 @@ fn peer_download(app: AppHandle, dl: State<'_, Arc<peer::Downloads>>, peer: Stri
 /// downloaded game (None: nothing, or it didn't come from one).
 #[tauri::command]
 async fn peer_update_info(id: String) -> Result<Option<peer::Update>, String> {
-    peer::update_info(&id).await
+    let t = std::time::Instant::now();
+    let r = peer::update_info(&id).await;
+    // the game page shows no button when this fails: the reason is here
+    match &r {
+        Ok(Some(u)) => eprintln!("[peer] {id}: changed on {} ({} files to fetch, {} to remove; checked in {:.1} s)", u.peer_name, u.files, u.removed, t.elapsed().as_secs_f32()),
+        Ok(None) => {}
+        Err(e) => eprintln!("[peer] {id}: update check failed after {:.1} s: {e}", t.elapsed().as_secs_f32()),
+    }
+    r
 }
 
 #[tauri::command]

@@ -986,6 +986,8 @@ pub async fn art(path: &str) -> Result<(Vec<u8>, String), String> {
 #[derive(Serialize, Clone)]
 pub struct Progress {
     pub peer: String,
+    /// that AzotoTV's name
+    pub peer_name: String,
     pub game: String,
     pub name: String,
     pub done: u64,
@@ -1058,6 +1060,59 @@ impl Downloads {
         self.jobs.lock().unwrap().values().any(|j| j.progress.state == "running" && j.progress.update.as_deref() == Some(id))
     }
 
+    /// Runs a game's `"peer": {"prepare": …}` script in its folder, with its
+    /// `env`, output in `prepare.log` there (logs never go to the other
+    /// machine). Its `progress <done> <total>` lines move the bar; Stop ends it.
+    async fn prepare(&self, app: &AppHandle, key: &(String, String), dir: &Path, script: &str, env: &Value, cancel: &AtomicBool) -> Result<(), String> {
+        use std::io::Write;
+        use tokio::io::AsyncBufReadExt;
+        let (home_rel, rel) = checked(script)?;
+        if home_rel {
+            return Err(format!("not in the game's folder: {script}"));
+        }
+        let mut log = fs::File::create(dir.join("prepare.log")).map_err(|e| e.to_string())?;
+        let mut cmd = tokio::process::Command::new(dir.join(rel));
+        cmd.current_dir(dir)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(log.try_clone().map_err(|e| e.to_string())?)
+            // its own group: Stop ends what it started too (a shader warm-up)
+            .process_group(0)
+            .kill_on_drop(true);
+        for (k, v) in env.as_object().into_iter().flatten() {
+            if let Some(v) = v.as_str() {
+                cmd.env(k, v);
+            }
+        }
+        let mut child = cmd.spawn().map_err(|e| format!("{script}: {e}"))?;
+        let mut lines = tokio::io::BufReader::new(child.stdout.take().ok_or("no output")?).lines();
+        let mut tick = tokio::time::interval(Duration::from_millis(500));
+        loop {
+            tokio::select! {
+                line = lines.next_line() => {
+                    let Ok(Some(line)) = line else { break };
+                    let _ = writeln!(log, "{line}");
+                    let nums = line.strip_prefix("progress ").and_then(|r| r.split_once(' ')).and_then(|(a, b)| Some((a.trim().parse::<u64>().ok()?, b.trim().parse::<u64>().ok()?)));
+                    if let Some((done, total)) = nums.filter(|&(_, t)| t > 0) {
+                        self.update(app, key, |pr| (pr.done, pr.total) = (done.min(total), total));
+                    }
+                }
+                _ = tick.tick() => {
+                    if cancel.load(Ordering::Relaxed) {
+                        if let Some(pid) = child.id() {
+                            // SAFETY: a plain signal to the group this child leads
+                            unsafe { libc::kill(-(pid as i32), libc::SIGTERM) };
+                        }
+                        let _ = child.wait().await;
+                        return Err("cancelled".into());
+                    }
+                }
+            }
+        }
+        let st = child.wait().await.map_err(|e| e.to_string())?;
+        if st.success() { Ok(()) } else { Err(format!("{script}: {st}, see prepare.log")) }
+    }
+
     fn spawn(self: &Arc<Self>, app: AppHandle, peer_id: &str, game: &str, name: &str, target: Target) -> Result<(), String> {
         let p = peer(peer_id)?;
         let key = (peer_id.to_string(), game.to_string());
@@ -1069,6 +1124,7 @@ impl Downloads {
             }
             let progress = Progress {
                 peer: peer_id.into(),
+                peer_name: p.name.clone(),
                 game: game.into(),
                 name: name.into(),
                 done: 0,
@@ -1325,10 +1381,11 @@ impl Downloads {
             self.update(app, key, |pr| pr.step = None);
         }
         if let Some(script) = manifest["peer"]["prepare"].as_str() {
-            self.update(app, key, |pr| pr.step = Some(t!("Getting it ready for this computer")));
-            let (dir, script, env) = (dest.clone(), script.to_string(), manifest["env"].clone());
-            let r = tauri::async_runtime::spawn_blocking(move || prepare(&dir, &script, &env)).await.unwrap_or_else(|e| Err(e.to_string()));
-            if let Err(e) = r {
+            self.update(app, key, |pr| {
+                pr.step = Some(t!("Getting it ready for this computer"));
+                (pr.done, pr.total, pr.speed) = (0, 0, 0);
+            });
+            if let Err(e) = self.prepare(app, key, &dest, script, &manifest["env"], cancel).await {
                 // the game is here all the same, and the game itself may do it at its first start
                 eprintln!("[peer] {id}: preparing: {e}");
                 self.update(app, key, |pr| pr.error = Some(t!("The game is here, but getting it ready for this computer failed: {e}", e = e)));
@@ -1395,24 +1452,6 @@ fn replace_dir(text: &[u8], old: &[u8], new: &[u8]) -> Option<Vec<u8>> {
     hit.then_some(out)
 }
 
-/// Runs a game's `"peer": {"prepare": …}` script in its folder, with its
-/// `env`, output in `prepare.log` there (logs never go to the other machine).
-fn prepare(dir: &Path, script: &str, env: &Value) -> Result<(), String> {
-    let (home_rel, rel) = checked(script)?;
-    if home_rel {
-        return Err(format!("not in the game's folder: {script}"));
-    }
-    let log = fs::File::create(dir.join("prepare.log")).map_err(|e| e.to_string())?;
-    let mut cmd = std::process::Command::new(dir.join(rel));
-    cmd.current_dir(dir).stdin(std::process::Stdio::null()).stdout(log.try_clone().map_err(|e| e.to_string())?).stderr(log);
-    for (k, v) in env.as_object().into_iter().flatten() {
-        if let Some(v) = v.as_str() {
-            cmd.env(k, v);
-        }
-    }
-    let st = cmd.status().map_err(|e| format!("{script}: {e}"))?;
-    if st.success() { Ok(()) } else { Err(format!("{script}: {st}, see prepare.log")) }
-}
 
 /// A fetched file made like the other side's: its time (so the next update
 /// tells it's the same file), executable or not, and in its place.
@@ -1593,8 +1632,10 @@ fn changes<'a>(list: &'a [FileInfo], dir: &Path, places: &[(PathBuf, PathBuf)], 
         steps.push(Step { f, dest, tmp });
     }
     let mut removed = Vec::new();
+    // (a set: a recomp's 70 000 files against each other took seconds)
+    let there: std::collections::HashSet<&str> = list.iter().map(|f| f.path.as_str()).collect();
     for path in record.into_iter().flat_map(|r| r.keys()) {
-        if list.iter().any(|f| &f.path == path) {
+        if there.contains(path.as_str()) {
             continue;
         }
         let Ok((home_rel, rel)) = checked(path) else { continue };
@@ -1623,25 +1664,32 @@ pub async fn update_info(id: &str) -> Result<Option<Update>, String> {
     let Ok(p) = peer(&peer_id) else { return Ok(None) };
     let list = file_list(&client(Duration::from_secs(60)), &p, &game).await?.files;
     let dir = crate::library::game_dir(id);
-    let m = crate::games::read_manifest(id)?;
-    let places = crate::mods::places(&dir, &m.mods, &m.mod_loader);
     let record = read_record(&dir);
-    let todo = changes(&list, &dir, &places, record.as_ref(), false)?;
-    if todo.steps.is_empty() && todo.removed.is_empty() {
-        // a copy from before the records: now it has one
-        if record.is_none() {
-            write_record(&dir, &list);
+    let (files, bytes, removed) = match &record {
+        // what changed there since it came, by the record alone: looking at each
+        // file here took 10 s for a recomp's 70 000 right after the start, and
+        // the button waited for it. Update itself still looks at each one.
+        Some(r) => {
+            let fetch: Vec<&FileInfo> = list.iter().filter(|f| f.runner.is_none() && !f.once && r.get(&f.path) != Some(&f.stamp)).collect();
+            let there: std::collections::HashSet<&str> = list.iter().map(|f| f.path.as_str()).collect();
+            let gone = r.keys().filter(|k| !there.contains(k.as_str())).count();
+            (fetch.len(), fetch.iter().map(|f| f.size).sum(), gone)
         }
+        None => {
+            let m = crate::games::read_manifest(id)?;
+            let places = crate::mods::places(&dir, &m.mods, &m.mod_loader);
+            let todo = changes(&list, &dir, &places, None, false)?;
+            if todo.steps.is_empty() && todo.removed.is_empty() {
+                // a copy from before the records: now it has one
+                write_record(&dir, &list);
+            }
+            (todo.steps.len(), todo.steps.iter().map(|x| x.f.size).sum(), todo.removed.len())
+        }
+    };
+    if files == 0 && removed == 0 {
         return Ok(None);
     }
-    Ok(Some(Update {
-        peer: p.id.clone(),
-        peer_name: p.name.clone(),
-        game,
-        files: todo.steps.len(),
-        bytes: todo.steps.iter().map(|x| x.f.size).sum(),
-        removed: todo.removed.len(),
-    }))
+    Ok(Some(Update { peer: p.id.clone(), peer_name: p.name.clone(), game, files, bytes, removed }))
 }
 
 async fn flatpak_install(app_id: &str) -> Result<(), String> {

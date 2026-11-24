@@ -46,6 +46,8 @@ export interface Remote {
 
 export interface Progress {
   peer: string;
+  /** that AzotoTV's name */
+  peer_name: string;
   game: string;
   name: string;
   done: number;
@@ -54,7 +56,7 @@ export interface Progress {
   state: 'running' | 'done' | 'error' | 'cancelled';
   error: string | null;
   id: string | null;
-  /** after the files: "Installing Dolphin" */
+  /** after the files: "Installing Dolphin"; with `total`, a step that tells how far it is */
   step: string | null;
   /** an update of this local game, rather than a new one */
   update: string | null;

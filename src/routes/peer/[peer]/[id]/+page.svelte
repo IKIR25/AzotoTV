@@ -110,7 +110,7 @@
         <div class="progress">
           <div class="bar"><span style="width:{pct}%"></span></div>
           <div class="nums">
-            <span>{d.step ?? `${pct}% · ${size(d.done)} / ${size(d.total)}`}</span>
+            <span>{d.step ? (d.total ? `${d.step} · ${pct}%` : d.step) : `${pct}% · ${size(d.done)} / ${size(d.total)}`}</span>
             {#if d.speed}<span>{speed(d.speed)}{#if left !== null} · {left < 1 ? t('less than a minute') : t('about {m} min', { m: left })}{/if}</span>{/if}
           </div>
         </div>
