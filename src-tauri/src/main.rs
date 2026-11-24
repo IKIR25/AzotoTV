@@ -20,6 +20,9 @@ fn main() {
         let media = args.get(2).map(String::as_str).unwrap_or("movie");
         return azototv_lib::dl_check(media, args.get(3).and_then(|n| n.parse().ok()).unwrap_or(0));
     }
+    if args.get(1).map(String::as_str) == Some("--peer-check") {
+        return azototv_lib::peer_check(args.get(2).map(String::as_str).unwrap_or_default());
+    }
     if args.get(1).map(String::as_str) == Some("--tv") {
         return azototv_lib::tv_cli(args.get(2).map(String::as_str).unwrap_or_default());
     }

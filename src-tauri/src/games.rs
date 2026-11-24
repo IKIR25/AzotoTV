@@ -890,7 +890,51 @@ fn seed_prefix(seed: &Path, prefix: &Path) -> Result<(), String> {
         .arg(prefix)
         .status()
         .map_err(|e| e.to_string())?;
-    if st.success() { Ok(()) } else { Err(t!("couldn't copy {a}", a = seed.display())) }
+    if !st.success() {
+        return Err(t!("couldn't copy {a}", a = seed.display()));
+    }
+    relink_seeded(seed, seed, prefix);
+    Ok(())
+}
+
+/// `cp -a` copies links as they are, so a link relative to the game's folder
+/// (how they arrive from a linked AzotoTV, see peer.rs) would point nowhere
+/// from the player's home: there it points at the same place by its full
+/// path. Links within the seed itself stay as they are, and so does a copy
+/// the player changed.
+fn relink_seeded(seed: &Path, dir: &Path, prefix: &Path) {
+    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    for e in rd.flatten() {
+        let p = e.path();
+        let Ok(m) = p.symlink_metadata() else { continue };
+        if m.is_dir() {
+            relink_seeded(seed, &p, prefix);
+            continue;
+        }
+        let Ok(target) = std::fs::read_link(&p) else { continue };
+        if target.is_absolute() {
+            continue;
+        }
+        let mut abs = PathBuf::new();
+        for c in p.parent().unwrap_or(seed).join(&target).components() {
+            match c {
+                std::path::Component::ParentDir => {
+                    abs.pop();
+                }
+                std::path::Component::CurDir => {}
+                c => abs.push(c),
+            }
+        }
+        let Ok(rel) = p.strip_prefix(seed) else { continue };
+        let copy = prefix.join(rel);
+        if abs.starts_with(seed) || std::fs::read_link(&copy).ok().as_ref() != Some(&target) {
+            continue;
+        }
+        let _ = std::fs::remove_file(&copy);
+        if let Err(e) = std::os::unix::fs::symlink(&abs, &copy) {
+            eprintln!("[games] {}: {e}", copy.display());
+        }
+    }
 }
 
 // ---- fullscreen key (X11 games, i.e. everything under Wine) ---------------------
@@ -1561,6 +1605,29 @@ impl Games {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn seeded_links_reach_the_game_folder() {
+        let root = std::env::temp_dir().join(format!("azototv-seed-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (game, home) = (root.join("game"), root.join("home"));
+        let seed = game.join("home-seed");
+        std::fs::create_dir_all(seed.join(".local/share/kart")).unwrap();
+        std::fs::create_dir_all(game.join("data/built")).unwrap();
+        std::fs::create_dir_all(&home).unwrap();
+        // relative, as a linked AzotoTV sends them; and one inside the seed
+        std::os::unix::fs::symlink("../../../../data/built", seed.join(".local/share/kart/built")).unwrap();
+        std::fs::write(seed.join(".local/share/kart/a.ini"), "x").unwrap();
+        std::os::unix::fs::symlink("a.ini", seed.join(".local/share/kart/b.ini")).unwrap();
+        seed_prefix(&seed, &home).unwrap();
+        let built = std::fs::read_link(home.join(".local/share/kart/built")).unwrap();
+        assert_eq!(built, game.join("data/built"));
+        assert_eq!(std::fs::read_link(home.join(".local/share/kart/b.ini")).unwrap(), Path::new("a.ini"));
+        // a second start changes nothing
+        seed_prefix(&seed, &home).unwrap();
+        assert_eq!(std::fs::read_link(home.join(".local/share/kart/built")).unwrap(), built);
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     /// Manifests with mods (a racing game: fan tracks with an update swap; a
     /// fighting game: characters + the loader) must parse, or the game

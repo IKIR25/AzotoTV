@@ -1022,6 +1022,17 @@ pub fn dl_check(media: &str, tmdb: u64) {
     rt.block_on(downloads::check(media, tmdb));
 }
 
+/// `azototv --peer-check <game id>`: what Update would fetch for a game downloaded from a
+/// linked AzotoTV, or why the check fails (the game page shows no button then), printed (no UI).
+pub fn peer_check(id: &str) {
+    let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("runtime");
+    match rt.block_on(peer::update_info(id)) {
+        Ok(Some(u)) => println!("update from {}: {} files, {} bytes, {} to remove", u.peer_name, u.files, u.bytes, u.removed),
+        Ok(None) => println!("nothing to update (or not from a linked AzotoTV)"),
+        Err(e) => println!("error: {e}"),
+    }
+}
+
 /// `azototv --tv pair|on|off|idle-off|renew` (see tv.rs).
 pub fn tv_cli(cmd: &str) {
     tv::cli(cmd)

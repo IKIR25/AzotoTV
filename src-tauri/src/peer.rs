@@ -17,14 +17,23 @@
 //! (many small files in one answer: a folder of thousands of 20 KB files
 //! would otherwise cost a request each, and crawl).
 //!
-//! What goes: a game's whole folder (symbolic links left out: those are the
-//! players' saves, see `games::link_player_dirs`), plus its executable or ROM
+//! What goes: a game's whole folder (symbolic links to somewhere else left
+//! out: those are the players' saves, see `games::link_player_dirs`; links
+//! inside the folder go as links), plus its executable or ROM
 //! when it lives elsewhere (it lands in `ext/` and the `game.json` that goes
 //! is changed to point there). Steam games and Minecraft stay where they are.
 //! The new folder's `game.json` says where it came from (`"from"`).
 //! Never: logs, build leftovers, `*.prev` folders, and what the game's
 //! `"peer": {"skip": [...]}` lists (paths in its folder). Caches, and what
 //! `"peer": {"local": [...]}` lists, go once and then stay each machine's own.
+//!
+//! Settings that name the other machine's game folder by its full path (a
+//! recomp's `dvd_root = "/home/…/Games/x/DATA"`) name this machine's once
+//! they're here: the file list says where the folder is there (header
+//! `x-azoto-dir`), and the small files that came get that path replaced.
+//! A game can also prepare itself for the machine it came to, after the
+//! download and after each update (`"peer": {"prepare": "game/x.sh"}`, run in
+//! its folder with its `env`): shaders for this graphics card, say.
 //!
 //! Updates: the folder keeps a record of what came (`.azototv-from.json`,
 //! each file's size and time there). When the other side's copy changes (an
@@ -49,7 +58,7 @@ use axum::{
     Json, Router,
     body::Body,
     extract::{ConnectInfo, Path as UrlPath, State},
-    http::{HeaderMap, StatusCode, header},
+    http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post},
 };
@@ -557,7 +566,7 @@ fn relative(from: &Path, to: &Path) -> PathBuf {
 }
 
 /// The files under `dir`. Symbolic links come along when they point at a
-/// file inside the game folder (a data file shared into `home-seed/`);
+/// file or folder inside the game folder (data shared into `home-seed/`);
 /// the others (a player's saves, see `games::link_player_dirs`) stay here.
 fn walk(root: &Path, dir: &Path, out: &mut Vec<Entry>) {
     let Ok(rd) = fs::read_dir(dir) else { return };
@@ -570,7 +579,7 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<Entry>) {
         if meta.is_symlink() {
             let (Ok(target), Ok(root_c)) = (fs::canonicalize(e.path()), fs::canonicalize(root)) else { continue };
             let Ok(rel) = e.path().strip_prefix(root).map(Path::to_path_buf) else { continue };
-            if target.is_file() && target.starts_with(&root_c) {
+            if (target.is_file() || target.is_dir()) && target.starts_with(&root_c) {
                 let inside = target.strip_prefix(&root_c).unwrap_or(&target);
                 let link = relative(rel.parent().unwrap_or(Path::new("")), inside);
                 out.push(Entry {
@@ -607,8 +616,12 @@ async fn files_out(State(ctx): State<Ctx>, ConnectInfo(from): ConnectInfo<Socket
     })
     .await
     {
-        Ok(Ok(l)) => Json(
-            l.iter()
+        Ok(Ok(l)) => {
+            // where the game's folder is here: settings that name it by its full
+            // path name the other machine's instead, once they're there
+            let dir = HeaderValue::from_bytes(crate::library::game_dir(&game).as_os_str().as_encoded_bytes()).unwrap_or(HeaderValue::from_static(""));
+            let list = l
+                .iter()
                 .map(|e| FileInfo {
                     path: e.path.clone(),
                     size: e.size,
@@ -622,9 +635,9 @@ async fn files_out(State(ctx): State<Ctx>, ConnectInfo(from): ConnectInfo<Socket
                     mtime: e.mtime,
                     once: e.once,
                 })
-                .collect::<Vec<_>>(),
-        )
-        .into_response(),
+                .collect::<Vec<_>>();
+            ([(HeaderName::from_static(DIR_HEADER), dir)], Json(list)).into_response()
+        }
         Ok(Err(e)) => err(StatusCode::NOT_FOUND, e),
         Err(e) => err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     }
@@ -1095,7 +1108,7 @@ impl Downloads {
     async fn run(&self, app: &AppHandle, key: &(String, String), p: &Peer, target: &Target, cancel: &AtomicBool) -> Result<String, String> {
         let game = &key.1;
         let c = client(Duration::from_secs(60 * 60 * 6));
-        let list = file_list(&c, p, game).await?;
+        let Listing { files: list, dir: there } = file_list(&c, p, game).await?;
         // where the game's files go: a folder of its own until the download is
         // whole (the same each time, so one that stopped picks up again), or
         // the game's folder when it's here already
@@ -1291,11 +1304,12 @@ impl Downloads {
                 (id.clone(), dir)
             }
         };
+        if let Some(there) = &there {
+            rehome(&dest, &todo.steps, there);
+        }
+        let manifest: Value = fs::read_to_string(dest.join("game.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
         // an emulator that comes from Flathub rather than from the other machine
-        let kind: Option<Kind> = fs::read_to_string(dest.join("game.json"))
-            .ok()
-            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
-            .and_then(|v| serde_json::from_value(v["type"].clone()).ok());
+        let kind: Option<Kind> = serde_json::from_value(manifest["type"].clone()).ok();
         let flatpak = match kind {
             Some(Kind::Wii) if !crate::dolphin::installed() => Some(("Dolphin", crate::dolphin::FLATPAK)),
             Some(Kind::N3ds) if !crate::azahar::installed() => Some(("Azahar", crate::azahar::FLATPAK)),
@@ -1310,8 +1324,94 @@ impl Downloads {
             }
             self.update(app, key, |pr| pr.step = None);
         }
+        if let Some(script) = manifest["peer"]["prepare"].as_str() {
+            self.update(app, key, |pr| pr.step = Some(t!("Getting it ready for this computer")));
+            let (dir, script, env) = (dest.clone(), script.to_string(), manifest["env"].clone());
+            let r = tauri::async_runtime::spawn_blocking(move || prepare(&dir, &script, &env)).await.unwrap_or_else(|e| Err(e.to_string()));
+            if let Err(e) = r {
+                // the game is here all the same, and the game itself may do it at its first start
+                eprintln!("[peer] {id}: preparing: {e}");
+                self.update(app, key, |pr| pr.error = Some(t!("The game is here, but getting it ready for this computer failed: {e}", e = e)));
+            }
+            self.update(app, key, |pr| pr.step = None);
+        }
         Ok(id)
     }
+}
+
+/// Files that just came and name the other machine's game folder (`there`)
+/// by its full path, a recomp's settings say, name this one (`dest`) instead.
+/// Only small files without NUL bytes (settings, not game data), and only
+/// the whole folder name: "/g/mkw" in "/g/mkw/x" or "/g/mkw\"", not in "/g/mkw2".
+/// The file keeps the other side's time, so an update still tells it's the
+/// same version (its record says what came).
+fn rehome(dest: &Path, steps: &[Step], there: &str) {
+    const SMALL: u64 = 1 << 20;
+    let here = dest.to_string_lossy();
+    if there == here {
+        return;
+    }
+    for x in steps {
+        if x.f.link.is_some() || x.f.runner.is_some() || x.f.size > SMALL || x.f.path.starts_with("~/") {
+            continue;
+        }
+        let p = dest.join(&x.f.path);
+        let Ok(text) = fs::read(&p) else { continue };
+        if text.contains(&0) {
+            continue;
+        }
+        let Some(new) = replace_dir(&text, there.as_bytes(), here.as_bytes()) else { continue };
+        match fs::write(&p, new) {
+            Ok(()) => {
+                eprintln!("[peer] {}: now names {here}", x.f.path);
+                if let (Some(ms), Ok(h)) = (x.f.mtime, fs::OpenOptions::new().write(true).open(&p)) {
+                    let _ = h.set_modified(std::time::UNIX_EPOCH + Duration::from_millis(ms));
+                }
+            }
+            Err(e) => eprintln!("[peer] {}: {e}", p.display()),
+        }
+    }
+}
+
+/// `text` with the folder `old` replaced by `new` where it stands as a whole
+/// path (not inside a longer one), or None when it isn't there.
+fn replace_dir(text: &[u8], old: &[u8], new: &[u8]) -> Option<Vec<u8>> {
+    let part_of_name = |c: u8| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.' | b'/') || c >= 0x80;
+    let mut out = Vec::with_capacity(text.len());
+    let (mut i, mut hit) = (0, false);
+    while i < text.len() {
+        if text[i..].starts_with(old)
+            && (i == 0 || !part_of_name(text[i - 1]))
+            && text.get(i + old.len()).is_none_or(|&c| c == b'/' || !part_of_name(c))
+        {
+            out.extend_from_slice(new);
+            i += old.len();
+            hit = true;
+        } else {
+            out.push(text[i]);
+            i += 1;
+        }
+    }
+    hit.then_some(out)
+}
+
+/// Runs a game's `"peer": {"prepare": …}` script in its folder, with its
+/// `env`, output in `prepare.log` there (logs never go to the other machine).
+fn prepare(dir: &Path, script: &str, env: &Value) -> Result<(), String> {
+    let (home_rel, rel) = checked(script)?;
+    if home_rel {
+        return Err(format!("not in the game's folder: {script}"));
+    }
+    let log = fs::File::create(dir.join("prepare.log")).map_err(|e| e.to_string())?;
+    let mut cmd = std::process::Command::new(dir.join(rel));
+    cmd.current_dir(dir).stdin(std::process::Stdio::null()).stdout(log.try_clone().map_err(|e| e.to_string())?).stderr(log);
+    for (k, v) in env.as_object().into_iter().flatten() {
+        if let Some(v) = v.as_str() {
+            cmd.env(k, v);
+        }
+    }
+    let st = cmd.status().map_err(|e| format!("{script}: {e}"))?;
+    if st.success() { Ok(()) } else { Err(format!("{script}: {st}, see prepare.log")) }
 }
 
 /// A fetched file made like the other side's: its time (so the next update
@@ -1339,13 +1439,24 @@ enum Target {
     Update(String),
 }
 
-async fn file_list(c: &reqwest::Client, p: &Peer, game: &str) -> Result<Vec<FileInfo>, String> {
+/// The answer to `files/<game>` names the game's folder over there in this header.
+const DIR_HEADER: &str = "x-azoto-dir";
+
+/// A game's files on the other side, and where its folder is there (an
+/// AzotoTV from before [`DIR_HEADER`] doesn't say).
+struct Listing {
+    files: Vec<FileInfo>,
+    dir: Option<String>,
+}
+
+async fn file_list(c: &reqwest::Client, p: &Peer, game: &str) -> Result<Listing, String> {
     let r = authed(c, p, &format!("/api/peer/files/{game}")).send().await.map_err(|_| t!("{name} doesn't answer", name = p.name))?;
     if !r.status().is_success() {
         let v: Value = r.json().await.unwrap_or_default();
         return Err(v["error"].as_str().unwrap_or("can't be downloaded").to_string());
     }
-    r.json().await.map_err(|e| e.to_string())
+    let dir = r.headers().get(DIR_HEADER).map(|v| String::from_utf8_lossy(v.as_bytes()).into_owned()).filter(|d| d.starts_with('/'));
+    Ok(Listing { files: r.json().await.map_err(|e| e.to_string())?, dir })
 }
 
 /// Where a local game came from: (peer id, its id there).
@@ -1510,7 +1621,7 @@ pub struct Update {
 pub async fn update_info(id: &str) -> Result<Option<Update>, String> {
     let Some((peer_id, game)) = origin(id) else { return Ok(None) };
     let Ok(p) = peer(&peer_id) else { return Ok(None) };
-    let list = file_list(&client(Duration::from_secs(60)), &p, &game).await?;
+    let list = file_list(&client(Duration::from_secs(60)), &p, &game).await?.files;
     let dir = crate::library::game_dir(id);
     let m = crate::games::read_manifest(id)?;
     let places = crate::mods::places(&dir, &m.mods, &m.mod_loader);
@@ -1649,6 +1760,41 @@ mod tests {
         let places = vec![(dir.join("mods/new"), active)];
         let c = changes(&list, &dir, &places, Some(&rec), false).unwrap();
         assert!(fetched(&c).is_empty());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn settings_name_this_machines_folder() {
+        let r = |t: &str| replace_dir(t.as_bytes(), b"/srv/Games/kart", b"/home/ada/Giochi/kart").map(|v| String::from_utf8(v).unwrap());
+        assert_eq!(r("dvd_root = \"/srv/Games/kart/data/DATA\"\n").as_deref(), Some("dvd_root = \"/home/ada/Giochi/kart/data/DATA\"\n"));
+        assert_eq!(r("root=/srv/Games/kart\nx=/srv/Games/kart/a").as_deref(), Some("root=/home/ada/Giochi/kart\nx=/home/ada/Giochi/kart/a"));
+        // another game, a longer path, or nothing to do
+        assert_eq!(r("a=/srv/Games/kart2/x b=/mnt/srv/Games/kart/x"), None);
+        assert_eq!(r("nothing here"), None);
+    }
+
+    #[test]
+    fn folder_links_go_as_links() {
+        let dir = std::env::temp_dir().join(format!("azototv-peer-links-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        put(&dir, "data/built/code.so", "x", 1000);
+        put(&dir, "data/shared.ini", "y", 1000);
+        put(&dir, "home-seed/.local/share/kart/settings.ini", "z", 1000);
+        let seed = dir.join("home-seed/.local/share/kart");
+        std::os::unix::fs::symlink(dir.join("data/built"), seed.join("built")).unwrap();
+        std::os::unix::fs::symlink(dir.join("data/shared.ini"), seed.join("shared.ini")).unwrap();
+        std::os::unix::fs::symlink("/etc", seed.join("elsewhere")).unwrap();
+        let mut out = Vec::new();
+        walk(&dir, &dir, &mut out);
+        let link = |p: &str| out.iter().find(|e| e.path == p).map(|e| match &e.src {
+            Source::Link(t) => t.clone(),
+            _ => "a file".into(),
+        });
+        assert_eq!(link("home-seed/.local/share/kart/built").as_deref(), Some("../../../../data/built"));
+        assert_eq!(link("home-seed/.local/share/kart/shared.ini").as_deref(), Some("../../../../data/shared.ini"));
+        assert_eq!(link("home-seed/.local/share/kart/elsewhere"), None);
+        // what's behind a folder link goes once, from its own place
+        assert!(link("data/built/code.so").is_some() && link("home-seed/.local/share/kart/built/code.so").is_none());
         let _ = fs::remove_dir_all(&dir);
     }
 
